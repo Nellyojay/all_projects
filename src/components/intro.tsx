@@ -1,0 +1,162 @@
+import { useMemo, useState } from 'react'
+import ProjectCard from './ProjectCard'
+
+const projects = [
+  { name: 'Auction', category: 'Commerce', type: 'Marketplace', website: 'https://auction.example.com' },
+  { name: 'Dice Rounds', category: 'Games', type: 'Interactive', website: 'https://dicerounds.example.com' },
+  { name: 'Hottish', category: 'Community', type: 'Membership', website: 'https://nellyojay.github.io/hottish' },
+  { name: 'Adumun', category: 'Business', type: 'Platform', website: 'https://nellyojay.github.io/adumun' },
+  { name: 'Household Harmony', category: 'Services', type: 'Directory', website: 'https://householdharmony.example.com' },
+  { name: 'MULIMA', category: 'Commerce', type: 'Marketplace', website: 'https://mulima.example.com' },
+  { name: 'My Web Profile', category: 'Personal', type: 'Portfolio', website: 'https://mywebprofile.example.com' },
+  { name: 'Okello CPA Portal', category: 'Finance', type: 'Client portal', website: 'https://nellyojay.github.io/cpa-with-okello' },
+  { name: 'Owenstore', category: 'Commerce', type: 'Online store', website: 'https://nellyojay.github.io/owenstore' },
+  { name: 'Requisition', category: 'Tools', type: 'Form', website: 'https://requisition.example.com' },
+  { name: 'MyStickyNote', category: 'Commerce', type: 'Online store', website: 'https://nellyojay.github.io/mystickynote' },
+  { name: 'The Soundz', category: 'Entertainment', type: 'Music', website: 'https://thesoundz.example.com' },
+]
+
+const filters = ['All', 'Commerce', 'Community', 'Education', 'Finance', 'Games', 'Personal', 'Services', 'Tools']
+
+function SearchIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="size-4">
+      <circle cx="8.8" cy="8.8" r="5.8" stroke="currentColor" strokeWidth="1.5" />
+      <path d="m13.2 13.2 3.3 3.3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function Intro() {
+  const [activeFilter, setActiveFilter] = useState('All')
+  const [query, setQuery] = useState('')
+
+  const visibleProjects = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase()
+
+    return projects.filter((project) => {
+      const matchesCategory = activeFilter === 'All' || project.category === activeFilter
+      const matchesQuery =
+        normalizedQuery.length === 0 ||
+        `${project.name} ${project.category} ${project.type}`.toLowerCase().includes(normalizedQuery)
+
+      return matchesCategory && matchesQuery
+    })
+  }, [activeFilter, query])
+
+  return (
+    <main className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-linear-to-b from-cyan-950/30 to-transparent" />
+
+      <div className="relative mx-auto max-w-7xl px-5 pb-16 pt-7 sm:px-8 lg:px-12">
+        <header className="flex items-center justify-between border-b border-slate-800 pb-6">
+          <a href="#" className="flex items-center gap-3" aria-label="Project index home">
+            <span className="grid size-9 place-items-center rounded-lg border border-cyan-900 bg-cyan-950">
+              <span className="size-2.5 rotate-45 border border-cyan-200 bg-cyan-300/30" />
+            </span>
+            <span className="text-sm font-semibold tracking-[0.16em] text-slate-200">PROUD.DEV</span>
+          </a>
+          <span className="hidden items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500 sm:flex">
+            <span className="size-1.5 rounded-full bg-emerald-400" />
+            System online
+          </span>
+        </header>
+
+        <section className="py-6">
+          <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-cyan-300/80">
+            <span className="mr-2 text-slate-600">01 //</span> Personal web archive
+          </div>
+          <div className="mt-5 grid gap-8 lg:grid-cols-2 lg:items-end">
+            <div>
+              <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-6xl">
+                A universe of
+                <span className="block bg-linear-to-r from-cyan-200 to-violet-300 bg-clip-text text-transparent">things I built.</span>
+              </h1>
+            </div>
+            <div className="flex gap-8 border-l border-white/10 pl-6 lg:mb-1">
+              <div>
+                <p className="font-mono text-3xl text-white">{String(projects.length).padStart(2, '0')}</p>
+                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.16em] text-slate-500">Projects</p>
+              </div>
+              <div>
+                <p className="font-mono text-3xl text-white">{String(new Set(projects.map((project) => project.category)).size).padStart(2, '0')}</p>
+                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.16em] text-slate-500">Categories</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section aria-label="Project directory">
+          <div className="flex flex-col gap-5 border-y border-slate-800 py-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex gap-2 overflow-x-auto pb-1 lg:flex-wrap lg:pb-0">
+              {filters.map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  onClick={() => setActiveFilter(filter)}
+                  aria-pressed={activeFilter === filter}
+                  className={`shrink-0 rounded-md border px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider transition ${activeFilter === filter
+                    ? 'border-cyan-700 bg-cyan-950 text-cyan-100'
+                    : 'border-slate-800 text-slate-500 hover:border-slate-600 hover:text-slate-300'
+                    }`}
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
+
+            <label className="flex h-10 w-full items-center gap-2.5 rounded-md border border-slate-800 bg-slate-900 px-3 text-slate-500 focus-within:border-cyan-700 lg:max-w-xs">
+              <SearchIcon />
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Find a project..."
+                className="min-w-0 flex-1 bg-transparent font-mono text-xs text-slate-200 outline-none placeholder:text-slate-600"
+              />
+              <span className="font-mono text-[9px] text-slate-600">/</span>
+            </label>
+          </div>
+
+          <div className="mb-4 mt-6 flex items-center justify-between font-mono text-[10px] uppercase tracking-wider text-slate-600">
+            <span>Directory / {activeFilter}</span>
+            <span>{String(visibleProjects.length).padStart(2, '0')} results</span>
+          </div>
+
+          {visibleProjects.length > 0 ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {visibleProjects.map((project, index) => (
+                <ProjectCard
+                  key={project.name}
+                  {...project}
+                  number={index + 1}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-slate-700 px-6 py-16 text-center">
+              <p className="text-sm text-slate-400">No projects match that search.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery('')
+                  setActiveFilter('All')
+                }}
+                className="mt-3 font-mono text-xs text-cyan-300 hover:text-cyan-100"
+              >
+                Clear filters
+              </button>
+            </div>
+          )}
+        </section>
+
+        <footer className="mt-12 flex flex-col gap-2 border-t border-slate-800 pt-5 font-mono text-[9px] uppercase tracking-wider text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+          <span>Personal web archive <span className="px-1 text-slate-700">/</span> Demo directory</span>
+          <span className="text-slate-500">Demo links</span>
+        </footer>
+      </div>
+    </main>
+  )
+}
+
+export default Intro
