@@ -14,7 +14,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       manifest: {
         id: base,
-        name: 'PROUD.DEV Web Archive',
+        name: 'PROUD.DEV',
         short_name: 'PROUD.DEV',
         description: 'A personal archive of websites and digital projects.',
         start_url: base,
