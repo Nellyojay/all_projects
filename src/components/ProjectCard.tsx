@@ -1,12 +1,13 @@
 type ProjectCardProps = {
   name: string
+  published: boolean
   category: string
   type: string
   website: string
   number: number
 }
 
-function ProjectCard({ name, category, type, website, number }: ProjectCardProps) {
+function ProjectCard({ name, published, category, type, website, number }: ProjectCardProps) {
   return (
     <a
       href={website}
@@ -15,8 +16,11 @@ function ProjectCard({ name, category, type, website, number }: ProjectCardProps
       className="group flex min-h-36 flex-col justify-between rounded-lg border border-border bg-surface p-4 transition hover:border-primary-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:min-h-40 sm:p-5"
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="font-mono text-[10px] tracking-wider text-muted">
+        <span className="flex items-center gap-2 font-mono text-[10px] tracking-wider text-muted">
           NODE_{String(number).padStart(2, '0')}
+          <span
+            className={`block h-2 w-2 rounded-full ${published ? 'bg-green-500/50' : 'bg-red-500/50'}`}
+          />
         </span>
         <span className="rounded border border-border-strong px-2 py-1 font-mono text-[9px] uppercase tracking-wider text-muted">
           {category}

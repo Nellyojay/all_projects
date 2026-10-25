@@ -2,19 +2,19 @@ import { useMemo, useState } from 'react'
 import ProjectCard from './ProjectCard'
 
 const projects = [
-  { name: 'Auction', category: 'Commerce', type: 'Marketplace', website: 'https://auction.example.com' },
-  { name: 'Dice Rounds', category: 'Games', type: 'Interactive', website: 'https://dicerounds.example.com' },
-  { name: 'Hottish', category: 'Community', type: 'Membership', website: 'https://nellyojay.github.io/hottish' },
-  { name: 'Adumun', category: 'Business', type: 'Platform', website: 'https://nellyojay.github.io/adumun' },
-  { name: 'Vumio', category: 'Entertainment', type: 'Platform', website: 'https://nellyojay.github.io/vuma.com' },
-  { name: 'Household Harmony', category: 'Services', type: 'Directory', website: 'https://householdharmony.example.com' },
-  { name: 'MULIMA', category: 'Commerce', type: 'Marketplace', website: 'https://mulima.example.com' },
-  { name: 'My Web Profile', category: 'Personal', type: 'Portfolio', website: 'https://mywebprofile.example.com' },
-  { name: 'Okello CPA Portal', category: 'Finance', type: 'Client portal', website: 'https://nellyojay.github.io/cpa-with-okello' },
-  { name: 'Owenstore', category: 'Commerce', type: 'Online store', website: 'https://nellyojay.github.io/owenstore' },
-  { name: 'Requisition', category: 'Tools', type: 'Form', website: 'https://requisition.example.com' },
-  { name: 'MyStickyNote', category: 'Commerce', type: 'Online store', website: 'https://nellyojay.github.io/mystickynote' },
-  { name: 'The Soundz', category: 'Entertainment', type: 'Music', website: 'https://thesoundz.example.com' },
+  { name: 'Auction', published: false, category: 'Commerce', type: 'Marketplace', website: 'https://auction.example.com' },
+  { name: 'Dice Rounds', published: false, category: 'Games', type: 'Interactive', website: 'https://dicerounds.example.com' },
+  { name: 'Hottish', published: true, category: 'Community', type: 'Membership', website: 'https://nellyojay.github.io/hottish' },
+  { name: 'Adumun', published: true, category: 'Business', type: 'Platform', website: 'https://nellyojay.github.io/adumun' },
+  { name: 'Vumio', published: true, category: 'Entertainment', type: 'Platform', website: 'https://nellyojay.github.io/vuma.com' },
+  { name: 'Household Harmony', published: true, category: 'Services', type: 'Directory', website: 'https://nellyojay.github.io/householdharmony' },
+  { name: 'MULIMA', published: true, category: 'Commerce', type: 'Marketplace', website: 'https://nellyojay.github.io/mulima.com' },
+  { name: 'My Web Profile', published: false, category: 'Personal', type: 'Portfolio', website: 'https://mywebprofile.example.com' },
+  { name: 'Okello CPA Portal', published: true, category: 'Finance', type: 'Client portal', website: 'https://nellyojay.github.io/cpa-with-okello' },
+  { name: 'Owenstore', published: true, category: 'Commerce', type: 'Record Keeping', website: 'https://nellyojay.github.io/owenstore' },
+  { name: 'Requisition', published: false, category: 'Tools', type: 'Form', website: 'https://requisition.example.com' },
+  { name: 'MyStickyNote', published: true, category: 'Personal', type: 'Note-taking', website: 'https://nellyojay.github.io/mystickynote' },
+  { name: 'The Soundz', published: false, category: 'Entertainment', type: 'Events', website: 'https://thesoundz.example.com' },
 ]
 
 const filters = ['All', 'Commerce', 'Community', 'Education', 'Finance', 'Games', 'Personal', 'Services', 'Tools']
@@ -70,7 +70,7 @@ function Intro() {
             <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-primary/80">
               <span className="mr-2 text-muted">01 //</span> Personal web archive
             </div>
-            <div className="mt-5 grid gap-8 lg:grid-cols-2 lg:items-end">
+            <div className="mt-8 grid gap-8 lg:grid-cols-2 lg:items-end">
               <div>
                 <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-foreground sm:text-6xl">
                   A universe of
