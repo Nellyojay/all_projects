@@ -2,12 +2,11 @@ import { useMemo, useState } from 'react'
 import ProjectCard from './ProjectCard'
 
 const projects = [
-  { name: 'Auction', published: false, category: 'Commerce', type: 'Marketplace', website: 'https://auction.example.com' },
   { name: 'Dice Rounds', published: false, category: 'Games', type: 'Interactive', website: 'https://dicerounds.example.com' },
   { name: 'Hottish', published: true, category: 'Community', type: 'Membership', website: 'https://nellyojay.github.io/hottish' },
   { name: 'Adumun', published: true, category: 'Business', type: 'Platform', website: 'https://nellyojay.github.io/adumun' },
   { name: 'Vumio', published: true, category: 'Entertainment', type: 'Platform', website: 'https://nellyojay.github.io/vuma.com' },
-  { name: 'Household Harmony', published: true, category: 'Services', type: 'Directory', website: 'https://nellyojay.github.io/householdharmony' },
+  { name: 'Household Harmony', published: true, category: 'Services', type: 'Form', website: 'https://nellyojay.github.io/householdharmony' },
   { name: 'MULIMA', published: true, category: 'Commerce', type: 'Marketplace', website: 'https://nellyojay.github.io/mulima.com' },
   { name: 'My Web Profile', published: false, category: 'Personal', type: 'Portfolio', website: 'https://mywebprofile.example.com' },
   { name: 'Okello CPA Portal', published: true, category: 'Finance', type: 'Client portal', website: 'https://nellyojay.github.io/cpa-with-okello' },
