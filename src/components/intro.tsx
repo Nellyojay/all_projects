@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import ProjectCard from './ProjectCard'
 
 const projects = [
@@ -28,6 +29,7 @@ function SearchIcon() {
 }
 
 function Intro() {
+  const navigate = useNavigate()
   const [activeFilter, setActiveFilter] = useState('All')
   const [query, setQuery] = useState('')
 
@@ -52,16 +54,25 @@ function Intro() {
 
       <div className="relative pb-10">
         <header className="sticky top-0 z-10 border-b border-border py-2 backdrop-blur-3xl">
-          <a
-            href="#"
-            className="flex items-center gap-3 px-4 sm:px-6 lg:px-8 mx-auto max-w-7xl"
-            aria-label="Project index home"
-          >
-            <span className="grid size-9 place-items-center rounded-lg border border-primary-dark bg-primary-soft">
-              <span className="size-2.5 rotate-45 border border-primary-light bg-primary/30" />
-            </span>
-            <span className="text-sm font-semibold tracking-[0.16em] text-foreground">PROUD.DEV</span>
-          </a>
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+            <a
+              href="#/"
+              className="flex items-center gap-3"
+              aria-label="Project index home"
+            >
+              <span className="grid size-9 place-items-center rounded-lg border border-primary-dark bg-primary-soft">
+                <span className="size-2.5 rotate-45 border border-primary-light bg-primary/30" />
+              </span>
+              <span className="text-sm font-semibold tracking-[0.16em] text-foreground">PROUD.DEV</span>
+            </a>
+            <button
+              type="button"
+              onClick={() => navigate('/space')}
+              className="rounded-md border border-border-strong bg-surface px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider text-foreground transition hover:border-primary-dark hover:bg-surface-hover"
+            >
+              Enter my space
+            </button>
+          </div>
         </header>
 
         <div className="px-4 sm:px-6 lg:px-8 mx-auto max-w-7xl">
