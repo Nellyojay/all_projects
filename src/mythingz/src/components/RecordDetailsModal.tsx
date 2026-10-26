@@ -32,6 +32,7 @@ type Props = {
   onClose: () => void;
   onChanged: () => Promise<void>;
   onEdit: (kind: RecordKind, draft: RecordDraft) => void;
+  closeOnEdit?: boolean;
 };
 
 const recordTables = {
@@ -87,7 +88,13 @@ function toDraft(selected: SelectedRecord): RecordDraft {
   };
 }
 
-export function RecordDetailsModal({ selected, onClose, onChanged, onEdit }: Props) {
+export function RecordDetailsModal({
+  selected,
+  onClose,
+  onChanged,
+  onEdit,
+  closeOnEdit = true,
+}: Props) {
   const database = useDatabase();
   const [checkedList, setCheckedList] = useState<ListRecord | null>(null);
   const [loanDraft, setLoanDraft] = useState<RecordDraft | null>(null);
@@ -228,286 +235,278 @@ export function RecordDetailsModal({ selected, onClose, onChanged, onEdit }: Pro
   return (
     <>
       {selected ? (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 1000 }}>
-        <div role="dialog" aria-modal="true" aria-label={recordLabels[selected.kind]} style={{ position: 'fixed', inset: 0 }}>
-        <div style={modalStyles.overlay}>
-          <button
-            style={modalStyles.scrim}
-            onClick={close}
-            aria-label="Close details"
-          />
-          <div style={modalStyles.sheet}>
-            <div style={modalStyles.handle} />
+        <section
+          className="record-details-page"
+          style={modalStyles.page}
+          aria-label={`${recordLabels[selected.kind]} details`}
+        >
+          <div style={modalStyles.pageContent}>
             <div style={modalStyles.header}>
               <button onClick={close} type="button">
                 <span style={modalStyles.headerAction}>Close</span>
               </button>
               <span style={modalStyles.headerTitle}>
-                {selected ? (isBirthday ? 'Birthday' : recordLabels[selected.kind]) : 'Details'}
+                {isBirthday ? 'Birthday' : recordLabels[selected.kind]}
               </span>
               <div style={modalStyles.headerSpacer} />
             </div>
 
-            {selected ? (
-              <div style={modalStyles.content}>
-                <div style={modalStyles.typeBadge}>
-                  <span style={modalStyles.typeText}>
-                    {isBirthday ? 'BIRTHDAY' : recordLabels[selected.kind].toUpperCase()}
+            <div style={modalStyles.content}>
+              <div style={modalStyles.typeBadge}>
+                <span style={modalStyles.typeText}>
+                  {isBirthday ? 'BIRTHDAY' : recordLabels[selected.kind].toUpperCase()}
+                </span>
+              </div>
+              <span style={modalStyles.title}>{selected.record.title}</span>
+
+              {selected.kind === 'note' ? (
+                <>
+                  <span style={modalStyles.meta}>{selected.record.category}</span>
+                  <span style={modalStyles.body}>{selected.record.notes || 'This note is empty.'}</span>
+                  <span style={modalStyles.updated}>
+                    Updated {new Date(selected.record.updated_at).toLocaleString()}
                   </span>
-                </div>
-                <span style={modalStyles.title}>{selected.record.title}</span>
+                </>
+              ) : null}
 
-                {selected.kind === 'note' ? (
-                  <>
-                    <span style={modalStyles.meta}>{selected.record.category}</span>
-                    <span style={modalStyles.body}>{selected.record.notes || 'This note is empty.'}</span>
-                    <span style={modalStyles.updated}>
-                      Updated {new Date(selected.record.updated_at).toLocaleString()}
+              {selected.kind === 'task' ? (
+                <>
+                  <div style={modalStyles.infoCard}>
+                    <span style={modalStyles.infoLabel}>DUE DATE</span>
+                    <span style={modalStyles.infoValue}>{selected.record.date}</span>
+                    <span style={modalStyles.infoLabel}>PRIORITY</span>
+                    <span style={modalStyles.infoValue}>{selected.record.category}</span>
+                    <span style={modalStyles.infoLabel}>STATUS</span>
+                    <span style={modalStyles.infoValue}>
+                      {selected.record.completed ? 'Completed' : 'Pending'}
                     </span>
-                  </>
-                ) : null}
+                  </div>
+                  {selected.record.notes ? (
+                    <span style={modalStyles.body}>{selected.record.notes}</span>
+                  ) : null}
+                  <button onClick={() => void toggleTaskStatus()} style={modalStyles.secondaryAction}>
+                    <span style={modalStyles.secondaryActionText}>
+                      Mark as {selected.record.completed ? 'pending' : 'complete'}
+                    </span>
+                  </button>
+                </>
+              ) : null}
 
-                {selected.kind === 'task' ? (
-                  <>
-                    <div style={modalStyles.infoCard}>
-                      <span style={modalStyles.infoLabel}>DUE DATE</span>
-                      <span style={modalStyles.infoValue}>{selected.record.date}</span>
-                      <span style={modalStyles.infoLabel}>PRIORITY</span>
-                      <span style={modalStyles.infoValue}>{selected.record.category}</span>
-                      <span style={modalStyles.infoLabel}>STATUS</span>
-                      <span style={modalStyles.infoValue}>
-                        {selected.record.completed ? 'Completed' : 'Pending'}
-                      </span>
-                    </div>
-                    {selected.record.notes ? (
-                      <span style={modalStyles.body}>{selected.record.notes}</span>
+              {selected.kind === 'event' ? (
+                <>
+                  <div style={modalStyles.infoCard}>
+                    <span style={modalStyles.infoLabel}>{isBirthday ? 'BIRTHDAY DATE' : 'DATE'}</span>
+                    <span style={modalStyles.infoValue}>
+                      {new Date(`${selected.record.date}T12:00:00`).toLocaleDateString('en-GB', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })}
+                    </span>
+                    <span style={modalStyles.infoLabel}>{isBirthday ? 'PERSON' : 'EVENT TYPE'}</span>
+                    <span style={modalStyles.infoValue}>
+                      {isBirthday ? selected.record.title : selected.record.category}
+                    </span>
+                    {selected.record.budget_count > 0 ? (
+                      <button
+                        type="button" aria-expanded={openEventBudgetId === selected.record.id}
+                        onClick={() => void toggleEventBudgets(selected.record.id)}
+                        style={modalStyles.budgetedTag}
+                      >
+                        <span style={modalStyles.budgetedTagText}>
+                          BUDGETED{selected.record.budget_count > 1
+                            ? ` · ${selected.record.budget_count} BUDGETS`
+                            : ''}
+                        </span>
+                      </button>
                     ) : null}
-                    <button onClick={() => void toggleTaskStatus()} style={modalStyles.secondaryAction}>
-                      <span style={modalStyles.secondaryActionText}>
-                        Mark as {selected.record.completed ? 'pending' : 'complete'}
-                      </span>
-                    </button>
-                  </>
-                ) : null}
-
-                {selected.kind === 'event' ? (
-                  <>
-                    <div style={modalStyles.infoCard}>
-                      <span style={modalStyles.infoLabel}>{isBirthday ? 'BIRTHDAY DATE' : 'DATE'}</span>
-                      <span style={modalStyles.infoValue}>
-                        {new Date(`${selected.record.date}T12:00:00`).toLocaleDateString('en-GB', {
-                          weekday: 'long',
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric',
-                        })}
-                      </span>
-                      <span style={modalStyles.infoLabel}>{isBirthday ? 'PERSON' : 'EVENT TYPE'}</span>
-                      <span style={modalStyles.infoValue}>
-                        {isBirthday ? selected.record.title : selected.record.category}
-                      </span>
-                      {selected.record.budget_count > 0 ? (
-                        <button
-                          type="button" aria-expanded={openEventBudgetId === selected.record.id }
-                          onClick={() => void toggleEventBudgets(selected.record.id)}
-                          style={modalStyles.budgetedTag}
-                        >
-                          <span style={modalStyles.budgetedTagText}>
-                            BUDGETED{selected.record.budget_count > 1
-                              ? ` · ${selected.record.budget_count} BUDGETS`
-                              : ''}
-                          </span>
-                        </button>
-                      ) : null}
-                    </div>
-                    {openEventBudgetId === selected.record.id ? (
-                      <div style={modalStyles.eventBudgets}>
-                        <span style={modalStyles.eventBudgetsTitle}>ATTACHED BUDGETS</span>
-                        {loadingEventBudgets ? (
-                          <span style={modalStyles.eventBudgetMessage}>Loading budgets…</span>
-                        ) : eventBudgets.length ? eventBudgets.map((budget) => {
-                          const items: ListItem[] = JSON.parse(budget.items);
-                          const total = items.reduce(
-                            (sum, item) => sum +
-                              (Number(item.price) || 0) * (Number(item.quantity) || 1),
-                            0,
-                          );
-                          const checkedTotal = items.reduce(
-                            (sum, item) => sum + (item.done
-                              ? (Number(item.price) || 0) * (Number(item.quantity) || 1)
-                              : 0),
-                            0,
-                          );
-                          return (
-                            <div key={budget.id} style={modalStyles.eventBudgetCard}>
-                              <div style={modalStyles.eventBudgetHeading}>
-                                <span style={modalStyles.eventBudgetName}>{budget.title}</span>
-                                <span style={modalStyles.eventBudgetTotal}>
-                                  UGX {formatAmount(total)}
+                  </div>
+                  {openEventBudgetId === selected.record.id ? (
+                    <div style={modalStyles.eventBudgets}>
+                      <span style={modalStyles.eventBudgetsTitle}>ATTACHED BUDGETS</span>
+                      {loadingEventBudgets ? (
+                        <span style={modalStyles.eventBudgetMessage}>Loading budgets…</span>
+                      ) : eventBudgets.length ? eventBudgets.map((budget) => {
+                        const items: ListItem[] = JSON.parse(budget.items);
+                        const total = items.reduce(
+                          (sum, item) => sum +
+                            (Number(item.price) || 0) * (Number(item.quantity) || 1),
+                          0,
+                        );
+                        const checkedTotal = items.reduce(
+                          (sum, item) => sum + (item.done
+                            ? (Number(item.price) || 0) * (Number(item.quantity) || 1)
+                            : 0),
+                          0,
+                        );
+                        return (
+                          <div key={budget.id} style={modalStyles.eventBudgetCard}>
+                            <div style={modalStyles.eventBudgetHeading}>
+                              <span style={modalStyles.eventBudgetName}>{budget.title}</span>
+                              <span style={modalStyles.eventBudgetTotal}>
+                                UGX {formatAmount(total)}
+                              </span>
+                            </div>
+                            <span style={modalStyles.eventBudgetMessage}>
+                              {budget.finalized
+                                ? 'Finalized'
+                                : `${items.filter((item) => item.done).length} of ${items.length} checked`}
+                              {' · '}UGX {formatAmount(checkedTotal)} checked
+                            </span>
+                            {items.length ? items.map((item, index) => (
+                              <div
+                                key={`${budget.id}-item-${index}`}
+                                style={modalStyles.eventBudgetItem}
+                              >
+                                <span style={modalStyles.eventBudgetItemText}>
+                                  {item.done ? '✓  ' : '○  '}
+                                  {item.quantity > 1 ? `${item.quantity} × ` : ''}
+                                  {item.text}
+                                </span>
+                                <span style={modalStyles.eventBudgetItemPrice}>
+                                  UGX {formatAmount(
+                                    (Number(item.price) || 0) * (Number(item.quantity) || 1),
+                                  )}
                                 </span>
                               </div>
-                              <span style={modalStyles.eventBudgetMessage}>
-                                {budget.finalized
-                                  ? 'Finalized'
-                                  : `${items.filter((item) => item.done).length} of ${items.length} checked`}
-                                {' · '}UGX {formatAmount(checkedTotal)} checked
-                              </span>
-                              {items.length ? items.map((item, index) => (
-                                <div
-                                  key={`${budget.id}-item-${index}`}
-                                  style={modalStyles.eventBudgetItem}
-                                >
-                                  <span style={modalStyles.eventBudgetItemText}>
-                                    {item.done ? '✓  ' : '○  '}
-                                    {item.quantity > 1 ? `${item.quantity} × ` : ''}
-                                    {item.text}
-                                  </span>
-                                  <span style={modalStyles.eventBudgetItemPrice}>
-                                    UGX {formatAmount(
-                                      (Number(item.price) || 0) * (Number(item.quantity) || 1),
-                                    )}
-                                  </span>
-                                </div>
-                              )) : (
-                                <span style={modalStyles.eventBudgetMessage}>No items added.</span>
-                              )}
-                            </div>
-                          );
-                        }) : (
-                          <span style={modalStyles.eventBudgetMessage}>
-                            No budget lists are currently attached to this event.
+                            )) : (
+                              <span style={modalStyles.eventBudgetMessage}>No items added.</span>
+                            )}
+                          </div>
+                        );
+                      }) : (
+                        <span style={modalStyles.eventBudgetMessage}>
+                          No budget lists are currently attached to this event.
+                        </span>
+                      )}
+                    </div>
+                  ) : null}
+                  <span style={modalStyles.body}>
+                    {selected.record.notes || (isBirthday
+                      ? 'No birthday notes or gift ideas yet.'
+                      : 'No event notes yet.')}
+                  </span>
+                </>
+              ) : null}
+
+              {selected.kind === 'list' ? (() => {
+                const list = checkedList?.id === selected.record.id
+                  ? checkedList
+                  : selected.record;
+                const items: ListItem[] = JSON.parse(list.items);
+                const checkedTotal = items.reduce(
+                  (total, item) => total + (item.done
+                    ? (Number(item.price) || 0) * (Number(item.quantity) || 1)
+                    : 0),
+                  0,
+                );
+                const listTotal = items.reduce(
+                  (total, item) => total +
+                    (Number(item.price) || 0) * (Number(item.quantity) || 1),
+                  0,
+                );
+                return (
+                  <div style={modalStyles.listCard}>
+                    <span style={modalStyles.meta}>
+                      {items.filter((item) => item.done).length} of {items.length} complete
+                    </span>
+                    {list.event_id !== null ? (
+                      <span style={modalStyles.listEventTag}>
+                        EVENT · {list.event_title || 'Attached event'}
+                      </span>
+                    ) : null}
+                    {list.finalized ? (
+                      <span style={modalStyles.finalizedBadge}>FINALIZED · LIST LOCKED</span>
+                    ) : null}
+                    {items.length ? items.map((item, index) => (
+                      <button
+                        key={`${selected.record.id}-${index}`}
+                        disabled={Boolean(list.finalized)}
+                        onClick={() => void toggleItem(list, items, index)}
+                        style={modalStyles.listItem}
+                      >
+                        <div style={Object.assign({}, modalStyles.checkbox, item.done && modalStyles.checkboxDone)}>
+                          {item.done ? <span style={modalStyles.checkmark}>✓</span> : null}
+                        </div>
+                        <span style={Object.assign({}, modalStyles.listText, item.done && modalStyles.completedText)}>
+                          {list.budget_enabled && (item.quantity ?? 1) > 1
+                            ? `${item.quantity} × ${item.text}`
+                            : item.text}
+                        </span>
+                        {list.budget_enabled ? (
+                          <span style={modalStyles.itemPrice}>
+                            UGX {formatAmount(Number(item.price) || 0)} ea
+                            {' · '}UGX {formatAmount(
+                              (Number(item.price) || 0) * (Number(item.quantity) || 1),
+                            )}
                           </span>
-                        )}
+                        ) : null}
+                      </button>
+                    )) : <span style={modalStyles.body}>This list has no items yet.</span>}
+                    {list.budget_enabled ? (
+                      <div style={modalStyles.totals}>
+                        <span style={modalStyles.totalLabel}>Number of items</span>
+                        <span style={modalStyles.totalValue}>
+                          {items.length} {items.length === 1 ? 'item' : 'items'}
+                        </span>
+                        <span style={modalStyles.totalLabel}>Full list total</span>
+                        <span style={modalStyles.totalValue}>UGX {formatAmount(listTotal)}</span>
+                        <span style={modalStyles.totalLabel}>
+                          Checked items ({items.filter((item) => item.done).length})
+                        </span>
+                        <span style={modalStyles.totalValue}>UGX {formatAmount(checkedTotal)}</span>
                       </div>
                     ) : null}
-                    <span style={modalStyles.body}>
-                      {selected.record.notes || (isBirthday
-                        ? 'No birthday notes or gift ideas yet.'
-                        : 'No event notes yet.')}
-                    </span>
-                  </>
-                ) : null}
+                    {list.budget_enabled && !list.finalized ? (
+                      <button
+                        type="button" onClick={() => finalizeList(list, checkedTotal)}
+                        style={modalStyles.finalizeButton}
+                      >
+                        <span style={modalStyles.finalizeText}>Finalize list</span>
+                      </button>
+                    ) : null}
+                    {list.finalized ? (
+                      <button
+                        type="button" onClick={() => reopenList(list)}
+                        style={modalStyles.secondaryAction}
+                      >
+                        <span style={modalStyles.secondaryActionText}>Reopen list · reverse expense</span>
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              })() : null}
 
-                {selected.kind === 'list' ? (() => {
-                  const list = checkedList?.id === selected.record.id
-                    ? checkedList
-                    : selected.record;
-                  const items: ListItem[] = JSON.parse(list.items);
-                  const checkedTotal = items.reduce(
-                    (total, item) => total + (item.done
-                      ? (Number(item.price) || 0) * (Number(item.quantity) || 1)
-                      : 0),
-                    0,
-                  );
-                  const listTotal = items.reduce(
-                    (total, item) => total +
-                      (Number(item.price) || 0) * (Number(item.quantity) || 1),
-                    0,
-                  );
-                  return (
-                    <div style={modalStyles.listCard}>
-                      <span style={modalStyles.meta}>
-                        {items.filter((item) => item.done).length} of {items.length} complete
-                      </span>
-                      {list.event_id !== null ? (
-                        <span style={modalStyles.listEventTag}>
-                          EVENT · {list.event_title || 'Attached event'}
-                        </span>
-                      ) : null}
-                      {list.finalized ? (
-                        <span style={modalStyles.finalizedBadge}>FINALIZED · LIST LOCKED</span>
-                      ) : null}
-                      {items.length ? items.map((item, index) => (
-                        <button
-                          key={`${selected.record.id}-${index}`}
-                          disabled={Boolean(list.finalized)}
-                          onClick={() => void toggleItem(list, items, index)}
-                          style={modalStyles.listItem}
-                        >
-                          <div style={Object.assign({}, modalStyles.checkbox, item.done && modalStyles.checkboxDone)}>
-                            {item.done ? <span style={modalStyles.checkmark}>✓</span> : null}
-                          </div>
-                          <span style={Object.assign({}, modalStyles.listText, item.done && modalStyles.completedText)}>
-                            {list.budget_enabled && (item.quantity ?? 1) > 1
-                              ? `${item.quantity} × ${item.text}`
-                              : item.text}
-                          </span>
-                          {list.budget_enabled ? (
-                            <span style={modalStyles.itemPrice}>
-                              UGX {formatAmount(Number(item.price) || 0)} ea
-                              {' · '}UGX {formatAmount(
-                                (Number(item.price) || 0) * (Number(item.quantity) || 1),
-                              )}
-                            </span>
-                          ) : null}
-                        </button>
-                      )) : <span style={modalStyles.body}>This list has no items yet.</span>}
-                      {list.budget_enabled ? (
-                        <div style={modalStyles.totals}>
-                          <span style={modalStyles.totalLabel}>Number of items</span>
-                          <span style={modalStyles.totalValue}>
-                            {items.length} {items.length === 1 ? 'item' : 'items'}
-                          </span>
-                          <span style={modalStyles.totalLabel}>Full list total</span>
-                          <span style={modalStyles.totalValue}>UGX {formatAmount(listTotal)}</span>
-                          <span style={modalStyles.totalLabel}>
-                            Checked items ({items.filter((item) => item.done).length})
-                          </span>
-                          <span style={modalStyles.totalValue}>UGX {formatAmount(checkedTotal)}</span>
-                        </div>
-                      ) : null}
-                      {list.budget_enabled && !list.finalized ? (
-                        <button
-                          type="button" onClick={() => finalizeList(list, checkedTotal)}
-                          style={modalStyles.finalizeButton}
-                        >
-                          <span style={modalStyles.finalizeText}>Finalize list</span>
-                        </button>
-                      ) : null}
-                      {list.finalized ? (
-                        <button
-                          type="button" onClick={() => reopenList(list)}
-                          style={modalStyles.secondaryAction}
-                        >
-                          <span style={modalStyles.secondaryActionText}>Reopen list · reverse expense</span>
-                        </button>
-                      ) : null}
-                    </div>
-                  );
-                })() : null}
-
-                <div style={modalStyles.actions}>
-                  {selected.kind !== 'list' || !(checkedList?.id === selected.record.id
-                    ? checkedList.finalized
-                    : selected.record.finalized) ? (
-                    <button
-                      onClick={() => {
-                        const recordForEdit = selected.kind === 'list' && checkedList?.id === selected.record.id
-                          ? { ...selected, record: checkedList }
-                          : selected;
-                        onEdit(selected.kind, toDraft(recordForEdit));
-                        close();
-                      }}
-                      type="button" style={modalStyles.editButton}
-                    >
-                      <span style={modalStyles.editText}>
-                        Edit {recordLabels[selected.kind].toLowerCase()}
-                      </span>
-                    </button>
-                  ) : null}
+              <div style={modalStyles.actions}>
+                {selected.kind !== 'list' || !(checkedList?.id === selected.record.id
+                  ? checkedList.finalized
+                  : selected.record.finalized) ? (
                   <button
-                    onClick={confirmDelete}
-                    type="button" style={modalStyles.deleteButton}
+                    onClick={() => {
+                      const recordForEdit = selected.kind === 'list' && checkedList?.id === selected.record.id
+                        ? { ...selected, record: checkedList }
+                        : selected;
+                      onEdit(selected.kind, toDraft(recordForEdit));
+                      if (closeOnEdit) close();
+                    }}
+                    type="button" style={modalStyles.editButton}
                   >
-                    <span style={modalStyles.deleteText}>Delete</span>
+                    <span style={modalStyles.editText}>
+                      Edit {recordLabels[selected.kind].toLowerCase()}
+                    </span>
                   </button>
-                </div>
+                ) : null}
+                <button
+                  onClick={confirmDelete}
+                  type="button" style={modalStyles.deleteButton}
+                >
+                  <span style={modalStyles.deleteText}>Delete</span>
+                </button>
               </div>
-            ) : null}
+            </div>
           </div>
-        </div>
-        </div>
-      </div>
+        </section>
       ) : null}
       <RecordComposer
         key={loanDraft ? `shortfall-loan-${loanDraft.amount}` : 'no-shortfall-loan'}
@@ -527,32 +526,25 @@ export function RecordDetailsModal({ selected, onClose, onChanged, onEdit }: Pro
 }
 
 const modalStyles = {
-  overlay: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingInline: 18,
-    paddingBlock: 30,
-  },
-  scrim: {
-    position: 'absolute',
+  page: {
+    position: 'fixed',
     inset: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.72)',
-  },
-  sheet: {
-    maxHeight: '86%',
+    zIndex: 1000,
+    display: 'flex',
+    width: '100%',
+    minHeight: '100dvh',
+    overflowY: 'auto',
     backgroundColor: colors.background,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.line,
-    overflow: 'hidden',
   },
-  handle: {
-    alignSelf: 'center',
-    width: 42,
-    height: 4,
-    borderRadius: 5,
-    backgroundColor: '#555555',
-    marginTop: 10,
+  pageContent: {
+    width: '100%',
+    maxWidth: 960,
+    minHeight: '100dvh',
+    marginInline: 'auto',
+    paddingTop: 'env(safe-area-inset-top)',
+    paddingInline: 12,
+    paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
+    backgroundColor: colors.background,
   },
   header: {
     minHeight: 54,
@@ -577,9 +569,11 @@ const modalStyles = {
     width: 38,
   },
   content: {
+    width: '100%',
+    maxWidth: 760,
+    marginInline: 'auto',
     padding: 22,
     paddingBottom: 28,
-    overflowY: 'auto',
   },
   typeBadge: {
     alignSelf: 'flex-start',

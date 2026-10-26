@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
 import { RecordComposer } from '../../components/RecordComposer';
-import { RecordDetailsModal } from '../../components/RecordDetailsModal';
 import { ScreenHeader, SectionTitle } from '../../components/ScreenHeader';
 import { colors, styles } from '../../components/theme';
 import {
@@ -21,12 +21,13 @@ const money = (value: number) =>
   `UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(value)}`;
 
 export default function FinancesScreen() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const database = useDatabase();
   const [composer, setComposer] = useState<RecordKind | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [budgetLists, setBudgetLists] = useState<ListRecord[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
-  const [selectedBudgetList, setSelectedBudgetList] = useState<ListRecord | null>(null);
   const [income, setIncome] = useState(0);
   const [expenses, setExpenses] = useState(0);
   const [availableBalance, setAvailableBalance] = useState(0);
@@ -196,7 +197,7 @@ export default function FinancesScreen() {
           return (
             <button
               key={list.id}
-              onClick={() => setSelectedBudgetList(list)}
+              onClick={() => navigate(`/space/records/list/${list.id}`, { state: { from: location.pathname } })}
               style={Object.assign({}, styles.panel, localStyles.budgetCard)}
             >
               <div style={localStyles.budgetHeading}>
@@ -288,7 +289,7 @@ export default function FinancesScreen() {
                   (list) => list.final_transaction_id === transaction.id,
                 );
                 if (sourceList) {
-                  setSelectedBudgetList(sourceList);
+                  navigate(`/space/records/list/${sourceList.id}`, { state: { from: location.pathname } });
                 }
               }}
               onContextMenu={transaction.kind === 'income' && transaction.loan_id === null
@@ -354,16 +355,6 @@ export default function FinancesScreen() {
         initialDraft={editingRecord?.draft}
         onClose={() => { setComposer(null); setEditingRecord(null); }}
         onSave={create}
-      />
-      <RecordDetailsModal
-        selected={selectedBudgetList ? { kind: 'list', record: selectedBudgetList } : null}
-        onClose={() => setSelectedBudgetList(null)}
-        onChanged={refresh}
-        onEdit={(kind, draft) => {
-          setEditingRecord({ kind, draft });
-          setSelectedBudgetList(null);
-          setComposer(kind);
-        }}
       />
     </div>
   );

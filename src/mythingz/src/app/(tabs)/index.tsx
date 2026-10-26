@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
 import { RecordComposer } from '../../components/RecordComposer';
-import { RecordDetailsModal, type SelectedRecord } from '../../components/RecordDetailsModal';
-import { ScreenHeader, SectionTitle } from '../../components/ScreenHeader';
+import { IntroLinkButton, ScreenHeader, SectionTitle } from '../../components/ScreenHeader';
 import { colors, styles } from '../../components/theme';
 import {
   deleteRecord,
@@ -30,6 +29,7 @@ const greeting = () => {
 };
 
 export default function HomeScreen() {
+  const location = useLocation();
   const navigate = useNavigate();
   const database = useDatabase();
   const [composer, setComposer] = useState<RecordKind | null>(null);
@@ -37,7 +37,6 @@ export default function HomeScreen() {
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [notes, setNotes] = useState<NoteRecord[]>([]);
-  const [selectedRecord, setSelectedRecord] = useState<SelectedRecord | null>(null);
   const [editingDraft, setEditingDraft] = useState<RecordDraft | null>(null);
   const [monthlySpent, setMonthlySpent] = useState(0);
   const [activeListPlan, setActiveListPlan] = useState(0);
@@ -96,6 +95,15 @@ export default function HomeScreen() {
     await saveRecord(database, kind, draft);
     await refresh();
   };
+  const addBudgetList = () => {
+    setEditingDraft({
+      title: '',
+      category: 'Personal',
+      budgetEnabled: true,
+      listItems: [],
+    });
+    setComposer('list');
+  };
   const confirmDelete = (id: number, title: string) => {
     if (!window.confirm(`Delete record?\n\nRemove “${title}” from your records?`)) return;
     void deleteRecord(database, 'transactions', id).then(refresh).catch((error: unknown) => {
@@ -113,6 +121,7 @@ export default function HomeScreen() {
           })}
           profile
         />
+        <IntroLinkButton label="← BACK TO PROUD.DEV" />
         <span style={localStyles.eyebrow}>YOUR DAY, AT A GLANCE</span>
         <div style={localStyles.quickGrid}>
           {([
@@ -125,7 +134,7 @@ export default function HomeScreen() {
               key={kind}
               onClick={() => {
                 if (kind === 'budget-list') {
-                  navigate(`/space/organize?createBudgetList=${Date.now()}`);
+                  addBudgetList();
                 } else {
                   setComposer(kind);
                 }
@@ -157,7 +166,7 @@ export default function HomeScreen() {
           {tasks.length ? tasks.map((task) => (
             <button
               key={task.id}
-              onClick={() => setSelectedRecord({ kind: 'task', record: task })}
+              onClick={() => navigate(`/space/records/task/${task.id}`, { state: { from: location.pathname } })}
             >
               <span style={localStyles.listLine}>○  {task.title}</span>
             </button>
@@ -168,14 +177,14 @@ export default function HomeScreen() {
           {events.length ? events.map((event) => (
             <button
               key={event.id}
-              onClick={() => setSelectedRecord({ kind: 'event', record: event })}
+              onClick={() => navigate(`/space/records/event/${event.id}`, { state: { from: location.pathname } })}
               style={localStyles.previewRow}
             >
               <span style={localStyles.eventIcon}>✦</span>
               <div style={localStyles.previewText}>
                 <span style={localStyles.recordTitle}>{event.title}</span>
                 <span style={localStyles.muted}>{event.date} · {event.category}</span>
-            </div>
+              </div>
             </button>
           )) : <span style={localStyles.muted}>Your upcoming events will appear here.</span>}
         </div>
@@ -184,7 +193,7 @@ export default function HomeScreen() {
           {notes.length ? notes.map((note) => (
             <button
               key={note.id}
-              onClick={() => setSelectedRecord({ kind: 'note', record: note })}
+              onClick={() => navigate(`/space/records/note/${note.id}`, { state: { from: location.pathname } })}
               onContextMenu={(pointerEvent) => {
                 pointerEvent.preventDefault();
                 confirmDelete(note.id, note.title);
@@ -226,7 +235,7 @@ export default function HomeScreen() {
                   {transaction.loan_id !== null ? 'Loan proceeds' : transaction.category}
                 </span>
               </div>
-              <span style={Object.assign({}, 
+              <span style={Object.assign({},
                 localStyles.recordTitle,
                 transaction.kind === 'income' && transaction.loan_id === null && localStyles.income,
               )}>
@@ -245,15 +254,6 @@ export default function HomeScreen() {
           setEditingDraft(null);
         }}
         onSave={onSave}
-      />
-      <RecordDetailsModal
-        selected={selectedRecord}
-        onClose={() => setSelectedRecord(null)}
-        onChanged={refresh}
-        onEdit={(kind, draft) => {
-          setEditingDraft(draft);
-          setComposer(kind);
-        }}
       />
     </div>
   );

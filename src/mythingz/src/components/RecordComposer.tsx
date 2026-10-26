@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../web/DatabaseProvider';
 import {
   INCOME_CATEGORIES,
@@ -50,6 +51,8 @@ const incomeCategory = (draft?: RecordDraft) =>
     (option) => option.toLowerCase() === draft?.category.toLowerCase(),
   ) ?? INCOME_CATEGORIES[0];
 
+let nextComposerEntryId = 0;
+
 export function RecordComposer({
   kind,
   defaultDate,
@@ -59,6 +62,10 @@ export function RecordComposer({
   onSave,
 }: Props) {
   const database = useDatabase();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const historyEntryId = useRef<string | null>(null);
+  const historyEntryReady = useRef(false);
   const [title, setTitle] = useState(initialDraft?.title ?? '');
   const [categorySelection, setCategorySelection] = useState(() => ({
     kind,
@@ -99,6 +106,11 @@ export function RecordComposer({
   const [saving, setSaving] = useState(false);
 
   const close = useCallback(() => {
+    if (historyEntryId.current) {
+      historyEntryId.current = null;
+      historyEntryReady.current = false;
+      navigate(-1);
+    }
     setTitle('');
     setCategorySelection({
       kind,
@@ -116,7 +128,44 @@ export function RecordComposer({
     setSavedEvents([]);
     setListItems([{ text: '', done: false, price: '', quantity: '1' }]);
     onClose();
-  }, [defaultDate, initialDraft, kind, onClose]);
+  }, [defaultDate, initialDraft, kind, navigate, onClose]);
+
+  useEffect(() => {
+    if (!kind) {
+      historyEntryId.current = null;
+      historyEntryReady.current = false;
+      return;
+    }
+
+    const state = location.state;
+    const currentEntryId = typeof state === 'object' && state !== null
+      && 'recordComposerEntry' in state
+      && typeof state.recordComposerEntry === 'string'
+      ? state.recordComposerEntry
+      : null;
+
+    if (!historyEntryId.current) {
+      const entryId = `record-composer-${++nextComposerEntryId}`;
+      historyEntryId.current = entryId;
+      historyEntryReady.current = false;
+      navigate(
+        { pathname: location.pathname, search: location.search, hash: location.hash },
+        { state: { ...(state ?? {}), recordComposerEntry: entryId } },
+      );
+      return;
+    }
+
+    if (currentEntryId === historyEntryId.current) {
+      historyEntryReady.current = true;
+      return;
+    }
+
+    if (historyEntryReady.current) {
+      historyEntryId.current = null;
+      historyEntryReady.current = false;
+      close();
+    }
+  }, [close, kind, location, navigate]);
 
   useEffect(() => {
     if (!kind) return;

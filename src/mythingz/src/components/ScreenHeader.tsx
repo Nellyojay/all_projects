@@ -37,6 +37,19 @@ export function ScreenHeader({ title, subtitle, profile, action }: Props) {
   );
 }
 
+export function IntroLinkButton({ label }: { label: string }) {
+  const navigate = useNavigate();
+  return (
+    <button
+      type="button"
+      onClick={() => navigate('/')}
+      style={styles.introLink}
+    >
+      <span style={styles.introLinkText}>{label}</span>
+    </button>
+  );
+}
+
 export function SectionTitle({
   title,
   action,
@@ -106,6 +119,21 @@ const styles = {
     color: colors.surface,
     fontWeight: '700',
     fontSize: 18,
+  },
+  introLink: {
+    alignSelf: 'flex-start',
+    minHeight: 40,
+    justifyContent: 'center',
+    paddingInline: 14,
+    borderRadius: 7,
+    backgroundColor: colors.green,
+    marginBottom: 14,
+  },
+  introLinkText: {
+    color: colors.background,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
   },
   section: {
     flexDirection: 'row',

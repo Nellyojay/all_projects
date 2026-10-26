@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ScreenHeader } from '../components/ScreenHeader';
+import { IntroLinkButton, ScreenHeader } from '../components/ScreenHeader';
 import { colors, styles } from '../components/theme';
 
 const settings = [
@@ -17,6 +17,7 @@ export default function SettingsScreen() {
     <div style={styles.screen}>
       <div style={styles.scrollContent}>
         <ScreenHeader title="Your profile" subtitle="Make this space feel like yours" />
+        <IntroLinkButton label="Visit PROUD.DEV" />
         <div style={localStyles.profile}>
           <div style={localStyles.avatar}><span style={localStyles.avatarText}>M</span></div>
           <span style={localStyles.name}>Welcome to Mine</span>

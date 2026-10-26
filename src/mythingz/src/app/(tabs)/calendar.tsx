@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
 import { RecordComposer } from '../../components/RecordComposer';
-import { RecordDetailsModal } from '../../components/RecordDetailsModal';
-import type { SelectedRecord } from '../../components/RecordDetailsModal';
 import { ScreenHeader, SectionTitle } from '../../components/ScreenHeader';
 import { colors, styles } from '../../components/theme';
 import {
@@ -17,10 +16,11 @@ const dateKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
 export default function CalendarScreen() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const database = useDatabase();
   const [composer, setComposer] = useState<RecordKind | null>(null);
   const [events, setEvents] = useState<EventRecord[]>([]);
-  const [selectedRecord, setSelectedRecord] = useState<SelectedRecord | null>(null);
   const [editingDraft, setEditingDraft] = useState<RecordDraft | null>(null);
   const [selectedDate, setSelectedDate] = useState(dateKey(new Date()));
   const [monthOffset, setMonthOffset] = useState(0);
@@ -134,7 +134,7 @@ export default function CalendarScreen() {
         {visibleEvents.length ? visibleEvents.map((event) => (
           <button
             key={event.id}
-            onClick={() => setSelectedRecord({ kind: 'event', record: event })}
+            onClick={() => navigate(`/space/records/event/${event.id}`, { state: { from: location.pathname } })}
             onContextMenu={(pointerEvent) => {
               pointerEvent.preventDefault();
               remove(event);
@@ -166,7 +166,7 @@ export default function CalendarScreen() {
             events.filter((event) => event.date >= dateKey(new Date())).slice(0, 5).map((event) => (
               <button
                 key={event.id}
-                onClick={() => setSelectedRecord({ kind: 'event', record: event })}
+                onClick={() => navigate(`/space/records/event/${event.id}`, { state: { from: location.pathname } })}
                 style={localStyles.upcomingRow}
               >
                 <div style={localStyles.dateBadge}>
@@ -193,15 +193,6 @@ export default function CalendarScreen() {
           setEditingDraft(null);
         }}
         onSave={create}
-      />
-      <RecordDetailsModal
-        selected={selectedRecord}
-        onClose={() => setSelectedRecord(null)}
-        onChanged={refresh}
-        onEdit={(kind, draft) => {
-          setEditingDraft(draft);
-          setComposer(kind);
-        }}
       />
     </div>
   );

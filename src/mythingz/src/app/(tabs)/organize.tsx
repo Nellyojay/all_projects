@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
 import { RecordComposer } from '../../components/RecordComposer';
-import { RecordDetailsModal, type SelectedRecord } from '../../components/RecordDetailsModal';
 import { ScreenHeader, SectionTitle } from '../../components/ScreenHeader';
 import { colors, styles } from '../../components/theme';
 import {
@@ -21,17 +20,19 @@ type Section = 'Notes' | 'Tasks' | 'Lists';
 const sectionKinds: Record<Section, RecordKind> = { Notes: 'note', Tasks: 'task', Lists: 'list' };
 
 export default function OrganizeScreen() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const database = useDatabase();
   const createBudgetList = searchParams.get('createBudgetList');
   const openBudgetListId = searchParams.get('openBudgetListId');
+  const pendingBudgetListId = useRef<string | null>(null);
   const [section, setSection] = useState<Section>('Notes');
   const [composer, setComposer] = useState<RecordKind | null>(null);
   const [query, setQuery] = useState('');
   const [notes, setNotes] = useState<NoteRecord[]>([]);
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
   const [lists, setLists] = useState<ListRecord[]>([]);
-  const [selectedRecord, setSelectedRecord] = useState<SelectedRecord | null>(null);
   const [editingDraft, setEditingDraft] = useState<RecordDraft | null>(null);
 
   const refresh = useCallback(async () => {
@@ -60,7 +61,6 @@ export default function OrganizeScreen() {
     if (!createBudgetList) return;
     const frame = requestAnimationFrame(() => {
       setSection('Lists');
-      setSelectedRecord(null);
       setEditingDraft({
         title: '',
         category: 'Personal',
@@ -77,50 +77,30 @@ export default function OrganizeScreen() {
   }, [createBudgetList, setSearchParams]);
 
   useEffect(() => {
-    if (!openBudgetListId) return;
-    const listId = Number(openBudgetListId);
-    if (!Number.isSafeInteger(listId) || listId < 1) {
+    if (openBudgetListId) {
+      const listId = Number(openBudgetListId);
+      if (!Number.isSafeInteger(listId) || listId < 1) {
+        setSearchParams((current) => {
+          current.delete('openBudgetListId');
+          return current;
+        }, { replace: true });
+        window.alert('Could not open list\n\nThis budget list could not be found.');
+        return;
+      }
+
+      pendingBudgetListId.current = String(listId);
       setSearchParams((current) => {
         current.delete('openBudgetListId');
         return current;
       }, { replace: true });
-      window.alert('Could not open list\n\nThis budget list could not be found.');
       return;
     }
 
-    let active = true;
-    void database.getFirstAsync<ListRecord>(
-      `SELECT lists.*, events.title AS event_title
-       FROM lists
-       LEFT JOIN events ON events.id = lists.event_id
-       WHERE lists.id = ?`,
-      listId,
-    )
-      .then((list) => {
-        if (!list) throw new Error('This budget list could not be found.');
-        if (active) {
-          setSection('Lists');
-          setSelectedRecord({ kind: 'list', record: list });
-        }
-      })
-      .catch((error: unknown) => {
-        console.error('Unable to open budget list', error);
-        if (active) {
-          window.alert(`Could not open list\n\n${error instanceof Error ? error.message : 'Please try again.'}`);
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setSearchParams((current) => {
-            current.delete('openBudgetListId');
-            return current;
-          }, { replace: true });
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [database, openBudgetListId, setSearchParams]);
+    const listId = pendingBudgetListId.current;
+    if (!listId) return;
+    pendingBudgetListId.current = null;
+    navigate(`/space/records/list/${listId}`, { state: { from: location.pathname } });
+  }, [location.pathname, navigate, openBudgetListId, setSearchParams]);
 
   const filteredNotes = useMemo(() => notes.filter((note) =>
     `${note.title} ${note.category} ${note.notes}`.toLowerCase().includes(query.toLowerCase()),
@@ -220,7 +200,7 @@ export default function OrganizeScreen() {
           filteredNotes.length ? filteredNotes.map((note) => (
             <button
               key={note.id}
-              onClick={() => setSelectedRecord({ kind: 'note', record: note })}
+              onClick={() => navigate(`/space/records/note/${note.id}`, { state: { from: location.pathname } })}
               onContextMenu={(pointerEvent) => {
                 pointerEvent.preventDefault();
                 remove('notes', note.id, note.title);
@@ -246,7 +226,7 @@ export default function OrganizeScreen() {
               </button>
               <button
                 style={{ flex: 1 }}
-                onClick={() => setSelectedRecord({ kind: 'task', record: task })}
+                onClick={() => navigate(`/space/records/task/${task.id}`, { state: { from: location.pathname } })}
                 onContextMenu={(pointerEvent) => {
                   pointerEvent.preventDefault();
                   remove('tasks', task.id, task.title);
@@ -271,7 +251,7 @@ export default function OrganizeScreen() {
             return (
               <div key={list.id} style={Object.assign({}, styles.panel, localStyles.recordCard)}>
                 <button
-                  onClick={() => setSelectedRecord({ kind: 'list', record: list })}
+                  onClick={() => navigate(`/space/records/list/${list.id}`, { state: { from: location.pathname } })}
                   onContextMenu={(pointerEvent) => {
                     pointerEvent.preventDefault();
                     remove('lists', list.id, list.title);
@@ -327,15 +307,6 @@ export default function OrganizeScreen() {
           setEditingDraft(null);
         }}
         onSave={create}
-      />
-      <RecordDetailsModal
-        selected={selectedRecord}
-        onClose={() => setSelectedRecord(null)}
-        onChanged={refresh}
-        onEdit={(kind, draft) => {
-          setEditingDraft(draft);
-          setComposer(kind);
-        }}
       />
     </div>
   );
