@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
 import { RecordComposer } from '../../components/RecordComposer';
-import { IntroLinkButton, ScreenHeader, SectionTitle } from '../../components/ScreenHeader';
+import { ScreenHeader, SectionTitle } from '../../components/ScreenHeader';
 import { colors, styles } from '../../components/theme';
 import {
   deleteRecord,
@@ -121,7 +121,6 @@ export default function HomeScreen() {
           })}
           profile
         />
-        <IntroLinkButton label="← BACK TO PROUD.DEV" />
         <span style={localStyles.eyebrow}>YOUR DAY, AT A GLANCE</span>
         <div style={localStyles.quickGrid}>
           {([

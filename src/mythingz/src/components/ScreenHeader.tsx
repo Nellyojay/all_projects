@@ -5,7 +5,7 @@ type Props = {
   title: string;
   subtitle?: string;
   profile?: boolean;
-  action?: { label: string; onPress: () => void };
+  action?: { label: string; onPress: () => void; compact?: boolean };
 };
 
 export function ScreenHeader({ title, subtitle, profile, action }: Props) {
@@ -20,9 +20,11 @@ export function ScreenHeader({ title, subtitle, profile, action }: Props) {
         <button
           type="button" aria-label={action.label}
           onClick={action.onPress}
-          style={styles.action}
+          style={Object.assign({}, styles.action, action.compact && styles.compactAction)}
         >
-          <span style={styles.actionText}>{action.label}</span>
+          <span style={Object.assign({}, styles.actionText, action.compact && styles.compactActionText)}>
+            {action.label}
+          </span>
         </button>
       ) : profile ? (
         <button
@@ -119,6 +121,18 @@ const styles = {
     color: colors.surface,
     fontWeight: '700',
     fontSize: 18,
+  },
+  compactAction: {
+    minWidth: 0,
+    height: 38,
+    paddingInline: 12,
+    borderRadius: 7,
+  },
+  compactActionText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    whiteSpace: 'nowrap',
   },
   introLink: {
     alignSelf: 'flex-start',
