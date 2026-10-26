@@ -275,37 +275,42 @@ textarea::placeholder {
     backdrop-filter: blur(16px);
   }
 
-  .screen-header > div:first-child > span:first-child {
+  .screen-header>div:first-child>span:first-child {
     font-size: 19px !important;
   }
 
-  .screen-header > div:first-child > span:nth-child(2) {
+  .screen-header>div:first-child>span:nth-child(2) {
     font-size: 10px !important;
   }
 
   .mobile-nav {
     position: fixed;
-    inset: auto 0 0;
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    left: 12px;
     z-index: 30;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    padding: 7px 8px max(8px, env(safe-area-inset-bottom));
-    border-top: 1px solid #292929;
-    background: rgba(9, 9, 9, .96);
-    backdrop-filter: blur(16px);
+    max-width: 420px;
+    margin-inline: auto;
+    padding: 5px 7px;
+    border-top: 1px solid #292929ac;
+    border-radius: 18px;
+    background: rgba(0, 0, 0, 0.425);
+    backdrop-filter: blur(14px);
   }
 
   .mobile-nav-link {
-    min-height: 52px;
+    min-height: 42px;
     flex-direction: column;
     justify-content: center;
     gap: 2px;
     padding: 4px 2px;
-    border-radius: 11px;
-    font-size: 10px;
+    border-radius: 12px;
+    font-size: 9px;
   }
 
   .mobile-nav-link .nav-icon {
-    font-size: 17px;
+    font-size: 15px;
   }
 }

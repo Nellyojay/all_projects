@@ -32,9 +32,7 @@ function WorkspaceLayout() {
     && 'from' in locationState && typeof locationState.from === 'string'
     ? locationState.from
     : location.pathname;
-  const activeSection = sections.find((section) =>
-    sourcePath === `/${section.path}` || sourcePath.startsWith(`/${section.path}/`),
-  );
+  const activeSection = sections.find((section) => sourcePath === `/${section.path}`);
 
   return (
     <div className="app-shell">
