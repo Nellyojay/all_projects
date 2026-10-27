@@ -68,7 +68,7 @@ function Intro() {
             <button
               type="button"
               onClick={() => navigate('/space')}
-              className="rounded-md border border-border-strong bg-surface px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider text-foreground transition hover:border-primary-dark hover:bg-surface-hover"
+              className="rounded-md text-xs border border-border-strong bg-surface px-2 py-2 font-mono font-semibold uppercase tracking-wider transition hover:border-primary-dark hover:bg-surface-hover"
             >
               Enter my space
             </button>
