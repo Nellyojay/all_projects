@@ -142,13 +142,12 @@ export default function OrganizeScreen() {
             ['✎', 'Notes', `${notes.length} notes`],
             ['✓', 'Tasks', `${tasks.filter((task) => !task.completed).length} pending`],
             ['☷', 'Lists', `${lists.length} lists`],
-            ['▣', 'Storage', 'Coming soon'],
           ].map(([icon, title, count]) => (
             <button
               key={title}
               onClick={() => title === 'Notes' || title === 'Tasks' || title === 'Lists'
                 ? setSection(title)
-                : window.alert('Personal storage\n\nFile storage is planned for a later version.')}
+                : undefined}
               style={localStyles.workspaceCard}
             >
               <span style={localStyles.workspaceIcon}>{icon}</span>
@@ -156,6 +155,11 @@ export default function OrganizeScreen() {
               <span style={localStyles.workspaceCount}>{count}</span>
             </button>
           ))}
+          <div style={Object.assign({}, localStyles.workspaceCard, localStyles.comingCard)}>
+            <span style={localStyles.workspaceIcon}>▣</span>
+            <span style={localStyles.workspaceTitle}>Storage</span>
+            <span style={localStyles.workspaceCount}>Coming soon</span>
+          </div>
           <div style={Object.assign({}, localStyles.workspaceCard, localStyles.comingCard)}>
             <span style={localStyles.workspaceIcon}>◉</span>
             <span style={localStyles.workspaceTitle}>Goals</span>
@@ -173,7 +177,7 @@ export default function OrganizeScreen() {
             type="button" onClick={() => setComposer(sectionKinds[section])}
             style={localStyles.addButton}
           >
-            <span style={localStyles.addText}>＋ Add</span>
+            <span style={localStyles.addText}>＋ {section === 'Notes' ? 'Add' : 'Create'} {section}</span>
           </button>
         </div>
         <input
@@ -328,15 +332,20 @@ const localStyles = {
     gap: 10,
   },
   workspaceCard: {
-    width: '48%',
-    minHeight: 102,
-    padding: 14,
+    flex: 1,
+    minWidth: 100,
+    maxWidth: 120,
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 8,
     borderRadius: 12,
     backgroundColor: colors.surface,
-    borderColor: colors.line,
+    border: `1px solid ${colors.line}`,
     borderWidth: 1,
   },
   comingCard: {
+    opacity: 0.5,
     backgroundColor: '#171717',
   },
   workspaceIcon: {
