@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
 import { RecordComposer } from '../../components/RecordComposer';
 import { ScreenHeader, SectionTitle } from '../../components/ScreenHeader';
+import { UpcomingEventRow } from '../../components/UpcomingEventRow';
 import { colors, styles } from '../../components/theme';
 import {
   deleteRecord,
@@ -174,17 +175,11 @@ export default function HomeScreen() {
         <SectionTitle title="UPCOMING EVENTS" action="See all" onAction={() => navigate('/space/calendar')} />
         <div style={styles.panel}>
           {events.length ? events.map((event) => (
-            <button
+            <UpcomingEventRow
               key={event.id}
+              event={event}
               onClick={() => navigate(`/space/records/event/${event.id}`, { state: { from: location.pathname } })}
-              style={localStyles.previewRow}
-            >
-              <span style={localStyles.eventIcon}>✦</span>
-              <div style={localStyles.previewText}>
-                <span style={localStyles.recordTitle}>{event.title}</span>
-                <span style={localStyles.muted}>{event.date} · {event.category}</span>
-              </div>
-            </button>
+            />
           )) : <span style={localStyles.muted}>Your upcoming events will appear here.</span>}
         </div>
         <SectionTitle title="RECENT NOTES" action="Open organize →" onAction={() => navigate('/space/organize')} />
@@ -274,7 +269,7 @@ const localStyles = {
   },
   quickAction: {
     width: '48%',
-    minHeight: 66,
+    minHeight: 50,
     borderRadius: 11,
     backgroundColor: colors.surface,
     border: `1px solid ${colors.line}`,
@@ -282,7 +277,7 @@ const localStyles = {
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingInline: 14,
+    paddingInline: 8,
     gap: 10,
   },
   quickIcon: {

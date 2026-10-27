@@ -170,7 +170,7 @@ export default function FinancesScreen() {
                   setComposer(action.kind);
                 }
               }}
-              type="button" style={localStyles.quickButton}
+              type="button" style={Object.assign({}, localStyles.quickButton, styles.panel)}
             >
               <span style={localStyles.quickIcon}>{action.icon}</span>
               <span style={localStyles.quickText}>{action.title}</span>
@@ -419,7 +419,7 @@ const localStyles = {
     justifyContent: 'center',
     gap: 4,
     borderRadius: 11,
-    backgroundColor: colors.greenSoft,
+    border: `1px solid ${colors.line}`,
   },
   quickIcon: {
     color: colors.green,

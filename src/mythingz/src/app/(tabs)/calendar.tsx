@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
 import { RecordComposer } from '../../components/RecordComposer';
 import { ScreenHeader, SectionTitle } from '../../components/ScreenHeader';
+import { UpcomingEventRow } from '../../components/UpcomingEventRow';
 import { colors, styles } from '../../components/theme';
 import {
   deleteRecord,
@@ -56,6 +57,7 @@ export default function CalendarScreen() {
     );
   }, [shownMonth]);
   const visibleEvents = events.filter((event) => event.date === selectedDate);
+  const upcomingEvents = events.filter((event) => event.date >= dateKey(new Date())).slice(0, 5);
   const changeMonth = (amount: number) => {
     const offset = monthOffset + amount;
     const firstDay = new Date();
@@ -128,8 +130,6 @@ export default function CalendarScreen() {
           title={new Date(`${selectedDate}T12:00:00`).toLocaleDateString('en-GB', {
             weekday: 'long', day: 'numeric', month: 'long',
           }).toUpperCase()}
-          action="+ Add event"
-          onAction={() => setComposer('event')}
         />
         {visibleEvents.length ? visibleEvents.map((event) => (
           <button
@@ -148,7 +148,6 @@ export default function CalendarScreen() {
               {event.notes ? <span style={localStyles.eventNotes}>{event.notes}</span> : null}
               <span style={localStyles.eventHint}>Hold to delete</span>
             </div>
-            <span style={localStyles.eventSymbol}>✦</span>
           </button>
         )) : (
           <div style={Object.assign({}, styles.panel, localStyles.empty)}>
@@ -162,23 +161,13 @@ export default function CalendarScreen() {
         )}
         <SectionTitle title="COMING UP" />
         <div style={styles.panel}>
-          {events.filter((event) => event.date >= dateKey(new Date())).slice(0, 5).length ? (
-            events.filter((event) => event.date >= dateKey(new Date())).slice(0, 5).map((event) => (
-              <button
+          {upcomingEvents.length ? (
+            upcomingEvents.map((event) => (
+              <UpcomingEventRow
                 key={event.id}
+                event={event}
                 onClick={() => navigate(`/space/records/event/${event.id}`, { state: { from: location.pathname } })}
-                style={localStyles.upcomingRow}
-              >
-                <div style={localStyles.dateBadge}>
-                  <span style={localStyles.dateDay}>{new Date(`${event.date}T12:00:00`).getDate()}</span>
-                  <span style={localStyles.dateMonth}>{new Date(`${event.date}T12:00:00`).toLocaleDateString('en-GB', { month: 'short' }).toUpperCase()}</span>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <span style={localStyles.eventTitle}>{event.title}</span>
-                  <span style={localStyles.eventNotes}>{event.category}</span>
-                </div>
-                <span style={localStyles.chevron}>›</span>
-              </button>
+              />
             ))
           ) : <span style={localStyles.eventNotes}>Your upcoming events will appear here.</span>}
         </div>
@@ -243,6 +232,7 @@ const localStyles = {
     fontWeight: '800',
   },
   dayCell: {
+    position: 'relative',
     width: `${100 / 7}%`,
     height: 42,
     alignItems: 'center',
@@ -262,8 +252,9 @@ const localStyles = {
     fontWeight: '800',
   },
   today: {
-    borderWidth: 1,
-    borderColor: colors.green,
+    borderStyle: 'solid',
+    borderWidth: 2,
+    borderColor: colors.line,
   },
   eventDot: {
     width: 4,
@@ -272,6 +263,8 @@ const localStyles = {
     backgroundColor: colors.orange,
     position: 'absolute',
     bottom: 4,
+    left: '50%',
+    transform: 'translateX(-50%)',
   },
   selectedDot: {
     backgroundColor: colors.yellow,
@@ -319,51 +312,22 @@ const localStyles = {
   },
   empty: {
     alignItems: 'center',
-    paddingBlock: 24,
+    paddingBlock: 12,
   },
   emptyIcon: {
     color: colors.green,
     fontSize: 28,
-    marginBottom: 10,
   },
   addButton: {
     backgroundColor: colors.greenSoft,
     paddingInline: 15,
     paddingBlock: 10,
     borderRadius: 8,
-    marginTop: 15,
+    marginTop: 8,
   },
   addButtonText: {
     color: colors.green,
     fontSize: 11,
     fontWeight: '800',
-  },
-  upcomingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingBlock: 8,
-  },
-  dateBadge: {
-    width: 44,
-    height: 48,
-    borderRadius: 9,
-    backgroundColor: colors.yellowSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dateDay: {
-    color: colors.ink,
-    fontWeight: '800',
-    fontSize: 14,
-  },
-  dateMonth: {
-    color: colors.orange,
-    fontSize: 9,
-    fontWeight: '800',
-  },
-  chevron: {
-    color: colors.muted,
-    fontSize: 21,
   },
 } as const

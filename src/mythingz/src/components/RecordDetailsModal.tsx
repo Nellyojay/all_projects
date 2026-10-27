@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../web/DatabaseProvider';
 import { RecordComposer } from './RecordComposer';
 import {
@@ -95,6 +96,8 @@ export function RecordDetailsModal({
   onEdit,
   closeOnEdit = true,
 }: Props) {
+  const location = useLocation();
+  const navigate = useNavigate();
   const database = useDatabase();
   const [checkedList, setCheckedList] = useState<ListRecord | null>(null);
   const [loanDraft, setLoanDraft] = useState<RecordDraft | null>(null);
@@ -412,9 +415,15 @@ export function RecordDetailsModal({
                       {items.filter((item) => item.done).length} of {items.length} complete
                     </span>
                     {list.event_id !== null ? (
-                      <span style={modalStyles.listEventTag}>
+                      <button
+                        type="button"
+                        style={modalStyles.listEventTag}
+                        onClick={() => navigate(`/space/records/event/${list.event_id}`, {
+                          state: { from: location.pathname },
+                        })}
+                      >
                         EVENT · {list.event_title || 'Attached event'}
-                      </span>
+                      </button>
                     ) : null}
                     {list.finalized ? (
                       <span style={modalStyles.finalizedBadge}>FINALIZED · LIST LOCKED</span>
@@ -851,7 +860,7 @@ const modalStyles = {
     justifyContent: 'center',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: colors.line,
+    border: `1px solid ${colors.line}`,
   },
   deleteText: {
     color: colors.ink,
