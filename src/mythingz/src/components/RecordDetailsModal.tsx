@@ -255,15 +255,27 @@ export function RecordDetailsModal({
             </div>
 
             <div style={modalStyles.content}>
-              <span style={modalStyles.title}>{selected.record.title}</span>
+              {selected.kind === 'note' ? (
+                <div style={modalStyles.titleRow}>
+                  <span style={Object.assign({}, modalStyles.title, modalStyles.titleInRow)}>
+                    {selected.record.title}
+                  </span>
+                  <span style={modalStyles.updated}>
+                    Updated {new Date(selected.record.updated_at).toLocaleDateString('en-GB', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                  </span>
+                </div>
+              ) : (
+                <span style={modalStyles.title}>{selected.record.title}</span>
+              )}
 
               {selected.kind === 'note' ? (
                 <>
                   <span style={modalStyles.meta}>{selected.record.category}</span>
                   <span style={modalStyles.body}>{selected.record.notes || 'This note is empty.'}</span>
-                  <span style={modalStyles.updated}>
-                    Updated {new Date(selected.record.updated_at).toLocaleString()}
-                  </span>
                 </>
               ) : null}
 
@@ -574,9 +586,7 @@ const modalStyles = {
   },
   content: {
     width: '100%',
-    maxWidth: 760,
     marginInline: 'auto',
-    padding: 22,
     paddingBottom: 28,
   },
   typeBadge: {
@@ -595,10 +605,21 @@ const modalStyles = {
   },
   title: {
     color: colors.ink,
-    fontSize: 23,
+    fontSize: 18,
     lineHeight: '32px',
     fontWeight: '800',
     marginBottom: 8,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+  },
+  titleInRow: {
+    flex: 1,
+    minWidth: 0,
+    marginBottom: 0,
   },
   meta: {
     color: colors.muted,
@@ -614,7 +635,8 @@ const modalStyles = {
   updated: {
     color: colors.muted,
     fontSize: 9,
-    marginTop: 22,
+    textAlign: 'right',
+    flexShrink: 0,
   },
   infoCard: {
     backgroundColor: colors.surface,

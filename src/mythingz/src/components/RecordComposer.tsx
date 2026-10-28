@@ -12,6 +12,8 @@ import {
 } from '../services/database';
 import { colors, styles } from './theme';
 
+const MAX_TITLE_LENGTH = 32;
+
 const titles: Record<RecordKind, string> = {
   income: 'Add income',
   loan: 'Add loan',
@@ -66,7 +68,9 @@ export function RecordComposer({
   const navigate = useNavigate();
   const historyEntryId = useRef<string | null>(null);
   const historyEntryReady = useRef(false);
-  const [title, setTitle] = useState(initialDraft?.title ?? '');
+  const [title, setTitle] = useState(
+    () => (initialDraft?.title ?? '').slice(0, MAX_TITLE_LENGTH),
+  );
   const [categorySelection, setCategorySelection] = useState(() => ({
     kind,
     draft: initialDraft,
@@ -283,6 +287,7 @@ export function RecordComposer({
           </span>
           <input
             autoFocus
+            maxLength={MAX_TITLE_LENGTH}
             value={title}
             onChange={(event) => setTitle(event.currentTarget.value)}
             placeholder={kind === 'loan' ? 'Bank, person, or source' : 'Give it a name'}
