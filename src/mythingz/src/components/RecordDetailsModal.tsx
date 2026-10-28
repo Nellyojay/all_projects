@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../web/DatabaseProvider';
-import { RecordComposer } from './RecordComposer';
+import { MAX_TITLE_LENGTH, RecordComposer } from './RecordComposer';
 import {
   deleteRecord,
   finalizeBudgetList,
@@ -104,14 +104,55 @@ export function RecordDetailsModal({
   const [eventBudgets, setEventBudgets] = useState<ListRecord[]>([]);
   const [openEventBudgetId, setOpenEventBudgetId] = useState<number | null>(null);
   const [loadingEventBudgets, setLoadingEventBudgets] = useState(false);
+  const [editingNoteTitleId, setEditingNoteTitleId] = useState<number | null>(null);
+  const [editingNoteBodyId, setEditingNoteBodyId] = useState<number | null>(null);
+  const [noteTitle, setNoteTitle] = useState('');
+  const [noteBody, setNoteBody] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
 
   const close = useCallback(() => {
+    setEditingNoteTitleId(null);
+    setEditingNoteBodyId(null);
     setCheckedList(null);
     setLoanDraft(null);
     setEventBudgets([]);
     setOpenEventBudgetId(null);
     onClose();
   }, [onClose]);
+
+  const cancelNoteEdit = () => {
+    setEditingNoteTitleId(null);
+    setEditingNoteBodyId(null);
+  };
+
+  const saveNoteEdit = async () => {
+    if (selected?.kind !== 'note') return;
+    const editingTitle = editingNoteTitleId === selected.record.id;
+    const editingBody = editingNoteBodyId === selected.record.id;
+    const titleToSave = editingTitle ? noteTitle : selected.record.title;
+    if (!titleToSave.trim()) {
+      window.alert('Add a title\n\nEnter a name before saving.');
+      return;
+    }
+
+    setSavingNote(true);
+    try {
+      await saveRecord(database, 'note', {
+        id: selected.record.id,
+        title: titleToSave,
+        category: selected.record.category,
+        notes: editingBody ? noteBody : selected.record.notes,
+      });
+      setEditingNoteTitleId(null);
+      setEditingNoteBodyId(null);
+      await onChanged();
+    } catch (error) {
+      console.error('Unable to update note', error);
+      window.alert('Could not update note\n\nPlease try again.');
+    } finally {
+      setSavingNote(false);
+    }
+  };
 
   useEffect(() => {
     if (!selected) return;
@@ -234,6 +275,10 @@ export function RecordDetailsModal({
 
   const event = selected?.kind === 'event' ? selected.record : null;
   const isBirthday = event?.category.toLowerCase() === 'birthday';
+  const editingNoteTitle = selected?.kind === 'note'
+    && editingNoteTitleId === selected.record.id;
+  const editingNoteBody = selected?.kind === 'note'
+    && editingNoteBodyId === selected.record.id;
 
   return (
     <>
@@ -251,15 +296,36 @@ export function RecordDetailsModal({
               <span style={modalStyles.headerTitle}>
                 {isBirthday ? 'Birthday' : recordLabels[selected.kind]}
               </span>
-              <div style={modalStyles.headerSpacer} />
+              <button onClick={confirmDelete} type="button" style={modalStyles.headerDelete}>
+                <span style={modalStyles.headerDeleteText}>Delete</span>
+              </button>
             </div>
 
             <div style={modalStyles.content}>
               {selected.kind === 'note' ? (
                 <div style={modalStyles.titleRow}>
-                  <span style={Object.assign({}, modalStyles.title, modalStyles.titleInRow)}>
-                    {selected.record.title}
-                  </span>
+                  {editingNoteTitle ? (
+                    <input
+                      autoFocus
+                      maxLength={MAX_TITLE_LENGTH}
+                      value={noteTitle}
+                      onChange={(event) => setNoteTitle(event.currentTarget.value)}
+                      aria-label="Note title"
+                      style={Object.assign({}, modalStyles.title, modalStyles.titleInRow, modalStyles.titleInput)}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNoteTitle(selected.record.title);
+                        setEditingNoteTitleId(selected.record.id);
+                      }}
+                      aria-label="Edit note title"
+                      style={Object.assign({}, modalStyles.title, modalStyles.titleInRow, modalStyles.editableText)}
+                    >
+                      {selected.record.title}
+                    </button>
+                  )}
                   <span style={modalStyles.updated}>
                     Updated {new Date(selected.record.updated_at).toLocaleDateString('en-GB', {
                       day: 'numeric',
@@ -275,7 +341,49 @@ export function RecordDetailsModal({
               {selected.kind === 'note' ? (
                 <>
                   <span style={modalStyles.meta}>{selected.record.category}</span>
-                  <span style={modalStyles.body}>{selected.record.notes || 'This note is empty.'}</span>
+                  {editingNoteBody ? (
+                    <textarea
+                      autoFocus
+                      value={noteBody}
+                      onChange={(event) => setNoteBody(event.currentTarget.value)}
+                      aria-label="Note body"
+                      placeholder="This note is empty."
+                      style={Object.assign({}, modalStyles.body, modalStyles.bodyInput)}
+                      rows={20}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNoteBody(selected.record.notes);
+                        setEditingNoteBodyId(selected.record.id);
+                      }}
+                      aria-label="Edit note body"
+                      style={Object.assign({}, modalStyles.body, modalStyles.editableText)}
+                    >
+                      {selected.record.notes || 'This note is empty.'}
+                    </button>
+                  )}
+                  {editingNoteTitle || editingNoteBody ? (
+                    <div style={modalStyles.noteEditActions}>
+                      <button
+                        type="button"
+                        disabled={savingNote}
+                        onClick={cancelNoteEdit}
+                        style={modalStyles.noteCancelButton}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        disabled={savingNote}
+                        onClick={() => void saveNoteEdit()}
+                        style={modalStyles.noteSaveButton}
+                      >
+                        {savingNote ? 'Saving…' : 'Save changes'}
+                      </button>
+                    </div>
+                  ) : null}
                 </>
               ) : null}
 
@@ -494,10 +602,10 @@ export function RecordDetailsModal({
                 );
               })() : null}
 
-              <div style={modalStyles.actions}>
-                {selected.kind !== 'list' || !(checkedList?.id === selected.record.id
-                  ? checkedList.finalized
-                  : selected.record.finalized) ? (
+              {selected.kind !== 'note' && (selected.kind !== 'list' || !(checkedList?.id === selected.record.id
+                ? checkedList.finalized
+                : selected.record.finalized)) ? (
+                <div style={modalStyles.actions}>
                   <button
                     onClick={() => {
                       const recordForEdit = selected.kind === 'list' && checkedList?.id === selected.record.id
@@ -512,14 +620,8 @@ export function RecordDetailsModal({
                       Edit {recordLabels[selected.kind].toLowerCase()}
                     </span>
                   </button>
-                ) : null}
-                <button
-                  onClick={confirmDelete}
-                  type="button" style={modalStyles.deleteButton}
-                >
-                  <span style={modalStyles.deleteText}>Delete</span>
-                </button>
-              </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </section>
@@ -563,13 +665,13 @@ const modalStyles = {
     backgroundColor: colors.background,
   },
   header: {
-    minHeight: 54,
+    paddingBlock: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingInline: 20,
     borderBottomWidth: 1,
     borderBottomColor: colors.line,
+    backgroundColor: colors.background,
   },
   headerAction: {
     color: colors.muted,
@@ -581,8 +683,19 @@ const modalStyles = {
     fontSize: 13,
     fontWeight: '800',
   },
-  headerSpacer: {
-    width: 38,
+  headerDelete: {
+    minHeight: 36,
+    paddingInline: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    border: `1px solid ${colors.line}`,
+    borderRadius: 7,
+    backgroundColor: colors.surface,
+  },
+  headerDeleteText: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '700',
   },
   content: {
     width: '100%',
@@ -611,6 +724,11 @@ const modalStyles = {
     marginBottom: 8,
   },
   titleRow: {
+    position: 'sticky',
+    top: 0,
+    paddingBlock: 8,
+    zIndex: 1,
+    backgroundColor: colors.background,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -620,6 +738,64 @@ const modalStyles = {
     flex: 1,
     minWidth: 0,
     marginBottom: 0,
+  },
+  titleInput: {
+    outline: 'none',
+  },
+  editableText: {
+    display: 'block',
+    width: '100%',
+    border: 0,
+    padding: 0,
+    backgroundColor: 'transparent',
+    fontFamily: 'inherit',
+    textAlign: 'left',
+    whiteSpace: 'pre-wrap',
+  },
+  bodyInput: {
+    width: '100%',
+    outline: 'none',
+    fontFamily: 'inherit',
+    resize: 'vertical',
+  },
+  noteEditActions: {
+    position: 'sticky',
+    bottom: 0,
+    display: 'flex',
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 16,
+    paddingBlock: 12,
+    backgroundColor: colors.background,
+    zIndex: 1,
+  },
+  noteCancelButton: {
+    flex: 1,
+    minHeight: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingInline: 14,
+    border: `1px solid ${colors.line}`,
+    borderRadius: 7,
+    backgroundColor: colors.surface,
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  noteSaveButton: {
+    flex: 1,
+    minHeight: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingInline: 14,
+    border: 0,
+    borderRadius: 7,
+    backgroundColor: colors.green,
+    color: colors.surface,
+    fontSize: 11,
+    fontWeight: '700',
   },
   meta: {
     color: colors.muted,
@@ -870,19 +1046,5 @@ const modalStyles = {
     color: colors.background,
     fontSize: 12,
     fontWeight: '800',
-  },
-  deleteButton: {
-    minWidth: 100,
-    minHeight: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 10,
-    borderWidth: 1,
-    border: `1px solid ${colors.line}`,
-  },
-  deleteText: {
-    color: colors.ink,
-    fontSize: 12,
-    fontWeight: '700',
   },
 } as const;

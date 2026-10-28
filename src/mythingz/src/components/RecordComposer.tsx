@@ -12,7 +12,7 @@ import {
 } from '../services/database';
 import { colors, styles } from './theme';
 
-const MAX_TITLE_LENGTH = 32;
+export const MAX_TITLE_LENGTH = 32;
 
 const titles: Record<RecordKind, string> = {
   income: 'Add income',
@@ -71,6 +71,8 @@ export function RecordComposer({
   const [title, setTitle] = useState(
     () => (initialDraft?.title ?? '').slice(0, MAX_TITLE_LENGTH),
   );
+  const [editingNoteTitle, setEditingNoteTitle] = useState(false);
+  const [editingNoteBody, setEditingNoteBody] = useState(false);
   const [categorySelection, setCategorySelection] = useState(() => ({
     kind,
     draft: initialDraft,
@@ -116,6 +118,8 @@ export function RecordComposer({
       navigate(-1);
     }
     setTitle('');
+    setEditingNoteTitle(false);
+    setEditingNoteBody(false);
     setCategorySelection({
       kind,
       draft: initialDraft,
@@ -282,17 +286,51 @@ export function RecordComposer({
           </button>
         </div>
         <div style={layoutStyles.form}>
-          <span style={layoutStyles.label}>
-            {kind === 'loan' ? 'LENDER / SOURCE' : kind === 'loan-repayment' ? 'PAYMENT' : 'TITLE'}
-          </span>
-          <input
-            autoFocus
-            maxLength={MAX_TITLE_LENGTH}
-            value={title}
-            onChange={(event) => setTitle(event.currentTarget.value)}
-            placeholder={kind === 'loan' ? 'Bank, person, or source' : 'Give it a name'}
-            style={layoutStyles.input}
-          />
+          {kind === 'note' ? (
+            <>
+              {editingNoteTitle ? (
+                <input
+                  autoFocus
+                  maxLength={MAX_TITLE_LENGTH}
+                  value={title}
+                  onChange={(event) => setTitle(event.currentTarget.value)}
+                  aria-label="Note title"
+                  placeholder="Note title"
+                  style={layoutStyles.noteTitleInput}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setEditingNoteTitle(true)}
+                  aria-label="Edit note title"
+                  style={layoutStyles.noteTitlePreview}
+                >
+                  {title || 'Add a title'}
+                </button>
+              )}
+              <input
+                value={category}
+                onChange={(event) => setCategory(event.currentTarget.value)}
+                aria-label="Note category"
+                placeholder="Add a category (optional)"
+                style={layoutStyles.noteCategory}
+              />
+            </>
+          ) : (
+            <>
+              <span style={layoutStyles.label}>
+                {kind === 'loan' ? 'LENDER / SOURCE' : kind === 'loan-repayment' ? 'PAYMENT' : 'TITLE'}
+              </span>
+              <input
+                autoFocus
+                maxLength={MAX_TITLE_LENGTH}
+                value={title}
+                onChange={(event) => setTitle(event.currentTarget.value)}
+                placeholder={kind === 'loan' ? 'Bank, person, or source' : 'Give it a name'}
+                style={layoutStyles.input}
+              />
+            </>
+          )}
           {kind === 'income' || kind === 'loan' || kind === 'loan-repayment' ? (
             <>
               <span style={layoutStyles.label}>
@@ -345,7 +383,7 @@ export function RecordComposer({
                 ))}
               </div>
             </>
-          ) : kind !== 'list' && kind !== 'loan' && kind !== 'loan-repayment' ? (
+          ) : kind !== 'list' && kind !== 'loan' && kind !== 'loan-repayment' && kind !== 'note' ? (
             <>
               <span style={layoutStyles.label}>
                 {kind === 'task' ? 'PRIORITY' : kind === 'event' ? 'EVENT TYPE' : 'CATEGORY'}
@@ -533,9 +571,30 @@ export function RecordComposer({
                 </span>
               ) : null}
             </>
+          ) : kind === 'note' ? (
+            editingNoteBody ? (
+              <textarea
+                autoFocus
+                value={notes}
+                onChange={(event) => setNotes(event.currentTarget.value)}
+                aria-label="Note body"
+                placeholder="Write your note here"
+                style={layoutStyles.noteBodyInput}
+                rows={6}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEditingNoteBody(true)}
+                aria-label="Edit note body"
+                style={layoutStyles.noteBodyPreview}
+              >
+                {notes || 'Tap to write your note'}
+              </button>
+            )
           ) : (
             <>
-              <span style={layoutStyles.label}>{kind === 'note' ? 'NOTE' : 'DETAILS'}</span>
+              <span style={layoutStyles.label}>DETAILS</span>
               <textarea
                 value={notes}
                 onChange={(event) => setNotes(event.currentTarget.value)}
@@ -630,6 +689,58 @@ const layoutStyles = {
     backgroundColor: colors.surface,
     color: colors.ink,
     paddingInline: 14,
+    fontSize: 13,
+  },
+  noteTitlePreview: {
+    display: 'block',
+    width: '100%',
+    border: 0,
+    padding: 0,
+    backgroundColor: 'transparent',
+    color: colors.ink,
+    fontSize: 18,
+    lineHeight: '32px',
+    fontWeight: '800',
+    textAlign: 'left',
+    fontFamily: 'inherit',
+  },
+  noteTitleInput: {
+    outline: 'none',
+    lineHeight: '32px',
+    fontWeight: '800',
+  },
+  noteCategory: {
+    display: 'block',
+    width: '100%',
+    outline: 'none',
+    border: 0,
+    padding: 0,
+    marginTop: 4,
+    backgroundColor: 'transparent',
+    color: colors.muted,
+    fontSize: 11,
+    fontFamily: 'inherit',
+  },
+  noteBodyPreview: {
+    display: 'block',
+    width: '100%',
+    minHeight: 120,
+    border: 0,
+    padding: 0,
+    marginTop: 14,
+    backgroundColor: 'transparent',
+    color: colors.ink,
+    fontSize: 13,
+    lineHeight: '23px',
+    textAlign: 'left',
+    whiteSpace: 'pre-wrap',
+    fontFamily: 'inherit',
+  },
+  noteBodyInput: {
+    width: '100%',
+    outline: 'none',
+    minHeight: 140,
+    marginTop: 40,
     fontSize: 13,
   },
   eventBudgetSection: {
