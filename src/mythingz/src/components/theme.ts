@@ -27,9 +27,16 @@ export const styles = {
   panel: {
     backgroundColor: colors.surface,
     borderRadius: 8,
-    padding: 18,
+    padding: 12,
     borderWidth: 1,
-    borderColor: colors.line,
+    border: `1px solid ${colors.line}`,
+    marginBottom: 8,
+  },
+  panelGrid: {
+    display: 'grid',
+    width: '100%',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
+    gap: 8,
   },
   row: {
     flexDirection: 'row',

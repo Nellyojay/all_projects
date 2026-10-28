@@ -137,7 +137,7 @@ export default function OrganizeScreen() {
       <div style={styles.scrollContent}>
         <ScreenHeader title="Organize" subtitle="Your personal workspace" />
         <SectionTitle title="MY WORKSPACE" />
-        <div style={localStyles.workspaceGrid}>
+        <div style={styles.panelGrid}>
           {[
             ['✎', 'Notes', `${notes.length} notes`],
             ['✓', 'Tasks', `${tasks.filter((task) => !task.completed).length} pending`],
@@ -200,26 +200,27 @@ export default function OrganizeScreen() {
             </button>
           ))}
         </div>
-        {section === 'Notes' ? (
-          filteredNotes.length ? filteredNotes.map((note) => (
-            <button
-              key={note.id}
-              onClick={() => navigate(`/space/records/note/${note.id}`, { state: { from: location.pathname } })}
-              onContextMenu={(pointerEvent) => {
-                pointerEvent.preventDefault();
-                remove('notes', note.id, note.title);
-              }}
-              style={Object.assign({}, styles.panel, localStyles.recordCard)}
-            >
-              <div style={localStyles.cardHeading}>
-                <span style={localStyles.recordTitle}>{note.title}</span>
-                <span style={localStyles.categoryTag}>{note.category}</span>
-              </div>
-              <span style={localStyles.bodyText}>{note.notes || 'An empty note'}</span>
-              <span style={localStyles.hint}>Tap to view · hold to delete</span>
-            </button>
-          )) : <EmptyPanel title="No notes yet" detail="Capture an idea, reminder, or plan." />
-        ) : null}
+        <div style={styles.panelGrid}>
+          {section === 'Notes' ? (
+            filteredNotes.length ? filteredNotes.map((note) => (
+              <button
+                key={note.id}
+                onClick={() => navigate(`/space/records/note/${note.id}`, { state: { from: location.pathname } })}
+                onContextMenu={(pointerEvent) => {
+                  pointerEvent.preventDefault();
+                  remove('notes', note.id, note.title);
+                }}
+                style={Object.assign({}, styles.panel, localStyles.recordCard)}
+              >
+                <div style={localStyles.cardHeading}>
+                  <span style={localStyles.recordTitle}>{note.title}</span>
+                </div>
+                <span style={localStyles.bodyText}>{note.notes.slice(0, 25) + (note.notes.length > 25 ? '...' : '') || 'An empty note'}</span>
+                <span style={localStyles.hint}>Tap to view · hold to delete</span>
+              </button>
+            )) : <EmptyPanel title="No notes yet" detail="Capture an idea, reminder, or plan." />
+          ) : null}
+        </div>
         {section === 'Tasks' ? (
           filteredTasks.length ? filteredTasks.map((task) => (
             <div key={task.id} style={Object.assign({}, styles.panel, localStyles.taskCard)}>
@@ -255,6 +256,7 @@ export default function OrganizeScreen() {
             return (
               <div key={list.id} style={Object.assign({}, styles.panel, localStyles.recordCard)}>
                 <button
+                  style={localStyles.listButton}
                   onClick={() => navigate(`/space/records/list/${list.id}`, { state: { from: location.pathname } })}
                   onContextMenu={(pointerEvent) => {
                     pointerEvent.preventDefault();
@@ -262,45 +264,32 @@ export default function OrganizeScreen() {
                   }}
                 >
                   <span style={localStyles.recordTitle}>{list.title}</span>
-                </button>
-                <span style={localStyles.bodyText}>
-                  {items.length
-                    ? `${items.filter((item) => item.done).length} of ${items.length} items complete`
-                    : 'No items yet'}
-                </span>
-                {list.budget_enabled ? (
                   <span style={localStyles.bodyText}>
-                    {list.finalized ? 'Finalized · ' : 'Budget · '}
-                    UGX {new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(total)}
+                    {items.length
+                      ? `${items.filter((item) => item.done).length} of ${items.length} items complete`
+                      : 'No items yet'}
                   </span>
-                ) : list.finalized ? (
-                  <span style={localStyles.bodyText}>Finalized · list locked</span>
-                ) : null}
-                {list.event_id !== null && list.event_title ? (
-                  <span style={localStyles.eventBudgetTag}>
-                    EVENT · {list.event_title}
+                  {list.budget_enabled ? (
+                    <span style={localStyles.bodyText}>
+                      {list.finalized ? 'Finalized · ' : 'Budget · '}
+                      UGX {new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(total)}
+                    </span>
+                  ) : list.finalized ? (
+                    <span style={localStyles.bodyText}>Finalized · list locked</span>
+                  ) : null}
+                  {list.event_id !== null && list.event_title ? (
+                    <span style={localStyles.eventBudgetTag}>
+                      EVENT · {list.event_title}
+                    </span>
+                  ) : null}
+                  <span style={localStyles.hint}>
+                    {list.finalized ? 'Tap to review or reopen' : 'Tap to view and check items · hold title to delete'}
                   </span>
-                ) : null}
-                <span style={localStyles.hint}>
-                  {list.finalized ? 'Tap to review or reopen' : 'Tap to view and check items · hold title to delete'}
-                </span>
+                </button>
               </div>
             );
           }) : <EmptyPanel title="No lists yet" detail="Make a checklist for shopping, packing, or anything else." />
         ) : null}
-        <SectionTitle title="RECENTLY UPDATED" />
-        <div style={styles.panel}>
-          {[...notes.slice(0, 2).map((note) => ['✎', note.title] as const),
-          ...tasks.slice(0, 2).map((task) => ['✓', task.title] as const),
-          ...lists.slice(0, 2).map((list) => ['☷', list.title] as const)]
-            .slice(0, 4)
-            .map(([icon, title], index) => (
-              <span key={`${title}-${index}`} style={localStyles.recentLine}>{icon}    {title}</span>
-            ))}
-          {!notes.length && !tasks.length && !lists.length
-            ? <span style={localStyles.bodyText}>Your latest notes, tasks, and lists appear here.</span>
-            : null}
-        </div>
       </div>
       <RecordComposer
         key={`${composer ?? 'closed'}-${editingDraft?.id ?? 'new'}`}
@@ -327,9 +316,7 @@ function EmptyPanel({ title, detail }: { title: string; detail: string }) {
 
 const localStyles = {
   workspaceGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+
   },
   workspaceCard: {
     flex: 1,
@@ -422,13 +409,21 @@ const localStyles = {
   segmentTextActive: {
     color: colors.ink,
   },
-  recordCard: {
-    marginBottom: 10,
-  },
   cardHeading: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  recordCard: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  listButton: {
+    display: 'flex',
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    textAlign: 'left',
   },
   recordTitle: {
     color: colors.ink,
@@ -437,7 +432,7 @@ const localStyles = {
   },
   categoryTag: {
     color: colors.green,
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '800',
     backgroundColor: colors.greenSoft,
     paddingInline: 9,
@@ -462,11 +457,14 @@ const localStyles = {
     fontSize: 10,
     lineHeight: '18px',
     marginTop: 7,
+    whiteSpace: 'pre-wrap',
   },
   hint: {
     color: colors.muted,
-    fontSize: 9,
-    marginTop: 9,
+    fontSize: 6,
+    marginTop: 'auto',
+    paddingTop: 9,
+    fontWeight: '700',
   },
   taskCard: {
     flexDirection: 'row',

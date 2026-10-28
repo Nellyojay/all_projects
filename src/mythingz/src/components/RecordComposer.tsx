@@ -10,7 +10,7 @@ import {
   type RecordDraft,
   type RecordKind,
 } from '../services/database';
-import { colors } from './theme';
+import { colors, styles } from './theme';
 
 const titles: Record<RecordKind, string> = {
   income: 'Add income',
@@ -269,16 +269,16 @@ export function RecordComposer({
   if (!kind) return null;
 
   return (
-    <section className="record-composer-page" style={styles.backdrop} aria-label={titles[kind]}>
-      <div style={styles.sheet}>
-        <div style={styles.header}>
-          <h1 style={styles.heading}>{titles[kind]}</h1>
-          <button onClick={close} type="button" style={styles.closeButton}>
+    <section className="record-composer-page" style={layoutStyles.backdrop} aria-label={titles[kind]}>
+      <div style={layoutStyles.sheet}>
+        <div style={layoutStyles.header}>
+          <h1 style={layoutStyles.heading}>{titles[kind]}</h1>
+          <button onClick={close} type="button" style={layoutStyles.closeButton}>
             Cancel
           </button>
         </div>
-        <div style={styles.form}>
-          <span style={styles.label}>
+        <div style={layoutStyles.form}>
+          <span style={layoutStyles.label}>
             {kind === 'loan' ? 'LENDER / SOURCE' : kind === 'loan-repayment' ? 'PAYMENT' : 'TITLE'}
           </span>
           <input
@@ -286,11 +286,11 @@ export function RecordComposer({
             value={title}
             onChange={(event) => setTitle(event.currentTarget.value)}
             placeholder={kind === 'loan' ? 'Bank, person, or source' : 'Give it a name'}
-            style={styles.input}
+            style={layoutStyles.input}
           />
           {kind === 'income' || kind === 'loan' || kind === 'loan-repayment' ? (
             <>
-              <span style={styles.label}>
+              <span style={layoutStyles.label}>
                 {kind === 'loan'
                   ? 'PRINCIPAL · UGX'
                   : kind === 'loan-repayment' ? 'REPAYMENT · UGX' : 'AMOUNT · UGX'}
@@ -299,39 +299,39 @@ export function RecordComposer({
                 value={amount}
                 onChange={(event) => setAmount(event.currentTarget.value)}
                 placeholder="0" inputMode="decimal" readOnly={amountLocked}
-                style={styles.input}
+                style={layoutStyles.input}
               />
             </>
           ) : null}
           {kind === 'loan' ? (
             <>
-              <span style={styles.label}>INTEREST / FEES · UGX</span>
+              <span style={layoutStyles.label}>INTEREST / FEES · UGX</span>
               <input
                 value={fees}
                 onChange={(event) => setFees(event.currentTarget.value)}
                 placeholder="0" inputMode="decimal"
-                style={styles.input}
+                style={layoutStyles.input}
               />
             </>
           ) : null}
           {kind === 'income' ? (
             <>
-              <span style={styles.label}>CATEGORY</span>
-              <div style={styles.categoryOptions}>
+              <span style={layoutStyles.label}>CATEGORY</span>
+              <div style={styles.panelGrid}>
                 {INCOME_CATEGORIES.map((incomeCategory) => (
                   <button
                     key={incomeCategory}
                     type="button" aria-selected={category === incomeCategory}
                     onClick={() => setCategory(incomeCategory)}
                     style={Object.assign({},
-                      styles.categoryOption,
-                      category === incomeCategory && styles.categoryOptionSelected,
+                      layoutStyles.categoryOption,
+                      category === incomeCategory && layoutStyles.categoryOptionSelected,
                     )}
                   >
                     <span
                       style={Object.assign({},
-                        styles.categoryOptionText,
-                        category === incomeCategory && styles.categoryOptionTextSelected,
+                        layoutStyles.categoryOptionText,
+                        category === incomeCategory && layoutStyles.categoryOptionTextSelected,
                       )}
                     >
                       {incomeCategory}
@@ -342,46 +342,46 @@ export function RecordComposer({
             </>
           ) : kind !== 'list' && kind !== 'loan' && kind !== 'loan-repayment' ? (
             <>
-              <span style={styles.label}>
+              <span style={layoutStyles.label}>
                 {kind === 'task' ? 'PRIORITY' : kind === 'event' ? 'EVENT TYPE' : 'CATEGORY'}
               </span>
               <input
                 value={category}
                 onChange={(event) => setCategory(event.currentTarget.value)}
                 placeholder={kind ? categoryHints[kind] : ''}
-                style={styles.input}
+                style={layoutStyles.input}
               />
             </>
           ) : null}
           {kind === 'event' || kind === 'task' || kind === 'income' ||
             kind === 'loan-repayment' ? (
             <>
-              <span style={styles.label}>DATE · YYYY-MM-DD</span>
+              <span style={layoutStyles.label}>DATE · YYYY-MM-DD</span>
               <input
                 value={date}
                 onChange={(event) => setDate(event.currentTarget.value)}
                 placeholder="YYYY-MM-DD"
-                style={styles.input} autoCapitalize="off"
+                style={layoutStyles.input} autoCapitalize="off"
               />
             </>
           ) : null}
           {kind === 'loan' ? (
             <>
-              <span style={styles.label}>DUE DATE · OPTIONAL · YYYY-MM-DD</span>
+              <span style={layoutStyles.label}>DUE DATE · OPTIONAL · YYYY-MM-DD</span>
               <input
                 value={dueDate}
                 onChange={(event) => setDueDate(event.currentTarget.value)}
                 placeholder="YYYY-MM-DD"
-                style={styles.input} autoCapitalize="off"
+                style={layoutStyles.input} autoCapitalize="off"
               />
             </>
           ) : null}
           {kind === 'list' ? (
             <>
-              <div style={styles.budgetOption}>
-                <div style={styles.budgetCopy}>
-                  <span style={styles.budgetTitle}>Add to budget</span>
-                  <span style={styles.budgetDescription}>Track item prices and total the list</span>
+              <div style={layoutStyles.budgetOption}>
+                <div style={layoutStyles.budgetCopy}>
+                  <span style={layoutStyles.budgetTitle}>Add to budget</span>
+                  <span style={layoutStyles.budgetDescription}>Track item prices and total the list</span>
                 </div>
                 <input type="checkbox"
                   checked={budgetEnabled}
@@ -389,34 +389,34 @@ export function RecordComposer({
                 />
               </div>
               {budgetEnabled ? (
-                <div style={styles.eventBudgetSection}>
-                  <span style={styles.label}>EVENT</span>
+                <div style={layoutStyles.eventBudgetSection}>
+                  <span style={layoutStyles.label}>EVENT</span>
                   <button
                     type="button" aria-expanded={eventPickerVisible}
                     onClick={() => void openEventPicker()}
-                    style={styles.attachEventButton}
+                    style={layoutStyles.attachEventButton}
                   >
-                    <span style={styles.attachEventButtonText}>
+                    <span style={layoutStyles.attachEventButtonText}>
                       {eventId === null ? '＋  Attach a saved event' : 'Change attached event'}
                     </span>
                   </button>
                   {eventId !== null ? (
-                    <span style={styles.attachedEventText}>
+                    <span style={layoutStyles.attachedEventText}>
                       {savedEvents.find((event) => event.id === eventId)?.title
                         ?? 'Saved event attached'}
                     </span>
                   ) : null}
                   {eventPickerVisible ? (
-                    <div style={styles.eventOptions}>
+                    <div style={layoutStyles.eventOptions}>
                       <button
                         type="button" aria-selected={eventId === null}
                         onClick={() => {
                           setEventId(null);
                           setEventPickerVisible(false);
                         }}
-                        style={Object.assign({}, styles.eventOption, eventId === null && styles.eventOptionSelected)}
+                        style={Object.assign({}, layoutStyles.eventOption, eventId === null && layoutStyles.eventOptionSelected)}
                       >
-                        <span style={styles.eventOptionTitle}>No event</span>
+                        <span style={layoutStyles.eventOptionTitle}>No event</span>
                       </button>
                       {savedEvents.map((event) => (
                         <button
@@ -427,16 +427,16 @@ export function RecordComposer({
                             setEventPickerVisible(false);
                           }}
                           style={Object.assign({},
-                            styles.eventOption,
-                            eventId === event.id && styles.eventOptionSelected,
+                            layoutStyles.eventOption,
+                            eventId === event.id && layoutStyles.eventOptionSelected,
                           )}
                         >
-                          <span style={styles.eventOptionTitle}>{event.title}</span>
-                          <span style={styles.eventOptionDate}>{event.date}</span>
+                          <span style={layoutStyles.eventOptionTitle}>{event.title}</span>
+                          <span style={layoutStyles.eventOptionDate}>{event.date}</span>
                         </button>
                       ))}
                       {savedEvents.length === 0 ? (
-                        <span style={styles.noSavedEvents}>
+                        <span style={layoutStyles.noSavedEvents}>
                           Create a calendar event first to attach it to this budget.
                         </span>
                       ) : null}
@@ -444,17 +444,17 @@ export function RecordComposer({
                   ) : null}
                 </div>
               ) : null}
-              <span style={styles.label}>LIST ITEMS</span>
+              <span style={layoutStyles.label}>LIST ITEMS</span>
               {budgetEnabled ? (
-                <div style={styles.itemColumnLabels}>
-                  <span style={Object.assign({}, styles.itemColumnLabel, styles.itemNameColumn)}>ITEM</span>
-                  <span style={Object.assign({}, styles.itemColumnLabel, styles.itemQuantity)}>QTY</span>
-                  <span style={Object.assign({}, styles.itemColumnLabel, styles.itemPrice)}>UNIT PRICE · UGX</span>
-                  <div style={styles.removeSpacer} />
+                <div style={layoutStyles.itemColumnLabels}>
+                  <span style={Object.assign({}, layoutStyles.itemColumnLabel, layoutStyles.itemNameColumn)}>ITEM</span>
+                  <span style={Object.assign({}, layoutStyles.itemColumnLabel, layoutStyles.itemQuantity)}>QTY</span>
+                  <span style={Object.assign({}, layoutStyles.itemColumnLabel, layoutStyles.itemPrice)}>UNIT PRICE · UGX</span>
+                  <div style={layoutStyles.removeSpacer} />
                 </div>
               ) : null}
               {listItems.map((item, index) => (
-                <div key={`list-item-${index}`} style={styles.itemRow}>
+                <div key={`list-item-${index}`} style={layoutStyles.itemRow}>
                   <input
                     value={item.text}
                     onChange={(event) => {
@@ -464,7 +464,7 @@ export function RecordComposer({
                       ));
                     }}
                     placeholder={`Item ${index + 1}`}
-                    style={Object.assign({}, styles.input, styles.itemNameColumn)}
+                    style={Object.assign({}, layoutStyles.input, layoutStyles.itemNameColumn)}
                   />
                   {budgetEnabled ? (
                     <>
@@ -477,7 +477,7 @@ export function RecordComposer({
                           ));
                         }}
                         placeholder="1" inputMode="numeric"
-                        style={Object.assign({}, styles.input, styles.itemQuantity)}
+                        style={Object.assign({}, layoutStyles.input, layoutStyles.itemQuantity)}
                       />
                       <input
                         value={item.price}
@@ -488,7 +488,7 @@ export function RecordComposer({
                           ));
                         }}
                         placeholder="0" inputMode="decimal"
-                        style={Object.assign({}, styles.input, styles.itemPrice)}
+                        style={Object.assign({}, layoutStyles.input, layoutStyles.itemPrice)}
                       />
                     </>
                   ) : null}
@@ -497,9 +497,9 @@ export function RecordComposer({
                     onClick={() => setListItems((current) => current.length > 1
                       ? current.filter((_, entryIndex) => entryIndex !== index)
                       : [{ text: '', done: false, price: '', quantity: '1' }])}
-                    style={styles.removeItem}
+                    style={layoutStyles.removeItem}
                   >
-                    <span style={styles.removeItemText}>−</span>
+                    <span style={layoutStyles.removeItemText}>−</span>
                   </button>
                 </div>
               ))}
@@ -508,12 +508,12 @@ export function RecordComposer({
                   ...current,
                   { text: '', done: false, price: '', quantity: '1' },
                 ])}
-                style={styles.addItem}
+                style={layoutStyles.addItem}
               >
-                <span style={styles.addItemText}>＋  Add item</span>
+                <span style={layoutStyles.addItemText}>＋  Add item</span>
               </button>
               {budgetEnabled ? (
-                <span style={styles.listTotal}>
+                <span style={layoutStyles.listTotal}>
                   {listItems.filter((item) => item.text.trim()).length}{' '}
                   {listItems.filter((item) => item.text.trim()).length === 1 ? 'item' : 'items'}
                   {' · '}List total · UGX {new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(
@@ -530,12 +530,12 @@ export function RecordComposer({
             </>
           ) : (
             <>
-              <span style={styles.label}>{kind === 'note' ? 'NOTE' : 'DETAILS'}</span>
+              <span style={layoutStyles.label}>{kind === 'note' ? 'NOTE' : 'DETAILS'}</span>
               <textarea
                 value={notes}
                 onChange={(event) => setNotes(event.currentTarget.value)}
                 placeholder="Add a note (optional)"
-                style={Object.assign({}, styles.input, styles.multiline)}
+                style={Object.assign({}, layoutStyles.input, layoutStyles.multiline)}
                 rows={4}
               />
             </>
@@ -543,9 +543,9 @@ export function RecordComposer({
           <button
             disabled={saving}
             onClick={submit}
-            type="button" style={Object.assign({}, styles.save, saving && styles.disabled)}
+            type="button" style={Object.assign({}, layoutStyles.save, saving && layoutStyles.disabled)}
           >
-            <span style={styles.saveText}>{saving ? 'Saving…' : 'Save'}</span>
+            <span style={layoutStyles.saveText}>{saving ? 'Saving…' : 'Save'}</span>
           </button>
         </div>
       </div>
@@ -553,7 +553,7 @@ export function RecordComposer({
   );
 }
 
-const styles = {
+const layoutStyles = {
   backdrop: {
     position: 'fixed',
     inset: 0,
@@ -683,21 +683,14 @@ const styles = {
     fontSize: 10,
     lineHeight: '18px',
   },
-  categoryOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
   categoryOption: {
-    minHeight: 44,
+    minHeight: 36,
     minWidth: '30%',
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingInline: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.line,
     backgroundColor: colors.surface,
   },
   categoryOptionSelected: {

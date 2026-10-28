@@ -255,11 +255,6 @@ export function RecordDetailsModal({
             </div>
 
             <div style={modalStyles.content}>
-              <div style={modalStyles.typeBadge}>
-                <span style={modalStyles.typeText}>
-                  {isBirthday ? 'BIRTHDAY' : recordLabels[selected.kind].toUpperCase()}
-                </span>
-              </div>
               <span style={modalStyles.title}>{selected.record.title}</span>
 
               {selected.kind === 'note' ? (
@@ -829,6 +824,7 @@ const modalStyles = {
     paddingBlock: 10,
     paddingInline: 14,
     marginTop: 16,
+    border: `1px solid ${colors.line}`,
   },
   secondaryActionText: {
     color: colors.ink,
