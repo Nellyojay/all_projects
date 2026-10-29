@@ -21,6 +21,7 @@ import type {
   TaskRecord,
 } from '../services/database';
 import { colors } from './theme';
+import { EventDetails, EventHeading } from './ui/event';
 
 export type SelectedRecord =
   | { kind: 'event'; record: EventRecord }
@@ -101,9 +102,6 @@ export function RecordDetailsModal({
   const database = useDatabase();
   const [checkedList, setCheckedList] = useState<ListRecord | null>(null);
   const [loanDraft, setLoanDraft] = useState<RecordDraft | null>(null);
-  const [eventBudgets, setEventBudgets] = useState<ListRecord[]>([]);
-  const [openEventBudgetId, setOpenEventBudgetId] = useState<number | null>(null);
-  const [loadingEventBudgets, setLoadingEventBudgets] = useState(false);
   const [editingNoteTitleId, setEditingNoteTitleId] = useState<number | null>(null);
   const [editingNoteBodyId, setEditingNoteBodyId] = useState<number | null>(null);
   const [noteTitle, setNoteTitle] = useState('');
@@ -115,8 +113,6 @@ export function RecordDetailsModal({
     setEditingNoteBodyId(null);
     setCheckedList(null);
     setLoanDraft(null);
-    setEventBudgets([]);
-    setOpenEventBudgetId(null);
     onClose();
   }, [onClose]);
 
@@ -162,32 +158,6 @@ export function RecordDetailsModal({
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [close, selected]);
-
-  const toggleEventBudgets = async (eventId: number) => {
-    if (openEventBudgetId === eventId) {
-      setOpenEventBudgetId(null);
-      return;
-    }
-    setOpenEventBudgetId(eventId);
-    setLoadingEventBudgets(true);
-    try {
-      const budgets = await database.getAllAsync<ListRecord>(
-        `SELECT lists.*, events.title AS event_title
-         FROM lists
-         LEFT JOIN events ON events.id = lists.event_id
-         WHERE lists.event_id = ? AND lists.budget_enabled = 1
-         ORDER BY lists.id DESC`,
-        eventId,
-      );
-      setEventBudgets(budgets);
-    } catch (error) {
-      console.error('Unable to load budgets for event', error);
-      setOpenEventBudgetId(null);
-      window.alert('Could not load budgets\n\nPlease try again.');
-    } finally {
-      setLoadingEventBudgets(false);
-    }
-  };
 
   const confirmDelete = () => {
     if (!selected) return;
@@ -273,8 +243,6 @@ export function RecordDetailsModal({
       });
   };
 
-  const event = selected?.kind === 'event' ? selected.record : null;
-  const isBirthday = event?.category.toLowerCase() === 'birthday';
   const editingNoteTitle = selected?.kind === 'note'
     && editingNoteTitleId === selected.record.id;
   const editingNoteBody = selected?.kind === 'note'
@@ -294,7 +262,9 @@ export function RecordDetailsModal({
                 <span style={modalStyles.headerAction}>Close</span>
               </button>
               <span style={modalStyles.headerTitle}>
-                {isBirthday ? 'Birthday' : recordLabels[selected.kind]}
+                {selected.kind === 'event'
+                  ? <EventHeading event={selected.record} />
+                  : recordLabels[selected.kind]}
               </span>
               <button onClick={confirmDelete} type="button" style={modalStyles.headerDelete}>
                 <span style={modalStyles.headerDeleteText}>Delete</span>
@@ -411,101 +381,11 @@ export function RecordDetailsModal({
               ) : null}
 
               {selected.kind === 'event' ? (
-                <>
-                  <div style={modalStyles.infoCard}>
-                    <span style={modalStyles.infoLabel}>{isBirthday ? 'BIRTHDAY DATE' : 'DATE'}</span>
-                    <span style={modalStyles.infoValue}>
-                      {new Date(`${selected.record.date}T12:00:00`).toLocaleDateString('en-GB', {
-                        weekday: 'long',
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                      })}
-                    </span>
-                    <span style={modalStyles.infoLabel}>{isBirthday ? 'PERSON' : 'EVENT TYPE'}</span>
-                    <span style={modalStyles.infoValue}>
-                      {isBirthday ? selected.record.title : selected.record.category}
-                    </span>
-                    {selected.record.budget_count > 0 ? (
-                      <button
-                        type="button" aria-expanded={openEventBudgetId === selected.record.id}
-                        onClick={() => void toggleEventBudgets(selected.record.id)}
-                        style={modalStyles.budgetedTag}
-                      >
-                        <span style={modalStyles.budgetedTagText}>
-                          BUDGETED{selected.record.budget_count > 1
-                            ? ` · ${selected.record.budget_count} BUDGETS`
-                            : ''}
-                        </span>
-                      </button>
-                    ) : null}
-                  </div>
-                  {openEventBudgetId === selected.record.id ? (
-                    <div style={modalStyles.eventBudgets}>
-                      <span style={modalStyles.eventBudgetsTitle}>ATTACHED BUDGETS</span>
-                      {loadingEventBudgets ? (
-                        <span style={modalStyles.eventBudgetMessage}>Loading budgets…</span>
-                      ) : eventBudgets.length ? eventBudgets.map((budget) => {
-                        const items: ListItem[] = JSON.parse(budget.items);
-                        const total = items.reduce(
-                          (sum, item) => sum +
-                            (Number(item.price) || 0) * (Number(item.quantity) || 1),
-                          0,
-                        );
-                        const checkedTotal = items.reduce(
-                          (sum, item) => sum + (item.done
-                            ? (Number(item.price) || 0) * (Number(item.quantity) || 1)
-                            : 0),
-                          0,
-                        );
-                        return (
-                          <div key={budget.id} style={modalStyles.eventBudgetCard}>
-                            <div style={modalStyles.eventBudgetHeading}>
-                              <span style={modalStyles.eventBudgetName}>{budget.title}</span>
-                              <span style={modalStyles.eventBudgetTotal}>
-                                UGX {formatAmount(total)}
-                              </span>
-                            </div>
-                            <span style={modalStyles.eventBudgetMessage}>
-                              {budget.finalized
-                                ? 'Finalized'
-                                : `${items.filter((item) => item.done).length} of ${items.length} checked`}
-                              {' · '}UGX {formatAmount(checkedTotal)} checked
-                            </span>
-                            {items.length ? items.map((item, index) => (
-                              <div
-                                key={`${budget.id}-item-${index}`}
-                                style={modalStyles.eventBudgetItem}
-                              >
-                                <span style={modalStyles.eventBudgetItemText}>
-                                  {item.done ? '✓  ' : '○  '}
-                                  {item.quantity > 1 ? `${item.quantity} × ` : ''}
-                                  {item.text}
-                                </span>
-                                <span style={modalStyles.eventBudgetItemPrice}>
-                                  UGX {formatAmount(
-                                    (Number(item.price) || 0) * (Number(item.quantity) || 1),
-                                  )}
-                                </span>
-                              </div>
-                            )) : (
-                              <span style={modalStyles.eventBudgetMessage}>No items added.</span>
-                            )}
-                          </div>
-                        );
-                      }) : (
-                        <span style={modalStyles.eventBudgetMessage}>
-                          No budget lists are currently attached to this event.
-                        </span>
-                      )}
-                    </div>
-                  ) : null}
-                  <span style={modalStyles.body}>
-                    {selected.record.notes || (isBirthday
-                      ? 'No birthday notes or gift ideas yet.'
-                      : 'No event notes yet.')}
-                  </span>
-                </>
+                <EventDetails
+                  event={selected.record}
+                  formatAmount={formatAmount}
+                  sharedStyles={modalStyles}
+                />
               ) : null}
 
               {selected.kind === 'list' ? (() => {
@@ -834,82 +714,6 @@ const modalStyles = {
     fontSize: 13,
     fontWeight: '600',
     marginTop: 5,
-  },
-  budgetedTag: {
-    alignSelf: 'flex-start',
-    minHeight: 34,
-    justifyContent: 'center',
-    paddingBlock: 7,
-    paddingInline: 10,
-    borderRadius: 6,
-    backgroundColor: colors.greenSoft,
-    marginTop: 14,
-  },
-  eventBudgets: {
-    backgroundColor: colors.surface,
-    borderRadius: 11,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: colors.line,
-    marginTop: 12,
-  },
-  eventBudgetsTitle: {
-    color: colors.muted,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    marginBottom: 10,
-  },
-  eventBudgetCard: {
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
-    paddingTop: 11,
-    marginTop: 4,
-  },
-  eventBudgetHeading: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  eventBudgetName: {
-    flex: 1,
-    color: colors.ink,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  eventBudgetTotal: {
-    color: colors.ink,
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  eventBudgetMessage: {
-    color: colors.muted,
-    fontSize: 9,
-    lineHeight: '16px',
-    marginTop: 5,
-  },
-  eventBudgetItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-    paddingTop: 8,
-  },
-  eventBudgetItemText: {
-    flex: 1,
-    color: colors.ink,
-    fontSize: 10,
-  },
-  eventBudgetItemPrice: {
-    color: colors.muted,
-    fontSize: 9,
-    fontWeight: '600',
-  },
-  budgetedTagText: {
-    color: colors.green,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.8,
   },
   listCard: {
     backgroundColor: colors.surface,
