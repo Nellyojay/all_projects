@@ -1,10 +1,10 @@
 
 export const colors = {
   background: '#000000',
-  surface: '#111111',
+  surface: '#202020b6',
   ink: '#F5F5F5',
   muted: '#A3A3A3',
-  line: '#292929',
+  line: '#323232',
   green: '#E5E5E5',
   greenSoft: '#303030',
   orange: '#B8B8B8',

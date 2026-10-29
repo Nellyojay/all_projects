@@ -375,7 +375,7 @@ const localStyles = {
     flexDirection: 'row',
     padding: 4,
     borderRadius: 10,
-    backgroundColor: '#252525',
+    backgroundColor: colors.surface,
     marginTop: 12,
     marginBottom: 12,
   },
@@ -386,7 +386,7 @@ const localStyles = {
     borderRadius: 7,
   },
   segmentActive: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
   },
   segmentText: {
     color: colors.muted,

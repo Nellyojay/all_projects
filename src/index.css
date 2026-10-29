@@ -20,6 +20,10 @@
   --color-border-strong: #404040;
 }
 
+.random {
+  background: #000000;
+}
+
 :root {
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   font-synthesis: none;
