@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
 import { RecordComposer } from '../../components/RecordComposer';
-import { ScreenHeader, SectionTitle } from '../../components/ScreenHeader';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { colors, styles } from '../../components/theme';
 import {
   deleteRecord,
@@ -137,7 +137,6 @@ export default function OrganizeScreen() {
     <div style={styles.screen}>
       <div style={styles.scrollContent}>
         <ScreenHeader title="Organize" subtitle="Your personal workspace" />
-        <SectionTitle title="MY WORKSPACE" />
         <div style={styles.panelGrid}>
           {[
             ['✎', 'Notes', `${notes.length} notes`],
@@ -357,7 +356,7 @@ const localStyles = {
     borderRadius: 7,
   },
   addText: {
-    color: colors.surface,
+    color: colors.background,
     fontWeight: '800',
     fontSize: 10,
   },

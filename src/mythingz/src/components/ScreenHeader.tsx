@@ -153,7 +153,6 @@ const styles = {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 24,
     marginBottom: 12,
   },
   sectionTitle: {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
 import { RecordComposer } from '../../components/RecordComposer';
@@ -17,6 +17,8 @@ import {
   type Transaction,
 } from '../../services/database';
 
+type FinanceSection = 'budgets' | 'loans' | 'transactions';
+
 const money = (value: number) =>
   `UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(value)}`;
 
@@ -24,6 +26,8 @@ export default function FinancesScreen() {
   const location = useLocation();
   const navigate = useNavigate();
   const database = useDatabase();
+  const [section, setSection] = useState<FinanceSection>('budgets');
+  const [query, setQuery] = useState('');
   const [composer, setComposer] = useState<RecordKind | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [budgetLists, setBudgetLists] = useState<ListRecord[]>([]);
@@ -125,15 +129,16 @@ export default function FinancesScreen() {
     });
     setComposer('loan-repayment');
   };
-  const quickActions: {
-    kind: 'income' | 'budget-list';
-    icon: string;
-    title: string;
-  }[] = [
-      { kind: 'income', icon: '+', title: 'Income' },
-      { kind: 'budget-list', icon: '☷', title: 'Budget list' },
-    ];
-
+  const filteredBudgetLists = useMemo(() => budgetLists.filter((list) =>
+    `${list.title} ${list.items} ${list.event_title ?? ''}`.toLowerCase().includes(query.toLowerCase()),
+  ), [budgetLists, query]);
+  const filteredLoans = useMemo(() => loans.filter((loan) =>
+    `${loan.lender} ${loan.notes ?? ''} ${loan.due_date ?? ''}`.toLowerCase().includes(query.toLowerCase()),
+  ), [loans, query]);
+  const filteredTransactions = useMemo(() => transactions.filter((transaction) =>
+    `${transaction.title} ${transaction.category} ${transaction.date} ${transaction.loan_id !== null ? 'loan proceeds' : ''}`
+      .toLowerCase().includes(query.toLowerCase()),
+  ), [transactions, query]);
   return (
     <div style={styles.screen}>
       <div style={styles.scrollContent}>
@@ -158,180 +163,210 @@ export default function FinancesScreen() {
             </div>
           </div>
         </div>
-        <SectionTitle title="QUICK ACTIONS" />
-        <div style={localStyles.quickRow}>
-          {quickActions.map((action) => (
+
+        <div style={localStyles.toolbar}>
+          <span style={localStyles.sectionHeading}>
+            YOUR {section === 'budgets' ? 'BUDGET LISTS' : section.toUpperCase()}
+          </span>
+          <button
+            type="button"
+            onClick={section === 'budgets'
+              ? addBudgetList
+              : section === 'loans'
+                ? addLoan
+                : () => setComposer('income')}
+            style={localStyles.addButton}
+          >
+            <span style={localStyles.addText}>
+              ＋ {section === 'budgets' ? 'Create Budget' : section === 'loans' ? 'Add loan' : 'Income'}
+            </span>
+          </button>
+        </div>
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.currentTarget.value)}
+          placeholder={`Search ${section === 'budgets' ? 'budget lists' : section}…`}
+          aria-label={`Search ${section === 'budgets' ? 'budget lists' : section}`}
+          style={localStyles.search}
+        />
+        <div style={localStyles.segmented}>
+          {([
+            ['budgets', 'Budget lists', ` (${budgetLists.length})`],
+            ['loans', 'Loans', ` (${loans.length})`],
+            ['transactions', 'Transactions'],
+          ] as const).map(([id, label, count]) => (
             <button
-              key={action.kind}
-              onClick={() => {
-                if (action.kind === 'budget-list') {
-                  addBudgetList();
-                } else {
-                  setComposer(action.kind);
-                }
-              }}
-              type="button" style={Object.assign({}, localStyles.quickButton, styles.panel)}
+              key={id}
+              type="button"
+              onClick={() => { setSection(id); setQuery(''); }}
+              style={Object.assign({}, localStyles.segment, section === id && localStyles.segmentActive)}
             >
-              <span style={localStyles.quickIcon}>{action.icon}</span>
-              <span style={localStyles.quickText}>{action.title}</span>
+              <span style={Object.assign({}, localStyles.segmentText, section === id && localStyles.segmentTextActive)}>
+                {label}{count ?? ''}
+              </span>
             </button>
           ))}
         </div>
-        <SectionTitle
-          title="BUDGET LISTS"
-          action="+ Add"
-          onAction={addBudgetList}
-        />
-        {budgetLists.length ? budgetLists.map((list) => {
-          const items: ListItem[] = JSON.parse(list.items);
-          const plannedTotal = items.reduce(
-            (total, item) => total + (Number(item.price) || 0) * (Number(item.quantity) || 1),
-            0,
-          );
-          const checkedTotal = items.reduce(
-            (total, item) => total + (item.done
-              ? (Number(item.price) || 0) * (Number(item.quantity) || 1)
-              : 0),
-            0,
-          );
-          return (
-            <button
-              key={list.id}
-              onClick={() => navigate(`/space/records/list/${list.id}`, { state: { from: location.pathname } })}
-              style={Object.assign({}, styles.panel, localStyles.budgetCard)}
-            >
-              <div style={localStyles.budgetHeading}>
-                <div>
-                  <span style={localStyles.title}>{list.title}</span>
-                  <span style={localStyles.secondary}>
-                    {items.length} {items.length === 1 ? 'item' : 'items'}
-                    {list.finalized ? ' · Finalized' : ' · In progress'}
-                  </span>
-                </div>
-                <span style={localStyles.amount}>{money(plannedTotal)}</span>
-              </div>
-              <span style={localStyles.secondary}>
-                {list.finalized
-                  ? `${money(checkedTotal)} recorded as expense`
-                  : `${money(checkedTotal)} checked · tap to review`}
-              </span>
-              {list.event_id !== null && list.event_title ? (
-                <span style={localStyles.eventTag}>
-                  EVENT · {list.event_title}
-                </span>
-              ) : null}
-            </button>
-          );
-        }) : (
-          <div style={Object.assign({}, styles.panel, localStyles.emptyCard)}>
-            <span style={localStyles.emptyTitle}>Plan expenses with a list</span>
-            <span style={localStyles.secondary}>
-              Add quantities and unit prices in a budget list, then finalize checked items to record the expense.
-            </span>
-          </div>
-        )}
-        <SectionTitle title="LOANS & DEBTS" action="+ Add loan" onAction={addLoan} />
-        {loans.length ? loans.map((loan) => {
-          const outstanding = Math.max(0, loan.principal + loan.fees - loan.repaid);
-          return (
-            <div key={loan.id} style={Object.assign({}, styles.panel, localStyles.budgetCard)}>
-              <div style={localStyles.budgetHeading}>
-                <div style={localStyles.transactionInfo}>
-                  <span style={localStyles.title}>{loan.lender}</span>
-                  <span style={localStyles.secondary}>
-                    Principal {money(loan.principal)} · fees {money(loan.fees)}
-                  </span>
-                  {loan.due_date ? (
-                    <span style={localStyles.secondary}>Due {loan.due_date}</span>
-                  ) : null}
-                </div>
-                <span style={localStyles.amount}>{money(outstanding)} due</span>
-              </div>
-              {loan.notes ? <span style={localStyles.secondary}>{loan.notes}</span> : null}
-              {outstanding > 0 ? (
+        {section === 'budgets' ? (
+          <>
+            {filteredBudgetLists.length ? filteredBudgetLists.map((list) => {
+              const items: ListItem[] = JSON.parse(list.items);
+              const plannedTotal = items.reduce(
+                (total, item) => total + (Number(item.price) || 0) * (Number(item.quantity) || 1),
+                0,
+              );
+              const checkedTotal = items.reduce(
+                (total, item) => total + (item.done
+                  ? (Number(item.price) || 0) * (Number(item.quantity) || 1)
+                  : 0),
+                0,
+              );
+              return (
                 <button
-                  type="button" onClick={() => repayLoan(loan)}
-                  style={localStyles.repayButton}
+                  key={list.id}
+                  onClick={() => navigate(`/space/records/list/${list.id}`, { state: { from: location.pathname } })}
+                  style={Object.assign({}, styles.panel, localStyles.budgetCard)}
                 >
-                  <span style={localStyles.repayButtonText}>Record repayment</span>
+                  <div style={localStyles.budgetHeading}>
+                    <div>
+                      <span style={localStyles.title}>{list.title}</span>
+                      <span style={localStyles.secondary}>
+                        {items.length} {items.length === 1 ? 'item' : 'items'}
+                        {list.finalized ? ' · Finalized' : ' · In progress'}
+                      </span>
+                    </div>
+                    <span style={localStyles.amount}>{money(plannedTotal)}</span>
+                  </div>
+                  <span style={localStyles.secondary}>
+                    {list.finalized
+                      ? `${money(checkedTotal)} recorded as expense`
+                      : `${money(checkedTotal)} checked · tap to review`}
+                  </span>
+                  {list.event_id !== null && list.event_title ? (
+                    <span style={localStyles.eventTag}>
+                      EVENT · {list.event_title}
+                    </span>
+                  ) : null}
                 </button>
-              ) : (
-                <span style={localStyles.secondary}>Paid in full</span>
+              );
+            }) : (
+              <div style={Object.assign({}, styles.panel, localStyles.emptyCard)}>
+                <span style={localStyles.emptyTitle}>Plan expenses with a list</span>
+                <span style={localStyles.secondary}>
+                  Add quantities and unit prices in a budget list, then finalize checked items to record the expense.
+                </span>
+              </div>
+            )}
+          </>
+        ) : null}
+        {section === 'loans' ? (
+          <>
+            {filteredLoans.length ? filteredLoans.map((loan) => {
+              const outstanding = Math.max(0, loan.principal + loan.fees - loan.repaid);
+              return (
+                <div key={loan.id} style={Object.assign({}, styles.panel, localStyles.budgetCard)}>
+                  <div style={localStyles.budgetHeading}>
+                    <div style={localStyles.transactionInfo}>
+                      <span style={localStyles.title}>{loan.lender}</span>
+                      <span style={localStyles.secondary}>
+                        Principal {money(loan.principal)} · fees {money(loan.fees)}
+                      </span>
+                      {loan.due_date ? (
+                        <span style={localStyles.secondary}>Due {loan.due_date}</span>
+                      ) : null}
+                    </div>
+                    <span style={localStyles.amount}>{money(outstanding)} due</span>
+                  </div>
+                  {loan.notes ? <span style={localStyles.secondary}>{loan.notes}</span> : null}
+                  {outstanding > 0 ? (
+                    <button
+                      type="button" onClick={() => repayLoan(loan)}
+                      style={localStyles.repayButton}
+                    >
+                      <span style={localStyles.repayButtonText}>Record repayment</span>
+                    </button>
+                  ) : (
+                    <span style={localStyles.secondary}>Paid in full</span>
+                  )}
+                </div>
+              );
+            }) : (
+              <div style={Object.assign({}, styles.panel, localStyles.emptyCard)}>
+                <span style={localStyles.emptyTitle}>No loans recorded</span>
+                <span style={localStyles.secondary}>
+                  Add a loan to include its unspent proceeds in your available balance.
+                </span>
+              </div>
+            )}
+          </>
+        ) : null}
+        {section === 'transactions' ? (
+          <>
+            <div style={styles.panel}>
+              {filteredTransactions.length ? filteredTransactions.map((transaction) => (
+                <button
+                  key={transaction.id}
+                  onClick={() => {
+                    if (transaction.kind === 'income' && transaction.loan_id === null) {
+                      setEditingRecord({
+                        kind: 'income', draft: {
+                          id: transaction.id, title: transaction.title, category: transaction.category,
+                          amount: transaction.amount, date: transaction.date, notes: transaction.notes,
+                        }
+                      });
+                      setComposer('income');
+                      return;
+                    }
+                    if (transaction.loan_id !== null) return;
+                    const sourceList = budgetLists.find(
+                      (list) => list.final_transaction_id === transaction.id,
+                    );
+                    if (sourceList) {
+                      navigate(`/space/records/list/${sourceList.id}`, { state: { from: location.pathname } });
+                    }
+                  }}
+                  onContextMenu={transaction.kind === 'income' && transaction.loan_id === null
+                    ? (pointerEvent) => {
+                      pointerEvent.preventDefault();
+                      removeIncome(transaction.id, transaction.title);
+                    }
+                    : undefined}
+                  style={localStyles.transaction}
+                >
+                  <div style={Object.assign({},
+                    localStyles.transactionIcon,
+                    transaction.kind === 'income' && transaction.loan_id === null && localStyles.incomeIcon,
+                  )}>
+                    <span style={{
+                      color: transaction.kind === 'income' && transaction.loan_id === null
+                        ? colors.green
+                        : colors.orange,
+                    }}>
+                      {transaction.kind === 'expense' ? '↙' : transaction.loan_id !== null ? '↔' : '↗'}
+                    </span>
+                  </div>
+                  <div style={localStyles.transactionInfo}>
+                    <span style={localStyles.title}>{transaction.title}</span>
+                    <span style={localStyles.secondary}>
+                      {transaction.loan_id !== null ? 'Loan proceeds' : transaction.category}
+                      {' · '}{transaction.date}
+                    </span>
+                  </div>
+                  <span style={Object.assign({},
+                    localStyles.amount,
+                    transaction.kind === 'income' && transaction.loan_id === null && localStyles.income,
+                  )}>
+                    {transaction.kind === 'income' ? '+' : '−'}{money(transaction.amount)}
+                  </span>
+                </button>
+              )) : (
+                <span style={localStyles.secondary}>
+                  Add income or finalize a budget list to see transactions here.
+                </span>
               )}
             </div>
-          );
-        }) : (
-          <div style={Object.assign({}, styles.panel, localStyles.emptyCard)}>
-            <span style={localStyles.emptyTitle}>No loans recorded</span>
-            <span style={localStyles.secondary}>
-              Add a loan to include its unspent proceeds in your available balance.
-            </span>
-          </div>
-        )}
-        <SectionTitle title="RECENT TRANSACTIONS" />
-        <div style={styles.panel}>
-          {transactions.length ? transactions.map((transaction) => (
-            <button
-              key={transaction.id}
-              onClick={() => {
-                if (transaction.kind === 'income' && transaction.loan_id === null) {
-                  setEditingRecord({
-                    kind: 'income', draft: {
-                      id: transaction.id, title: transaction.title, category: transaction.category,
-                      amount: transaction.amount, date: transaction.date, notes: transaction.notes,
-                    }
-                  });
-                  setComposer('income');
-                  return;
-                }
-                if (transaction.loan_id !== null) return;
-                const sourceList = budgetLists.find(
-                  (list) => list.final_transaction_id === transaction.id,
-                );
-                if (sourceList) {
-                  navigate(`/space/records/list/${sourceList.id}`, { state: { from: location.pathname } });
-                }
-              }}
-              onContextMenu={transaction.kind === 'income' && transaction.loan_id === null
-                ? (pointerEvent) => {
-                  pointerEvent.preventDefault();
-                  removeIncome(transaction.id, transaction.title);
-                }
-                : undefined}
-              style={localStyles.transaction}
-            >
-              <div style={Object.assign({},
-                localStyles.transactionIcon,
-                transaction.kind === 'income' && transaction.loan_id === null && localStyles.incomeIcon,
-              )}>
-                <span style={{
-                  color: transaction.kind === 'income' && transaction.loan_id === null
-                    ? colors.green
-                    : colors.orange,
-                }}>
-                  {transaction.kind === 'expense' ? '↙' : transaction.loan_id !== null ? '↔' : '↗'}
-                </span>
-              </div>
-              <div style={localStyles.transactionInfo}>
-                <span style={localStyles.title}>{transaction.title}</span>
-                <span style={localStyles.secondary}>
-                  {transaction.loan_id !== null ? 'Loan proceeds' : transaction.category}
-                  {' · '}{transaction.date}
-                </span>
-              </div>
-              <span style={Object.assign({},
-                localStyles.amount,
-                transaction.kind === 'income' && transaction.loan_id === null && localStyles.income,
-              )}>
-                {transaction.kind === 'income' ? '+' : '−'}{money(transaction.amount)}
-              </span>
-            </button>
-          )) : (
-            <span style={localStyles.secondary}>
-              Add income or finalize a budget list to see transactions here.
-            </span>
-          )}
-        </div>
+          </>
+        ) : null}
         <SectionTitle title="MORE FINANCE TOOLS" />
         <div style={localStyles.moduleGrid}>
           {[
@@ -408,28 +443,92 @@ const localStyles = {
     fontWeight: '700',
     marginTop: 7,
   },
-  quickRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  quickButton: {
+  workspaceCard: {
     flex: 1,
-    minHeight: 66,
-    alignItems: 'center',
+    minWidth: 100,
+    maxWidth: 120,
+    flexDirection: 'column',
     justifyContent: 'center',
-    gap: 4,
-    borderRadius: 11,
+    alignItems: 'center',
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
     border: `1px solid ${colors.line}`,
+    borderWidth: 1,
   },
-  quickIcon: {
+  workspaceIcon: {
     color: colors.green,
-    fontSize: 18,
+    fontSize: 17,
+    marginBottom: 7,
+  },
+  workspaceTitle: {
+    color: colors.ink,
+    fontSize: 12,
     fontWeight: '800',
   },
-  quickText: {
+  workspaceCount: {
+    color: colors.muted,
+    fontSize: 9,
+    marginTop: 3,
+  },
+  toolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    marginBottom: 10,
+  },
+  sectionHeading: {
     color: colors.ink,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.7,
+  },
+  addButton: {
+    backgroundColor: colors.green,
+    paddingBlock: 8,
+    paddingInline: 12,
+    borderRadius: 7,
+  },
+  addText: {
+    color: colors.background,
+    fontWeight: '800',
+    fontSize: 10,
+  },
+  search: {
+    height: 45,
+    borderRadius: 10,
+    borderColor: colors.line,
+    borderWidth: 1,
+    backgroundColor: colors.surface,
+    paddingInline: 14,
+    color: colors.ink,
+    fontSize: 12,
+  },
+  segmented: {
+    flexDirection: 'row',
+    padding: 4,
+    borderRadius: 10,
+    backgroundColor: colors.surface,
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  segment: {
+    flex: 1,
+    alignItems: 'center',
+    paddingBlock: 9,
+    borderRadius: 7,
+  },
+  segmentActive: {
+    backgroundColor: colors.background,
+  },
+  segmentText: {
+    color: colors.muted,
     fontSize: 10,
     fontWeight: '700',
+  },
+  segmentTextActive: {
+    color: colors.ink,
   },
   budgetCard: {
     marginBottom: 10,
