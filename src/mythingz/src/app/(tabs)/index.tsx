@@ -18,6 +18,7 @@ import {
   type TaskRecord,
   type Transaction,
 } from '../../services/database';
+import { NoteCard } from '../../components/ui/note';
 
 const formatMoney = (amount: number) =>
   `UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(amount)}`;
@@ -182,27 +183,14 @@ export default function HomeScreen() {
             />
           )) : <span style={localStyles.muted}>Your upcoming events will appear here.</span>}
         </div>
+
         <SectionTitle title="RECENT NOTES" action="Open organize →" onAction={() => navigate('/space/organize')} />
-        <div style={styles.panel}>
+        <div style={styles.panelGrid}>
           {notes.length ? notes.map((note) => (
-            <button
-              key={note.id}
-              onClick={() => navigate(`/space/records/note/${note.id}`, { state: { from: location.pathname } })}
-              onContextMenu={(pointerEvent) => {
-                pointerEvent.preventDefault();
-                confirmDelete(note.id, note.title);
-              }}
-            >
-              <div style={localStyles.previewRow}>
-                <span style={localStyles.noteIcon}>✎</span>
-                <div style={localStyles.previewText}>
-                  <span style={localStyles.recordTitle}>{note.title}</span>
-                  <span style={localStyles.muted}>{note.notes || 'No note text yet'}</span>
-                </div>
-              </div>
-            </button>
+            <NoteCard key={note.id} note={note} />
           )) : <span style={localStyles.muted}>Your recently updated notes will appear here.</span>}
         </div>
+
         <SectionTitle title="RECENT TRANSACTIONS" />
         <div style={styles.panel}>
           {transactions.length ? transactions.map((transaction) => (

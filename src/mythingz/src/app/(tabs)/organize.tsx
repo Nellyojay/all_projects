@@ -15,8 +15,9 @@ import {
   type RecordKind,
   type TaskRecord,
 } from '../../services/database';
+import { NoteCard } from '../../components/ui/note';
 
-type Section = 'Notes' | 'Tasks' | 'Lists';
+export type Section = 'Notes' | 'Tasks' | 'Lists';
 const sectionKinds: Record<Section, RecordKind> = { Notes: 'note', Tasks: 'task', Lists: 'list' };
 
 export default function OrganizeScreen() {
@@ -203,21 +204,7 @@ export default function OrganizeScreen() {
         <div style={styles.panelGrid}>
           {section === 'Notes' ? (
             filteredNotes.length ? filteredNotes.map((note) => (
-              <button
-                key={note.id}
-                onClick={() => navigate(`/space/records/note/${note.id}`, { state: { from: location.pathname } })}
-                onContextMenu={(pointerEvent) => {
-                  pointerEvent.preventDefault();
-                  remove('notes', note.id, note.title);
-                }}
-                style={Object.assign({}, styles.panel, localStyles.recordCard)}
-              >
-                <div style={localStyles.cardHeading}>
-                  <span style={localStyles.recordTitle}>{note.title}</span>
-                </div>
-                <span style={localStyles.bodyText}>{note.notes.slice(0, 25) + (note.notes.length > 25 ? '...' : '') || 'An empty note'}</span>
-                <span style={localStyles.hint}>Tap to view · hold to delete</span>
-              </button>
+              <NoteCard key={note.id} note={note} remove={remove} />
             )) : <EmptyPanel title="No notes yet" detail="Capture an idea, reminder, or plan." />
           ) : null}
         </div>
@@ -408,11 +395,6 @@ const localStyles = {
   },
   segmentTextActive: {
     color: colors.ink,
-  },
-  cardHeading: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
   recordCard: {
     display: 'flex',
