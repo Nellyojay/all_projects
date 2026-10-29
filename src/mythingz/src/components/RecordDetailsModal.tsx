@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../web/DatabaseProvider';
-import { MAX_TITLE_LENGTH, RecordComposer } from './RecordComposer';
+import { RecordComposer } from './RecordComposer';
 import {
   deleteRecord,
   finalizeBudgetList,
@@ -22,6 +22,7 @@ import type {
 } from '../services/database';
 import { colors } from './theme';
 import { EventDetails, EventHeading } from './ui/event';
+import { NoteDetails } from './ui/note';
 
 export type SelectedRecord =
   | { kind: 'event'; record: EventRecord }
@@ -102,53 +103,12 @@ export function RecordDetailsModal({
   const database = useDatabase();
   const [checkedList, setCheckedList] = useState<ListRecord | null>(null);
   const [loanDraft, setLoanDraft] = useState<RecordDraft | null>(null);
-  const [editingNoteTitleId, setEditingNoteTitleId] = useState<number | null>(null);
-  const [editingNoteBodyId, setEditingNoteBodyId] = useState<number | null>(null);
-  const [noteTitle, setNoteTitle] = useState('');
-  const [noteBody, setNoteBody] = useState('');
-  const [savingNote, setSavingNote] = useState(false);
 
   const close = useCallback(() => {
-    setEditingNoteTitleId(null);
-    setEditingNoteBodyId(null);
     setCheckedList(null);
     setLoanDraft(null);
     onClose();
   }, [onClose]);
-
-  const cancelNoteEdit = () => {
-    setEditingNoteTitleId(null);
-    setEditingNoteBodyId(null);
-  };
-
-  const saveNoteEdit = async () => {
-    if (selected?.kind !== 'note') return;
-    const editingTitle = editingNoteTitleId === selected.record.id;
-    const editingBody = editingNoteBodyId === selected.record.id;
-    const titleToSave = editingTitle ? noteTitle : selected.record.title;
-    if (!titleToSave.trim()) {
-      window.alert('Add a title\n\nEnter a name before saving.');
-      return;
-    }
-
-    setSavingNote(true);
-    try {
-      await saveRecord(database, 'note', {
-        id: selected.record.id,
-        title: titleToSave,
-        category: selected.record.category,
-        notes: editingBody ? noteBody : selected.record.notes,
-      });
-      setEditingNoteTitleId(null);
-      setEditingNoteBodyId(null);
-      await onChanged();
-    } catch (error) {
-      console.error('Unable to update note', error);
-      window.alert('Could not update note\n\nPlease try again.');
-    } finally {
-      setSavingNote(false);
-    }
-  };
 
   useEffect(() => {
     if (!selected) return;
@@ -243,11 +203,6 @@ export function RecordDetailsModal({
       });
   };
 
-  const editingNoteTitle = selected?.kind === 'note'
-    && editingNoteTitleId === selected.record.id;
-  const editingNoteBody = selected?.kind === 'note'
-    && editingNoteBodyId === selected.record.id;
-
   return (
     <>
       {selected ? (
@@ -273,89 +228,13 @@ export function RecordDetailsModal({
 
             <div style={modalStyles.content}>
               {selected.kind === 'note' ? (
-                <div style={modalStyles.titleRow}>
-                  {editingNoteTitle ? (
-                    <input
-                      autoFocus
-                      maxLength={MAX_TITLE_LENGTH}
-                      value={noteTitle}
-                      onChange={(event) => setNoteTitle(event.currentTarget.value)}
-                      aria-label="Note title"
-                      style={Object.assign({}, modalStyles.title, modalStyles.titleInRow, modalStyles.titleInput)}
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setNoteTitle(selected.record.title);
-                        setEditingNoteTitleId(selected.record.id);
-                      }}
-                      aria-label="Edit note title"
-                      style={Object.assign({}, modalStyles.title, modalStyles.titleInRow, modalStyles.editableText)}
-                    >
-                      {selected.record.title}
-                    </button>
-                  )}
-                  <span style={modalStyles.updated}>
-                    Updated {new Date(selected.record.updated_at).toLocaleDateString('en-GB', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                    })}
-                  </span>
-                </div>
+                <NoteDetails
+                  note={selected.record}
+                  onChanged={onChanged}
+                />
               ) : (
                 <span style={modalStyles.title}>{selected.record.title}</span>
               )}
-
-              {selected.kind === 'note' ? (
-                <>
-                  <span style={modalStyles.meta}>{selected.record.category}</span>
-                  {editingNoteBody ? (
-                    <textarea
-                      autoFocus
-                      value={noteBody}
-                      onChange={(event) => setNoteBody(event.currentTarget.value)}
-                      aria-label="Note body"
-                      placeholder="This note is empty."
-                      style={Object.assign({}, modalStyles.body, modalStyles.bodyInput)}
-                      rows={20}
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setNoteBody(selected.record.notes);
-                        setEditingNoteBodyId(selected.record.id);
-                      }}
-                      aria-label="Edit note body"
-                      style={Object.assign({}, modalStyles.body, modalStyles.editableText)}
-                    >
-                      {selected.record.notes || 'This note is empty.'}
-                    </button>
-                  )}
-                  {editingNoteTitle || editingNoteBody ? (
-                    <div style={modalStyles.noteEditActions}>
-                      <button
-                        type="button"
-                        disabled={savingNote}
-                        onClick={cancelNoteEdit}
-                        style={modalStyles.noteCancelButton}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        disabled={savingNote}
-                        onClick={() => void saveNoteEdit()}
-                        style={modalStyles.noteSaveButton}
-                      >
-                        {savingNote ? 'Saving…' : 'Save changes'}
-                      </button>
-                    </div>
-                  ) : null}
-                </>
-              ) : null}
 
               {selected.kind === 'task' ? (
                 <>
@@ -603,80 +482,6 @@ const modalStyles = {
     fontWeight: '800',
     marginBottom: 8,
   },
-  titleRow: {
-    position: 'sticky',
-    top: 0,
-    paddingBlock: 8,
-    zIndex: 1,
-    backgroundColor: colors.background,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 12,
-  },
-  titleInRow: {
-    flex: 1,
-    minWidth: 0,
-    marginBottom: 0,
-  },
-  titleInput: {
-    outline: 'none',
-  },
-  editableText: {
-    display: 'block',
-    width: '100%',
-    border: 0,
-    padding: 0,
-    backgroundColor: 'transparent',
-    fontFamily: 'inherit',
-    textAlign: 'left',
-    whiteSpace: 'pre-wrap',
-  },
-  bodyInput: {
-    width: '100%',
-    outline: 'none',
-    fontFamily: 'inherit',
-    resize: 'vertical',
-  },
-  noteEditActions: {
-    position: 'sticky',
-    bottom: 0,
-    display: 'flex',
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 16,
-    paddingBlock: 12,
-    backgroundColor: colors.background,
-    zIndex: 1,
-  },
-  noteCancelButton: {
-    flex: 1,
-    minHeight: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingInline: 14,
-    border: `1px solid ${colors.line}`,
-    borderRadius: 7,
-    backgroundColor: colors.surface,
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  noteSaveButton: {
-    flex: 1,
-    minHeight: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingInline: 14,
-    border: 0,
-    borderRadius: 7,
-    backgroundColor: colors.green,
-    color: colors.surface,
-    fontSize: 11,
-    fontWeight: '700',
-  },
   meta: {
     color: colors.muted,
     fontSize: 11,
@@ -687,12 +492,6 @@ const modalStyles = {
     fontSize: 13,
     lineHeight: '23px',
     marginTop: 14,
-  },
-  updated: {
-    color: colors.muted,
-    fontSize: 9,
-    textAlign: 'right',
-    flexShrink: 0,
   },
   infoCard: {
     backgroundColor: colors.surface,
