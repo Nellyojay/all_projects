@@ -28,8 +28,6 @@ export const styles = {
     backgroundColor: colors.surface,
     borderRadius: 8,
     padding: 12,
-    borderWidth: 1,
-    border: `1px solid ${colors.line}`,
     marginBottom: 8,
   },
   panelGrid: {

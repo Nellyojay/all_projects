@@ -498,8 +498,6 @@ const localStyles = {
   search: {
     height: 45,
     borderRadius: 10,
-    borderColor: colors.line,
-    borderWidth: 1,
     backgroundColor: colors.surface,
     paddingInline: 14,
     color: colors.ink,
