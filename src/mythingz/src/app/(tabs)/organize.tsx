@@ -375,6 +375,7 @@ const localStyles = {
     padding: 4,
     borderRadius: 10,
     backgroundColor: colors.surface,
+    border: `1px solid ${colors.line}`,
   },
   segment: {
     flex: 1,

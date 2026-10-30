@@ -1,7 +1,7 @@
 
 export const colors = {
   background: '#000000',
-  surface: '#202020b6',
+  surface: '#202020d2',
   ink: '#F5F5F5',
   muted: '#A3A3A3',
   line: '#323232',

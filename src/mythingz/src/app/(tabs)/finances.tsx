@@ -26,7 +26,7 @@ export default function FinancesScreen() {
   const location = useLocation();
   const navigate = useNavigate();
   const database = useDatabase();
-  const [section, setSection] = useState<FinanceSection>('budgets');
+  const [section, setSection] = useState<FinanceSection>('transactions');
   const [query, setQuery] = useState('');
   const [composer, setComposer] = useState<RecordKind | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -510,6 +510,7 @@ const localStyles = {
     padding: 4,
     borderRadius: 10,
     backgroundColor: colors.surface,
+    border: `1px solid ${colors.line}`,
   },
   segment: {
     flex: 1,

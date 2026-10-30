@@ -16,9 +16,9 @@ export const INCOME_CATEGORIES = [
   'Gift',
   'Donation',
   'Contribution',
-  'Business',
   'Commission',
   'Bonus',
+  'Balance b/f'
 ] as const;
 
 export type RecordDraft = {
