@@ -4,6 +4,7 @@ import FinancesScreen from './mythingz/src/app/(tabs)/finances';
 import HomeScreen from './mythingz/src/app/(tabs)/index';
 import OrganizeScreen from './mythingz/src/app/(tabs)/organize';
 import RecordDetailsRoute from './mythingz/src/components/RecordDetailsRoute';
+import { CreateAccountPage } from './mythingz/src/components/ui/account';
 import SettingsScreen from './mythingz/src/app/settings';
 import { DatabaseProvider } from './mythingz/src/web/DatabaseProvider';
 import Intro from './components/intro';
@@ -109,6 +110,7 @@ const router = createHashRouter([
     children: [
       { index: true, Component: HomeScreen },
       { path: 'finances', Component: FinancesScreen },
+      { path: 'finances/accounts/new', Component: CreateAccountPage },
       { path: 'calendar', Component: CalendarScreen },
       { path: 'organize', Component: OrganizeScreen },
       { path: 'settings', Component: SettingsScreen },

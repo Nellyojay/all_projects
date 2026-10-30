@@ -4,13 +4,16 @@ import { useDatabase } from '../web/DatabaseProvider';
 import {
   INCOME_CATEGORIES,
   InsufficientBalanceError,
+  getAccounts,
   localDateKey,
   type EventRecord,
+  type Account,
   type ListItem,
   type RecordDraft,
   type RecordKind,
 } from '../services/database';
 import { colors, styles } from './theme';
+import { AccountPicker } from './ui/account';
 
 export const MAX_TITLE_LENGTH = 32;
 
@@ -18,6 +21,7 @@ const titles: Record<RecordKind, string> = {
   income: 'Add income',
   loan: 'Add loan',
   'loan-repayment': 'Record loan repayment',
+  transfer: 'Transfer between accounts',
   event: 'New event',
   task: 'New task',
   note: 'New note',
@@ -28,6 +32,7 @@ const categoryHints: Record<RecordKind, string> = {
   income: 'Salary, business…',
   loan: 'Lender or source',
   'loan-repayment': 'Loan repayment',
+  transfer: 'Transfer',
   event: 'Appointment, birthday…',
   task: 'High, normal, low priority',
   note: 'Personal, work…',
@@ -85,6 +90,10 @@ export function RecordComposer({
     setCategorySelection({ kind, draft: initialDraft, value });
   };
   const [amount, setAmount] = useState(initialDraft?.amount?.toString() ?? '');
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accountId, setAccountId] = useState<number | null>(initialDraft?.accountId ?? null);
+  const [fromAccountId, setFromAccountId] = useState<number | null>(initialDraft?.fromAccountId ?? null);
+  const [toAccountId, setToAccountId] = useState<number | null>(initialDraft?.toAccountId ?? null);
   const [date, setDate] = useState(initialDraft?.date || defaultDate || localDateKey());
   const [fees, setFees] = useState(initialDraft?.fees?.toString() ?? '');
   const [dueDate, setDueDate] = useState(initialDraft?.dueDate ?? '');
@@ -111,6 +120,25 @@ export function RecordComposer({
   });
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (!kind || !['income', 'loan', 'loan-repayment', 'transfer'].includes(kind)) return;
+    let active = true;
+    void getAccounts(database)
+      .then((rows) => {
+        if (!active) return;
+        setAccounts(rows);
+        const defaultId = rows[0]?.id ?? null;
+        setAccountId((current) => current ?? defaultId);
+        setFromAccountId((current) => current ?? defaultId);
+        setToAccountId((current) => current ?? rows.find((account) => account.id !== defaultId)?.id ?? null);
+      })
+      .catch((error: unknown) => {
+        console.error('Unable to load accounts for finance record', error);
+        window.alert('Could not load accounts\n\nPlease try again.');
+      });
+    return () => { active = false; };
+  }, [database, kind]);
+
   const close = useCallback(() => {
     if (historyEntryId.current) {
       historyEntryId.current = null;
@@ -126,6 +154,9 @@ export function RecordComposer({
       value: kind === 'income' ? INCOME_CATEGORIES[0] : '',
     });
     setAmount('');
+    setAccountId(null);
+    setFromAccountId(null);
+    setToAccountId(null);
     setDate(defaultDate || localDateKey());
     setFees('');
     setDueDate('');
@@ -187,13 +218,21 @@ export function RecordComposer({
   const submit = async () => {
     if (!kind) return;
     const parsedAmount = Number(amount.replace(/,/g, ''));
-    if (!title.trim()) {
+    if (!title.trim() && kind !== 'transfer') {
       window.alert(`${kind === 'loan' ? 'Add a lender' : 'Add a title'}\n\n${kind === 'loan' ? 'Enter the lender or loan source.' : 'Enter a name before saving.'}`);
       return;
     }
-    if ((kind === 'income' || kind === 'loan' || kind === 'loan-repayment') &&
+    if ((kind === 'income' || kind === 'loan' || kind === 'loan-repayment' || kind === 'transfer') &&
       (!Number.isFinite(parsedAmount) || parsedAmount <= 0)) {
       window.alert('Check the amount\n\nEnter an amount greater than zero.');
+      return;
+    }
+    if ((kind === 'income' || kind === 'loan' || kind === 'loan-repayment') && !accountId) {
+      window.alert('Choose an account\n\nSelect the account for this transaction.');
+      return;
+    }
+    if (kind === 'transfer' && (!fromAccountId || !toAccountId || fromAccountId === toAccountId)) {
+      window.alert('Choose accounts\n\nSelect two different accounts for this transfer.');
       return;
     }
     const parsedFees = fees.trim() ? Number(fees.replace(/,/g, '')) : 0;
@@ -220,7 +259,7 @@ export function RecordComposer({
       return;
     }
     const parsedDate = new Date(`${date}T12:00:00`);
-    if ((kind === 'event' || kind === 'task' || kind === 'income') &&
+    if ((kind === 'event' || kind === 'task' || kind === 'income' || kind === 'loan-repayment' || kind === 'transfer') &&
       (!/^\d{4}-\d{2}-\d{2}$/.test(date) || localDateKey(parsedDate) !== date)) {
       window.alert('Check the date\n\nUse the YYYY-MM-DD date format.');
       return;
@@ -237,7 +276,7 @@ export function RecordComposer({
     try {
       await onSave(kind, {
         id: initialDraft?.id,
-        title,
+        title: title || 'Transfer',
         category: category || (kind === 'task' ? 'Normal' : 'Personal'),
         amount: parsedAmount,
         date,
@@ -245,6 +284,11 @@ export function RecordComposer({
         fees: kind === 'loan' ? parsedFees : undefined,
         dueDate: kind === 'loan' ? dueDate : undefined,
         loanId: kind === 'loan-repayment' ? initialDraft?.loanId : undefined,
+        accountId: kind === 'income' || kind === 'loan' || kind === 'loan-repayment'
+          ? accountId ?? undefined
+          : undefined,
+        fromAccountId: kind === 'transfer' ? fromAccountId ?? undefined : undefined,
+        toAccountId: kind === 'transfer' ? toAccountId ?? undefined : undefined,
         budgetEnabled: kind === 'list' ? budgetEnabled : undefined,
         eventId: kind === 'list' ? eventId : undefined,
         listItems: kind === 'list' ? parsedListItems : undefined,
@@ -316,7 +360,7 @@ export function RecordComposer({
                 style={layoutStyles.noteCategory}
               />
             </>
-          ) : (
+          ) : kind === 'transfer' ? null : (
             <>
               <span style={layoutStyles.label}>
                 {kind === 'loan' ? 'LENDER / SOURCE' : kind === 'loan-repayment' ? 'PAYMENT' : 'TITLE'}
@@ -331,7 +375,7 @@ export function RecordComposer({
               />
             </>
           )}
-          {kind === 'income' || kind === 'loan' || kind === 'loan-repayment' ? (
+          {kind === 'income' || kind === 'loan' || kind === 'loan-repayment' || kind === 'transfer' ? (
             <>
               <span style={layoutStyles.label}>
                 {kind === 'loan'
@@ -343,6 +387,35 @@ export function RecordComposer({
                 onChange={(event) => setAmount(event.currentTarget.value)}
                 placeholder="0" inputMode="decimal" readOnly={amountLocked}
                 style={layoutStyles.input}
+              />
+            </>
+          ) : null}
+          {kind === 'income' || kind === 'loan' || kind === 'loan-repayment' ? (
+            <AccountPicker
+              accounts={accounts}
+              value={accountId}
+              onChange={setAccountId}
+              label={kind === 'income' || kind === 'loan' ? 'RECEIVED INTO · ACCOUNT' : 'PAID FROM · ACCOUNT'}
+            />
+          ) : null}
+          {kind === 'transfer' ? (
+            <>
+              <AccountPicker
+                accounts={accounts}
+                value={fromAccountId}
+                onChange={(id) => {
+                  setFromAccountId(id);
+                  if (id === toAccountId) {
+                    setToAccountId(accounts.find((account) => account.id !== id)?.id ?? null);
+                  }
+                }}
+                label="FROM ACCOUNT"
+              />
+              <AccountPicker
+                accounts={accounts.filter((account) => account.id !== fromAccountId)}
+                value={toAccountId}
+                onChange={setToAccountId}
+                label="TO ACCOUNT"
               />
             </>
           ) : null}
@@ -383,7 +456,8 @@ export function RecordComposer({
                 ))}
               </div>
             </>
-          ) : kind !== 'list' && kind !== 'loan' && kind !== 'loan-repayment' && kind !== 'note' ? (
+          ) : kind !== 'list' && kind !== 'loan' && kind !== 'loan-repayment' &&
+            kind !== 'transfer' && kind !== 'note' ? (
             <>
               <span style={layoutStyles.label}>
                 {kind === 'task' ? 'PRIORITY' : kind === 'event' ? 'EVENT TYPE' : 'CATEGORY'}
@@ -397,7 +471,7 @@ export function RecordComposer({
             </>
           ) : null}
           {kind === 'event' || kind === 'task' || kind === 'income' ||
-            kind === 'loan-repayment' ? (
+            kind === 'loan-repayment' || kind === 'transfer' ? (
             <>
               <span style={layoutStyles.label}>DATE · YYYY-MM-DD</span>
               <input
@@ -680,6 +754,34 @@ const layoutStyles = {
     letterSpacing: 1,
     marginTop: 12,
     marginBottom: 7,
+  },
+  advancedOptions: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 5,
+    marginTop: 16,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: colors.surface,
+    border: `1px solid ${colors.line}`,
+  },
+  advancedSummary: {
+    color: colors.ink,
+    fontSize: 11,
+    fontWeight: '800',
+    paddingBlock: 5,
+  },
+  removeReceipt: {
+    alignSelf: 'flex-start',
+    color: colors.orange,
+    fontSize: 10,
+    fontWeight: '700',
+    paddingBlock: 6,
+  },
+  receiptError: {
+    color: colors.orange,
+    fontSize: 10,
+    marginTop: 3,
   },
   input: {
     minHeight: 48,

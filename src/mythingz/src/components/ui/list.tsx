@@ -6,12 +6,15 @@ import type { BrowserDatabase } from '../../web/database';
 import {
   deleteRecord,
   finalizeBudgetList,
+  getAccounts,
+  InsufficientBalanceError,
   InsufficientFundsError,
   reopenBudgetList,
   toggleListItem,
 } from '../../services/database';
-import type { EventRecord, ListItem, ListRecord, RecordDraft } from '../../services/database';
+import type { Account, EventRecord, ListItem, ListRecord, RecordDraft } from '../../services/database';
 import { colors, styles } from '../theme';
+import { AccountPicker } from './account';
 
 type ListRecordOptions = { budgetOnly?: boolean; eventId?: number };
 
@@ -200,10 +203,25 @@ export function ListDetails({
   const database = useDatabase();
   const location = useLocation();
   const navigate = useNavigate();
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accountId, setAccountId] = useState<number | null>(null);
   const list = initialList;
   const items = listItems(list);
   const checkedItems = items.filter((item) => item.done);
   const checkedTotal = listTotal(items, true);
+
+  useEffect(() => {
+    let active = true;
+    void getAccounts(database).then((rows) => {
+      if (!active) return;
+      setAccounts(rows);
+      setAccountId((current) => current ?? rows[0]?.id ?? null);
+    }).catch((error: unknown) => {
+      console.error('Unable to load accounts for budget list', error);
+      window.alert('Could not load accounts\n\nPlease try again.');
+    });
+    return () => { active = false; };
+  }, [database]);
 
   const updateList = (next: ListRecord) => {
     onListChanged(next);
@@ -225,13 +243,17 @@ export function ListDetails({
 
   const finalize = () => {
     if (!window.confirm(`Finalize this list?\n\nUGX ${formatAmount(checkedTotal)} will be recorded as an expense. The list will be locked until reopened.`)) return;
-    void finalizeBudgetList(database, list.id)
+    if (!accountId) {
+      window.alert('Choose an account\n\nSelect the account this expense will be paid from.');
+      return;
+    }
+    void finalizeBudgetList(database, list.id, accountId)
       .then((result) => {
         updateList({ ...list, finalized: 1, final_transaction_id: result.transactionId });
         return onChanged();
       })
       .catch((error: unknown) => {
-        if (error instanceof InsufficientFundsError) {
+        if (error instanceof InsufficientFundsError || error instanceof InsufficientBalanceError) {
           if (window.confirm(`Not enough available funds\n\n${error.message}\n\nCreate a loan for the exact shortfall?`)) {
             onLoanDraft({
               title: '',
@@ -239,6 +261,7 @@ export function ListDetails({
               amount: error.shortfall,
               fees: 0,
               dueDate: '',
+              accountId,
               notes: `Shortfall financing for ${list.title}`,
             });
           }
@@ -316,6 +339,17 @@ export function ListDetails({
           <span style={listStyles.totalValue}>{money(checkedTotal)}</span>
         </div>
       ) : null}
+      <div className='mb-2'>
+        {list.budget_enabled && !list.finalized ? (
+          <AccountPicker
+            accounts={accounts}
+            value={accountId}
+            onChange={setAccountId}
+            label="PAID FROM · ACCOUNT"
+          />
+        ) : null}
+      </div>
+
       {list.budget_enabled && !list.finalized ? (
         <button type="button" onClick={finalize} style={styles.button}>
           <span style={styles.buttonText}>Finalize list</span>

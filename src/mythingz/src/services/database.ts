@@ -1,25 +1,17 @@
 import type { BrowserDatabase } from '../web/database';
+import { INCOME_CATEGORIES } from '../constants/finance';
+
+export { INCOME_CATEGORIES } from '../constants/finance';
 
 export type RecordKind =
   | 'income'
   | 'loan'
   | 'loan-repayment'
+  | 'transfer'
   | 'event'
   | 'task'
   | 'note'
   | 'list';
-
-export const INCOME_CATEGORIES = [
-  'Withdraw',
-  'Allowance',
-  'Salary',
-  'Gift',
-  'Donation',
-  'Contribution',
-  'Commission',
-  'Bonus',
-  'Balance'
-] as const;
 
 export type RecordDraft = {
   id?: number;
@@ -31,6 +23,9 @@ export type RecordDraft = {
   fees?: number;
   dueDate?: string;
   loanId?: number;
+  accountId?: number;
+  fromAccountId?: number;
+  toAccountId?: number;
   budgetEnabled?: boolean;
   eventId?: number | null;
   listItems?: ListItem[];
@@ -52,6 +47,28 @@ export type Transaction = {
   date: string;
   notes: string;
   loan_id: number | null;
+  account_id: number | null;
+  account_name?: string | null;
+};
+
+export type Account = {
+  id: number;
+  name: string;
+  type: string;
+  opening_balance: number;
+  is_default: number;
+  balance: number;
+};
+
+export type Transfer = {
+  id: number;
+  from_account_id: number;
+  to_account_id: number;
+  amount: number;
+  date: string;
+  notes: string;
+  from_account_name?: string;
+  to_account_name?: string;
 };
 
 export type Loan = {
@@ -69,7 +86,7 @@ export class InsufficientFundsError extends Error {
   readonly shortfall: number;
 
   constructor(shortfall: number) {
-    super(`This list exceeds your available balance by UGX ${new Intl.NumberFormat('en-UG').format(shortfall)}.`);
+    super(`This account is short by UGX ${new Intl.NumberFormat('en-UG').format(shortfall)}.`);
     this.name = 'InsufficientFundsError';
     this.shortfall = shortfall;
   }
@@ -79,7 +96,7 @@ export class InsufficientBalanceError extends Error {
   readonly shortfall: number;
 
   constructor(shortfall: number) {
-    super(`This change would make your all-time balance negative by UGX ${new Intl.NumberFormat('en-UG').format(shortfall)}.`);
+    super(`This change exceeds the selected account balance by UGX ${new Intl.NumberFormat('en-UG').format(shortfall)}.`);
     this.name = 'InsufficientBalanceError';
     this.shortfall = shortfall;
   }
@@ -133,7 +150,24 @@ export async function initializeDatabase(database: BrowserDatabase) {
       amount REAL NOT NULL CHECK (amount > 0),
       date TEXT NOT NULL,
       notes TEXT NOT NULL DEFAULT '',
-      loan_id INTEGER
+      loan_id INTEGER,
+      account_id INTEGER
+    );
+    CREATE TABLE IF NOT EXISTS accounts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      type TEXT NOT NULL,
+      opening_balance REAL NOT NULL DEFAULT 0 CHECK (opening_balance >= 0),
+      is_default INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS transfers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      from_account_id INTEGER NOT NULL REFERENCES accounts(id),
+      to_account_id INTEGER NOT NULL REFERENCES accounts(id),
+      amount REAL NOT NULL CHECK (amount > 0),
+      date TEXT NOT NULL,
+      notes TEXT NOT NULL DEFAULT '',
+      CHECK (from_account_id != to_account_id)
     );
     CREATE TABLE IF NOT EXISTS budgets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -205,7 +239,41 @@ export async function initializeDatabase(database: BrowserDatabase) {
   if (!transactionColumns.some((column) => column.name === 'loan_id')) {
     await database.execAsync('ALTER TABLE transactions ADD COLUMN loan_id INTEGER');
   }
-
+  if (!transactionColumns.some((column) => column.name === 'account_id')) {
+    await database.execAsync('ALTER TABLE transactions ADD COLUMN account_id INTEGER REFERENCES accounts(id)');
+  }
+  if (transactionColumns.some((column) => column.name === 'reference_number')) {
+    await database.execAsync('ALTER TABLE transactions DROP COLUMN reference_number');
+  }
+  if (transactionColumns.some((column) => column.name === 'receipt_data')) {
+    await database.execAsync('ALTER TABLE transactions DROP COLUMN receipt_data');
+  }
+  await database.execAsync('DROP TABLE IF EXISTS recurring_income');
+  await database.withTransactionAsync(async () => {
+    let defaultAccount = await database.getFirstAsync<{ id: number }>(
+      'SELECT id FROM accounts WHERE is_default = 1 ORDER BY id LIMIT 1',
+    );
+    if (!defaultAccount) {
+      defaultAccount = await database.getFirstAsync<{ id: number }>(
+        "SELECT id FROM accounts WHERE name = 'Cash' ORDER BY id LIMIT 1",
+      );
+      if (defaultAccount) {
+        await database.runAsync('UPDATE accounts SET is_default = 1 WHERE id = ?', defaultAccount.id);
+      } else {
+        const inserted = await database.runAsync(
+          "INSERT INTO accounts (name, type, opening_balance, is_default) VALUES ('Cash', 'Cash wallet', 0, 1)",
+        );
+        defaultAccount = { id: inserted.lastInsertRowId };
+      }
+    }
+    await database.runAsync(
+      'UPDATE transactions SET account_id = ? WHERE account_id IS NULL',
+      defaultAccount.id,
+    );
+  });
+  await database.execAsync('CREATE INDEX IF NOT EXISTS transactions_account_id_idx ON transactions(account_id)');
+  await database.execAsync('CREATE INDEX IF NOT EXISTS transfers_from_account_id_idx ON transfers(from_account_id)');
+  await database.execAsync('CREATE INDEX IF NOT EXISTS transfers_to_account_id_idx ON transfers(to_account_id)');
   await database.withTransactionAsync(async () => {
     const legacyBudgets = await database.getFirstAsync<{ count: number }>(
       'SELECT COUNT(*) AS count FROM budgets',
@@ -224,19 +292,55 @@ export const localDateKey = (date = new Date()) =>
 
 const today = () => localDateKey();
 
-async function getAvailableBalance(database: BrowserDatabase) {
-  const balance = await database.getFirstAsync<{ total: number }>(
-    `SELECT COALESCE(SUM(CASE WHEN kind = 'income' THEN amount ELSE -amount END), 0) AS total
-     FROM transactions`,
+export async function getAccounts(database: BrowserDatabase) {
+  return database.getAllAsync<Account>(
+    `SELECT accounts.*,
+      accounts.opening_balance
+        + COALESCE((SELECT SUM(CASE WHEN transactions.kind = 'income' THEN transactions.amount ELSE -transactions.amount END)
+          FROM transactions WHERE transactions.account_id = accounts.id AND transactions.date <= ?), 0)
+        + COALESCE((SELECT SUM(transfers.amount) FROM transfers WHERE transfers.to_account_id = accounts.id AND transfers.date <= ?), 0)
+        - COALESCE((SELECT SUM(transfers.amount) FROM transfers WHERE transfers.from_account_id = accounts.id AND transfers.date <= ?), 0) AS balance
+     FROM accounts ORDER BY is_default DESC, name COLLATE NOCASE`,
+    today(),
+    today(),
+    today(),
   );
-  return balance?.total ?? 0;
 }
 
-async function ensureAvailableBalance(database: BrowserDatabase, amount: number) {
-  const availableBalance = await getAvailableBalance(database);
-  if (amount > availableBalance) {
-    throw new InsufficientBalanceError(amount - availableBalance);
+export async function createAccount(
+  database: BrowserDatabase,
+  account: { name: string; type: string; openingBalance: number },
+) {
+  const name = account.name.trim();
+  if (!name) throw new Error('Enter an account name.');
+  if (!Number.isFinite(account.openingBalance) || account.openingBalance < 0) {
+    throw new Error('Opening balance must be zero or more.');
   }
+  await database.runAsync(
+    'INSERT INTO accounts (name, type, opening_balance) VALUES (?, ?, ?)',
+    name,
+    account.type,
+    account.openingBalance,
+  );
+}
+
+async function ensureAccountBalance(database: BrowserDatabase, accountId: number, amount: number) {
+  const accounts = await getAccounts(database);
+  const account = accounts.find((item) => item.id === accountId);
+  if (!account) throw new Error('Choose a valid account.');
+  if (account.balance < amount) {
+    throw new InsufficientBalanceError(amount - account.balance);
+  }
+}
+
+export async function getTransfers(database: BrowserDatabase) {
+  return database.getAllAsync<Transfer>(
+    `SELECT transfers.*, source.name AS from_account_name, destination.name AS to_account_name
+     FROM transfers
+     JOIN accounts AS source ON source.id = transfers.from_account_id
+     JOIN accounts AS destination ON destination.id = transfers.to_account_id
+     ORDER BY transfers.date DESC, transfers.id DESC LIMIT 50`,
+  );
 }
 
 export async function saveRecord(
@@ -252,24 +356,31 @@ export async function saveRecord(
     if (!INCOME_CATEGORIES.some((incomeCategory) => incomeCategory === category)) {
       throw new Error('Choose a valid income category.');
     }
+    const accountId = draft.accountId;
+    if (!accountId) throw new Error('Choose the account receiving this income.');
     if (draft.id) {
       const id = draft.id;
       const amount = draft.amount ?? 0;
       await database.withTransactionAsync(async () => {
-        const current = await database.getFirstAsync<{ amount: number }>(
-          'SELECT amount FROM transactions WHERE id = ? AND kind = ?',
+        const current = await database.getFirstAsync<{ amount: number; account_id: number | null }>(
+          'SELECT amount, account_id FROM transactions WHERE id = ? AND kind = ?',
           id,
           kind,
         );
-        const decrease = (current?.amount ?? amount) - amount;
-        if (decrease > 0) await ensureAvailableBalance(database, decrease);
+        if (current && current.account_id === accountId && current.amount > amount) {
+          await ensureAccountBalance(database, accountId, current.amount - amount);
+        } else if (current && current.account_id !== accountId) {
+          if (current.account_id !== null) await ensureAccountBalance(database, current.account_id, current.amount);
+          await ensureAccountBalance(database, accountId, 0);
+        }
         await database.runAsync(
-          'UPDATE transactions SET title = ?, category = ?, amount = ?, date = ?, notes = ? WHERE id = ? AND kind = ?',
+          'UPDATE transactions SET title = ?, category = ?, amount = ?, date = ?, notes = ?, account_id = ? WHERE id = ? AND kind = ?',
           title,
           category,
           amount,
           draft.date || today(),
           notes,
+          accountId,
           id,
           kind,
         );
@@ -277,13 +388,14 @@ export async function saveRecord(
       return;
     }
     await database.runAsync(
-      'INSERT INTO transactions (kind, title, category, amount, date, notes) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO transactions (kind, title, category, amount, date, notes, account_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
       kind,
       title,
       category,
       draft.amount ?? 0,
       draft.date || today(),
       notes,
+      accountId,
     );
     return;
   }
@@ -291,6 +403,8 @@ export async function saveRecord(
   if (kind === 'loan') {
     const principal = draft.amount ?? 0;
     const fees = draft.fees ?? 0;
+    const accountId = draft.accountId;
+    if (!accountId) throw new Error('Choose the account receiving the loan proceeds.');
     if (!Number.isFinite(principal) || principal <= 0) {
       throw new Error('Loan principal must be greater than zero.');
     }
@@ -308,7 +422,7 @@ export async function saveRecord(
         today(),
       );
       await database.runAsync(
-        'INSERT INTO transactions (kind, title, category, amount, date, notes, loan_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO transactions (kind, title, category, amount, date, notes, loan_id, account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         'income',
         `Loan from ${title}`,
         'Loan',
@@ -316,6 +430,7 @@ export async function saveRecord(
         today(),
         notes || `Principal received from ${title}`,
         loan.lastInsertRowId,
+        accountId,
       );
     });
     return;
@@ -324,7 +439,8 @@ export async function saveRecord(
   if (kind === 'loan-repayment') {
     const amount = draft.amount ?? 0;
     const loanId = draft.loanId;
-    if (!loanId || !Number.isFinite(amount) || amount <= 0) {
+    const accountId = draft.accountId;
+    if (!loanId || !accountId || !Number.isFinite(amount) || amount <= 0) {
       throw new Error('Choose a loan and enter a repayment greater than zero.');
     }
     await database.withTransactionAsync(async () => {
@@ -333,7 +449,7 @@ export async function saveRecord(
         loanId,
       );
       if (!loan) throw new Error('This loan no longer exists.');
-      await ensureAvailableBalance(database, amount);
+      await ensureAccountBalance(database, accountId, amount);
       const repayments = await database.getFirstAsync<{ total: number }>(
         "SELECT COALESCE(SUM(amount), 0) AS total FROM transactions WHERE loan_id = ? AND kind = 'expense'",
         loanId,
@@ -343,7 +459,7 @@ export async function saveRecord(
         throw new Error(`Repayment cannot exceed the outstanding ${new Intl.NumberFormat('en-UG').format(outstanding)} UGX.`);
       }
       await database.runAsync(
-        'INSERT INTO transactions (kind, title, category, amount, date, notes, loan_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO transactions (kind, title, category, amount, date, notes, loan_id, account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         'expense',
         `Loan repayment · ${loan.lender}`,
         'Loan repayment',
@@ -351,6 +467,29 @@ export async function saveRecord(
         draft.date || today(),
         notes,
         loanId,
+        accountId,
+      );
+    });
+    return;
+  }
+
+  if (kind === 'transfer') {
+    const amount = draft.amount ?? 0;
+    const fromAccountId = draft.fromAccountId;
+    const toAccountId = draft.toAccountId;
+    if (!Number.isFinite(amount) || amount <= 0) throw new Error('Enter a transfer amount greater than zero.');
+    if (!fromAccountId || !toAccountId || fromAccountId === toAccountId) {
+      throw new Error('Choose two different accounts for this transfer.');
+    }
+    await database.withTransactionAsync(async () => {
+      await ensureAccountBalance(database, fromAccountId, amount);
+      await database.runAsync(
+        'INSERT INTO transfers (from_account_id, to_account_id, amount, date, notes) VALUES (?, ?, ?, ?, ?)',
+        fromAccountId,
+        toAccountId,
+        amount,
+        draft.date || today(),
+        notes,
       );
     });
     return;
@@ -523,12 +662,16 @@ export async function deleteRecord(
   }
   if (table === 'transactions') {
     await database.withTransactionAsync(async () => {
-      const transaction = await database.getFirstAsync<{ kind: string; amount: number }>(
-        'SELECT kind, amount FROM transactions WHERE id = ?',
+      const transaction = await database.getFirstAsync<{
+        kind: string;
+        amount: number;
+        account_id: number | null;
+      }>(
+        'SELECT kind, amount, account_id FROM transactions WHERE id = ?',
         id,
       );
-      if (transaction?.kind === 'income') {
-        await ensureAvailableBalance(database, transaction.amount);
+      if (transaction?.kind === 'income' && transaction.account_id !== null) {
+        await ensureAccountBalance(database, transaction.account_id, transaction.amount);
       }
       await database.runAsync('DELETE FROM transactions WHERE id = ?', id);
     });
@@ -569,7 +712,7 @@ export async function toggleListItem(
   });
 }
 
-export async function finalizeBudgetList(database: BrowserDatabase, listId: number) {
+export async function finalizeBudgetList(database: BrowserDatabase, listId: number, accountId: number) {
   const finalization: {
     value?: { transactionId: number; total: number; checkedCount: number };
   } = {};
@@ -583,6 +726,7 @@ export async function finalizeBudgetList(database: BrowserDatabase, listId: numb
     if (!list) throw new Error('The list no longer exists.');
     if (list.finalized) throw new Error('This list is already finalized.');
     if (!list.budget_enabled) throw new Error('Enable list budgeting before finalizing.');
+    if (!accountId) throw new Error('Choose the account paying for this budget list.');
 
     const items: ListItem[] = JSON.parse(list.items);
     const checkedItems = items.filter((item) => item.done);
@@ -595,18 +739,16 @@ export async function finalizeBudgetList(database: BrowserDatabase, listId: numb
     }
 
     const total = checkedItems.reduce((sum, item) => sum + item.quantity * item.price, 0);
-    const availableBalance = await getAvailableBalance(database);
-    if (total > availableBalance) {
-      throw new InsufficientFundsError(total - availableBalance);
-    }
+    await ensureAccountBalance(database, accountId, total);
     const insert = await database.runAsync(
-      'INSERT INTO transactions (kind, title, category, amount, date, notes) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO transactions (kind, title, category, amount, date, notes, account_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
       'expense',
       list.title,
       'Expense',
       total,
       today(),
       `Finalized list · ${checkedItems.length} checked items`,
+      accountId,
     );
     const transactionId = insert.lastInsertRowId;
     const update = await database.runAsync(

@@ -50,7 +50,7 @@ export const styles = {
     paddingInline: 12,
     borderRadius: 8,
     backgroundColor: colors.greenSoft,
-    border: `1px solid #fff1`,
+    border: `1px solid #fff3`,
   },
   buttonText: {
     color: colors.ink,

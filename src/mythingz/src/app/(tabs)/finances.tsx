@@ -1,30 +1,45 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
 import { RecordComposer } from '../../components/RecordComposer';
 import { ScreenHeader, SectionTitle } from '../../components/ScreenHeader';
 import { colors, styles } from '../../components/theme';
 import {
   localDateKey,
+  getAccounts,
+  getTransfers,
   saveRecord,
+  type Account,
   type ListRecord,
   type Loan,
   type RecordDraft,
   type RecordKind,
+  type Transfer,
   type Transaction,
 } from '../../services/database';
 import { FinanceBudgetLists, loadLists } from '../../components/ui/list';
+import { FinanceBalanceCard } from '../../components/financeComponents';
 
-type FinanceSection = 'budgets' | 'loans' | 'transactions';
+type FinanceSection = 'accounts' | 'transfers' | 'budgets' | 'loans' | 'transactions';
 
 const money = (value: number) =>
   `UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(value)}`;
 
 export default function FinancesScreen() {
   const database = useDatabase();
-  const [section, setSection] = useState<FinanceSection>('transactions');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [section, setSection] = useState<FinanceSection>(() => {
+    const state = location.state;
+    return typeof state === 'object' && state !== null && 'section' in state && state.section === 'accounts'
+      ? 'accounts'
+      : 'transactions';
+  });
   const [query, setQuery] = useState('');
   const [composer, setComposer] = useState<RecordKind | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [budgetLists, setBudgetLists] = useState<ListRecord[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [income, setIncome] = useState(0);
@@ -35,8 +50,20 @@ export default function FinancesScreen() {
 
   const refresh = useCallback(async () => {
     const month = localDateKey().slice(0, 7);
-    const [transactionRows, listRows, loanRows, incomeTotal, expenseTotal, balance] = await Promise.all([
-      database.getAllAsync<Transaction>('SELECT * FROM transactions ORDER BY date DESC, id DESC LIMIT 20'),
+    const [
+      transactionRows,
+      listRows,
+      loanRows,
+      incomeTotal,
+      expenseTotal,
+      accountRows,
+      transferRows,
+    ] = await Promise.all([
+      database.getAllAsync<Transaction>(
+        `SELECT transactions.*, accounts.name AS account_name
+         FROM transactions LEFT JOIN accounts ON accounts.id = transactions.account_id
+         ORDER BY transactions.date DESC, transactions.id DESC LIMIT 20`,
+      ),
       loadLists(database, { budgetOnly: true }),
       database.getAllAsync<Loan>(
         `SELECT loans.*,
@@ -54,17 +81,17 @@ export default function FinancesScreen() {
         "SELECT COALESCE(SUM(amount), 0) AS total FROM transactions WHERE kind = 'expense' AND substr(date, 1, 7) = ?",
         month,
       ),
-      database.getFirstAsync<{ total: number }>(
-        `SELECT COALESCE(SUM(CASE WHEN kind = 'income' THEN amount ELSE -amount END), 0) AS total
-         FROM transactions`,
-      ),
+      getAccounts(database),
+      getTransfers(database),
     ]);
     setTransactions(transactionRows);
+    setAccounts(accountRows);
+    setTransfers(transferRows);
     setBudgetLists(listRows);
     setLoans(loanRows);
     setIncome(incomeTotal?.total ?? 0);
     setExpenses(expenseTotal?.total ?? 0);
-    setAvailableBalance(balance?.total ?? 0);
+    setAvailableBalance(accountRows.reduce((total, account) => total + account.balance, 0));
   }, [database]);
 
   useEffect(() => {
@@ -77,6 +104,9 @@ export default function FinancesScreen() {
   const create = async (kind: RecordKind, draft: Parameters<typeof saveRecord>[2]) => {
     await saveRecord(database, kind, draft);
     await refresh();
+  };
+  const addAccount = () => {
+    navigate('/space/finances/accounts/new');
   };
   const addBudgetList = () => {
     setEditingRecord({
@@ -116,9 +146,13 @@ export default function FinancesScreen() {
     `${loan.lender} ${loan.notes ?? ''} ${loan.due_date ?? ''}`.toLowerCase().includes(query.toLowerCase()),
   ), [loans, query]);
   const filteredTransactions = useMemo(() => transactions.filter((transaction) =>
-    `${transaction.title} ${transaction.category} ${transaction.date} ${transaction.loan_id !== null ? 'loan proceeds' : ''}`
+    `${transaction.title} ${transaction.category} ${transaction.date} ${transaction.account_name ?? ''} ${transaction.loan_id !== null ? 'loan proceeds' : ''}`
       .toLowerCase().includes(query.toLowerCase()),
   ), [transactions, query]);
+  const filteredTransfers = useMemo(() => transfers.filter((transfer) =>
+    `${transfer.from_account_name ?? ''} ${transfer.to_account_name ?? ''} ${transfer.date} ${transfer.notes}`
+      .toLowerCase().includes(query.toLowerCase()),
+  ), [transfers, query]);
   return (
     <div style={styles.screen}>
       <div style={styles.scrollContent}>
@@ -126,41 +160,23 @@ export default function FinancesScreen() {
           title="Finances"
           subtitle={new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
         />
-        <div style={localStyles.balanceCard}>
-          <span style={localStyles.kicker}>AVAILABLE BALANCE · ALL TIME</span>
-          <div style={localStyles.balanceValueRow}>
-            <span style={localStyles.net}>{showBalance ? money(availableBalance) : 'UGX ******'}</span>
-            <button
-              type="button"
-              aria-label={showBalance ? 'Hide available balance' : 'Show available balance'}
-              aria-pressed={showBalance}
-              onClick={() => setShowBalance((visible) => !visible)}
-              style={localStyles.balanceToggle}
-            >
-              {showBalance ? 'Hide' : 'Show'}
-            </button>
-          </div>
-          <span style={localStyles.explainer}>
-            Income + loan proceeds − recorded expenses
-          </span>
-          <div style={localStyles.totals}>
-            <div style={localStyles.totalBox}>
-              <span style={localStyles.totalLabel}>MONTHLY INCOME</span>
-              <span style={localStyles.totalValue}>+ {money(income)}</span>
-            </div>
-            <div style={localStyles.totalBox}>
-              <span style={localStyles.totalLabel}>MONTHLY EXPENSES</span>
-              <span style={localStyles.totalValue}>− {money(expenses)}</span>
-            </div>
-          </div>
-        </div>
+        <FinanceBalanceCard
+          accounts={accounts}
+          availableBalance={availableBalance}
+          income={income}
+          expenses={expenses}
+          showBalance={showBalance}
+          onToggleBalance={() => setShowBalance((visible) => !visible)}
+          addAccount={addAccount}
+        />
 
         <SectionTitle title="YOUR FINANCE TOOLS" />
         <div style={localStyles.segmented}>
           {([
             ['transactions', 'Transactions'],
-            ['budgets', 'Budget lists', ` (${budgetLists.length})`],
+            ['budgets', 'Budgets', ` (${budgetLists.length})`],
             ['loans', 'Loans', ` (${loans.length})`],
+            ['transfers', 'Transfers', ` (${transfers.length})`],
           ] as const).map(([id, label, count]) => (
             <button
               key={id}
@@ -173,8 +189,7 @@ export default function FinancesScreen() {
               </span>
             </button>
           ))}
-        </div>
-        <div style={localStyles.toolbar}>
+        </div><div style={localStyles.toolbar}>
           <span style={localStyles.sectionHeading}>
             YOUR {section === 'budgets' ? 'BUDGET LISTS' : section.toUpperCase()}
           </span>
@@ -184,11 +199,19 @@ export default function FinancesScreen() {
               ? addBudgetList
               : section === 'loans'
                 ? addLoan
-                : () => setComposer('income')}
+                : section === 'transfers'
+                  ? () => setComposer('transfer')
+                  : () => setComposer('income')}
             style={localStyles.addButton}
           >
             <span style={localStyles.addText}>
-              ＋ {section === 'budgets' ? 'Create Budget' : section === 'loans' ? 'Add loan' : 'Add Income'}
+              + {section === 'budgets'
+                ? 'Create Budget'
+                : section === 'loans'
+                  ? 'Add loan'
+                  : section === 'transfers'
+                    ? 'Transfer'
+                    : 'Add Income'}
             </span>
           </button>
         </div>
@@ -199,6 +222,28 @@ export default function FinancesScreen() {
           aria-label={`Search ${section === 'budgets' ? 'budget lists' : section}`}
           style={localStyles.search}
         />
+        {section === 'transfers' ? (
+          <div style={styles.panel}>
+            {filteredTransfers.length ? filteredTransfers.map((transfer) => (
+              <div key={transfer.id} style={localStyles.transaction}>
+                <div style={localStyles.transactionIcon}>
+                  <span style={{ color: colors.green }}>↔</span>
+                </div>
+                <div style={localStyles.transactionInfo}>
+                  <span style={localStyles.title}>
+                    {transfer.from_account_name} → {transfer.to_account_name}
+                  </span>
+                  <span style={localStyles.secondary}>{transfer.date}</span>
+                </div>
+                <span style={localStyles.amount}>{money(transfer.amount)}</span>
+              </div>
+            )) : (
+              <span style={localStyles.secondary}>
+                Transfers between your accounts move money without changing your total balance.
+              </span>
+            )}
+          </div>
+        ) : null}
         {section === 'budgets' ? (
           <FinanceBudgetLists lists={budgetLists} query={query} />
         ) : null}
@@ -267,6 +312,7 @@ export default function FinancesScreen() {
                     <span style={localStyles.title}>{transaction.title}</span>
                     <span style={localStyles.secondary}>
                       {transaction.loan_id !== null ? 'Loan proceeds' : transaction.category}
+                      {transaction.account_name ? ` · ${transaction.account_name}` : ''}
                       {' · '}{transaction.date}
                     </span>
                   </div>
@@ -288,10 +334,8 @@ export default function FinancesScreen() {
         <SectionTitle title="MORE FINANCE TOOLS" />
         <div style={localStyles.moduleGrid}>
           {[
-            ['↔', 'Transfers', 'Coming soon'],
             ['◉', 'Savings goals', 'Coming soon'],
             ['▣', 'Bills', 'Coming soon'],
-            ['▤', 'Accounts', 'Coming soon'],
             ['⌁', 'Reports', 'Coming soon'],
           ].map(([icon, name, detail]) => (
             <div key={name} style={localStyles.module}>
@@ -314,68 +358,6 @@ export default function FinancesScreen() {
 }
 
 const localStyles = {
-  balanceCard: {
-    padding: 21,
-    borderRadius: 16,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.line,
-  },
-  kicker: {
-    color: colors.muted,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-  },
-  balanceValueRow: {
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  net: {
-    color: colors.ink,
-    fontSize: 26,
-    fontWeight: '800',
-    marginTop: 9,
-  },
-  balanceToggle: {
-    color: colors.green,
-    fontSize: 10,
-    fontWeight: '800',
-    paddingBlock: 10,
-    paddingInline: 10,
-    borderRadius: 7,
-  },
-  explainer: {
-    color: colors.muted,
-    fontSize: 9,
-    marginTop: 4,
-  },
-  totals: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 20,
-  },
-  totalBox: {
-    flex: 1,
-    borderRadius: 10,
-    backgroundColor: '#303030',
-    padding: 12,
-  },
-  totalLabel: {
-    color: '#B8B8B8',
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-  },
-  totalValue: {
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: '700',
-    marginTop: 7,
-  },
   workspaceCard: {
     flex: 1,
     minWidth: 100,
@@ -419,7 +401,7 @@ const localStyles = {
   },
   addButton: {
     backgroundColor: colors.green,
-    paddingBlock: 8,
+    paddingBlock: 10,
     paddingInline: 12,
     borderRadius: 7,
   },
@@ -438,17 +420,21 @@ const localStyles = {
     marginBottom: 10,
   },
   segmented: {
+    display: 'flex',
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
     padding: 4,
     borderRadius: 10,
     backgroundColor: colors.surface,
-    border: `1px solid ${colors.line}`,
   },
   segment: {
-    flex: 1,
+    minWidth: 75,
     alignItems: 'center',
-    paddingBlock: 9,
+    paddingBlock: 6,
     borderRadius: 7,
+    border: `1px solid ${colors.line}`,
   },
   segmentActive: {
     backgroundColor: colors.background,
