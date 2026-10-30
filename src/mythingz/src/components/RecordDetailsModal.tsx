@@ -1,15 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../web/DatabaseProvider';
 import { RecordComposer } from './RecordComposer';
 import {
   deleteRecord,
-  finalizeBudgetList,
-  reopenBudgetList,
   saveRecord,
-  toggleListItem,
   toggleTask,
-  InsufficientFundsError,
 } from '../services/database';
 import type {
   EventRecord,
@@ -22,6 +17,7 @@ import type {
 } from '../services/database';
 import { colors } from './theme';
 import { EventDetails, EventHeading } from './ui/event';
+import { ListDetails } from './ui/list';
 import { NoteDetails } from './ui/note';
 
 export type SelectedRecord =
@@ -98,8 +94,6 @@ export function RecordDetailsModal({
   onEdit,
   closeOnEdit = true,
 }: Props) {
-  const location = useLocation();
-  const navigate = useNavigate();
   const database = useDatabase();
   const [checkedList, setCheckedList] = useState<ListRecord | null>(null);
   const [loanDraft, setLoanDraft] = useState<RecordDraft | null>(null);
@@ -141,66 +135,6 @@ export function RecordDetailsModal({
       console.error('Unable to update task status', error);
       window.alert('Could not update task\n\nPlease try again.');
     }
-  };
-
-  const toggleItem = async (
-    list: ListRecord,
-    items: ListItem[],
-    index: number,
-  ) => {
-    const updatedItems = items.map((item, itemIndex) =>
-      itemIndex === index ? { ...item, done: !item.done } : item,
-    );
-    try {
-      await toggleListItem(database, { ...list, items: JSON.stringify(items) }, index);
-      setCheckedList({ ...list, items: JSON.stringify(updatedItems) });
-      await onChanged();
-    } catch (error) {
-      console.error('Unable to update list item', error);
-      window.alert('Could not update list\n\nPlease try again.');
-    }
-  };
-
-  const finalizeList = (list: ListRecord, total: number) => {
-    if (!window.confirm(`Finalize this list?\n\nUGX ${formatAmount(total)} will be recorded as an expense. The list will be locked until reopened.`)) return;
-    void finalizeBudgetList(database, list.id)
-      .then((result) => {
-        setCheckedList({
-          ...list,
-          finalized: 1,
-          final_transaction_id: result.transactionId,
-        });
-        return onChanged();
-      })
-      .catch((error: unknown) => {
-        if (error instanceof InsufficientFundsError) {
-          if (window.confirm(`Not enough available funds\n\n${error.message}\n\nCreate a loan for the exact shortfall?`)) {
-            setLoanDraft({
-              title: '',
-              category: 'Loan',
-              amount: error.shortfall,
-              fees: 0,
-              dueDate: '',
-              notes: `Shortfall financing for ${list.title}`,
-            });
-          }
-          return;
-        }
-        window.alert(`Could not finalize list\n\n${error instanceof Error ? error.message : 'Please try again.'}`);
-      });
-  };
-
-  const reopenList = (list: ListRecord) => {
-    if (!window.confirm('Reopen this list?\n\nThe linked expense will be removed and you can edit the list again.')) return;
-    void reopenBudgetList(database, list.id)
-      .then(async () => {
-        setCheckedList({ ...list, finalized: 0, final_transaction_id: null });
-        await onChanged();
-      })
-      .catch((error: unknown) => {
-        console.error('Unable to reopen list', error);
-        window.alert('Could not reopen list\n\nPlease try again.');
-      });
   };
 
   return (
@@ -264,99 +198,15 @@ export function RecordDetailsModal({
                 />
               ) : null}
 
-              {selected.kind === 'list' ? (() => {
-                const list = checkedList?.id === selected.record.id
-                  ? checkedList
-                  : selected.record;
-                const items: ListItem[] = JSON.parse(list.items);
-                const checkedTotal = items.reduce(
-                  (total, item) => total + (item.done
-                    ? (Number(item.price) || 0) * (Number(item.quantity) || 1)
-                    : 0),
-                  0,
-                );
-                const listTotal = items.reduce(
-                  (total, item) => total +
-                    (Number(item.price) || 0) * (Number(item.quantity) || 1),
-                  0,
-                );
-                return (
-                  <div style={modalStyles.listCard}>
-                    <span style={modalStyles.meta}>
-                      {items.filter((item) => item.done).length} of {items.length} complete
-                    </span>
-                    {list.event_id !== null ? (
-                      <button
-                        type="button"
-                        style={modalStyles.listEventTag}
-                        onClick={() => navigate(`/space/records/event/${list.event_id}`, {
-                          state: { from: location.pathname },
-                        })}
-                      >
-                        EVENT · {list.event_title || 'Attached event'}
-                      </button>
-                    ) : null}
-                    {list.finalized ? (
-                      <span style={modalStyles.finalizedBadge}>FINALIZED · LIST LOCKED</span>
-                    ) : null}
-                    {items.length ? items.map((item, index) => (
-                      <button
-                        key={`${selected.record.id}-${index}`}
-                        disabled={Boolean(list.finalized)}
-                        onClick={() => void toggleItem(list, items, index)}
-                        style={modalStyles.listItem}
-                      >
-                        <div style={Object.assign({}, modalStyles.checkbox, item.done && modalStyles.checkboxDone)}>
-                          {item.done ? <span style={modalStyles.checkmark}>✓</span> : null}
-                        </div>
-                        <span style={Object.assign({}, modalStyles.listText, item.done && modalStyles.completedText)}>
-                          {list.budget_enabled && (item.quantity ?? 1) > 1
-                            ? `${item.quantity} × ${item.text}`
-                            : item.text}
-                        </span>
-                        {list.budget_enabled ? (
-                          <span style={modalStyles.itemPrice}>
-                            UGX {formatAmount(Number(item.price) || 0)} ea
-                            {' · '}UGX {formatAmount(
-                              (Number(item.price) || 0) * (Number(item.quantity) || 1),
-                            )}
-                          </span>
-                        ) : null}
-                      </button>
-                    )) : <span style={modalStyles.body}>This list has no items yet.</span>}
-                    {list.budget_enabled ? (
-                      <div style={modalStyles.totals}>
-                        <span style={modalStyles.totalLabel}>Number of items</span>
-                        <span style={modalStyles.totalValue}>
-                          {items.length} {items.length === 1 ? 'item' : 'items'}
-                        </span>
-                        <span style={modalStyles.totalLabel}>Full list total</span>
-                        <span style={modalStyles.totalValue}>UGX {formatAmount(listTotal)}</span>
-                        <span style={modalStyles.totalLabel}>
-                          Checked items ({items.filter((item) => item.done).length})
-                        </span>
-                        <span style={modalStyles.totalValue}>UGX {formatAmount(checkedTotal)}</span>
-                      </div>
-                    ) : null}
-                    {list.budget_enabled && !list.finalized ? (
-                      <button
-                        type="button" onClick={() => finalizeList(list, checkedTotal)}
-                        style={modalStyles.finalizeButton}
-                      >
-                        <span style={modalStyles.finalizeText}>Finalize list</span>
-                      </button>
-                    ) : null}
-                    {list.finalized ? (
-                      <button
-                        type="button" onClick={() => reopenList(list)}
-                        style={modalStyles.secondaryAction}
-                      >
-                        <span style={modalStyles.secondaryActionText}>Reopen list · reverse expense</span>
-                      </button>
-                    ) : null}
-                  </div>
-                );
-              })() : null}
+              {selected.kind === 'list' ? (
+                <ListDetails
+                  initialList={checkedList?.id === selected.record.id ? checkedList : selected.record}
+                  formatAmount={formatAmount}
+                  onChanged={onChanged}
+                  onListChanged={setCheckedList}
+                  onLoanDraft={setLoanDraft}
+                />
+              ) : null}
 
               {selected.kind !== 'note' && (selected.kind !== 'list' || !(checkedList?.id === selected.record.id
                 ? checkedList.finalized
@@ -484,11 +334,6 @@ const modalStyles = {
     fontWeight: '800',
     marginBottom: 8,
   },
-  meta: {
-    color: colors.muted,
-    fontSize: 11,
-    marginBottom: 14,
-  },
   body: {
     color: colors.ink,
     fontSize: 13,
@@ -515,109 +360,6 @@ const modalStyles = {
     fontSize: 13,
     fontWeight: '600',
     marginTop: 5,
-  },
-  listCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 11,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.line,
-    marginTop: 12,
-  },
-  listItem: {
-    minHeight: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: colors.muted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxDone: {
-    backgroundColor: colors.ink,
-    borderColor: colors.ink,
-  },
-  checkmark: {
-    color: colors.background,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  listText: {
-    flex: 1,
-    color: colors.ink,
-    fontSize: 12,
-  },
-  itemPrice: {
-    color: colors.muted,
-    fontSize: 9,
-    fontWeight: '600',
-    marginLeft: 'auto',
-  },
-  completedText: {
-    color: colors.muted,
-    textDecorationLine: 'line-through',
-  },
-  finalizedBadge: {
-    alignSelf: 'flex-start',
-    color: colors.ink,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    paddingBlock: 6,
-    paddingInline: 9,
-    borderRadius: 5,
-    backgroundColor: colors.line,
-    marginBottom: 8,
-  },
-  listEventTag: {
-    alignSelf: 'flex-start',
-    color: colors.green,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.4,
-    paddingBlock: 6,
-    paddingInline: 9,
-    borderRadius: 6,
-    backgroundColor: colors.greenSoft,
-    marginBottom: 10,
-  },
-  totals: {
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
-    marginTop: 10,
-    paddingTop: 12,
-  },
-  totalLabel: {
-    color: colors.muted,
-    fontSize: 9,
-    marginBottom: 4,
-  },
-  totalValue: {
-    color: colors.ink,
-    fontSize: 12,
-    fontWeight: '800',
-    marginBottom: 10,
-  },
-  finalizeButton: {
-    minHeight: 46,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: colors.ink,
-    marginTop: 8,
-  },
-  finalizeText: {
-    color: colors.background,
-    fontSize: 11,
-    fontWeight: '800',
   },
   secondaryAction: {
     alignSelf: 'flex-start',

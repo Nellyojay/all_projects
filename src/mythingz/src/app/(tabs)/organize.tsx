@@ -9,13 +9,13 @@ import {
   saveRecord,
   toggleTask,
   type RecordDraft,
-  type ListItem,
   type ListRecord,
   type NoteRecord,
   type RecordKind,
   type TaskRecord,
 } from '../../services/database';
 import { NoteCard } from '../../components/ui/note';
+import { loadLists, OrganizerLists } from '../../components/ui/list';
 
 export type Section = 'Notes' | 'Tasks' | 'Lists';
 const sectionKinds: Record<Section, RecordKind> = { Notes: 'note', Tasks: 'task', Lists: 'list' };
@@ -40,12 +40,7 @@ export default function OrganizeScreen() {
     const [noteRows, taskRows, listRows] = await Promise.all([
       database.getAllAsync<NoteRecord>('SELECT * FROM notes ORDER BY updated_at DESC'),
       database.getAllAsync<TaskRecord>('SELECT * FROM tasks ORDER BY completed, date, id'),
-      database.getAllAsync<ListRecord>(
-        `SELECT lists.*, events.title AS event_title
-         FROM lists
-         LEFT JOIN events ON events.id = lists.event_id
-         ORDER BY lists.id DESC`,
-      ),
+      loadLists(database),
     ]);
     setNotes(noteRows);
     setTasks(taskRows);
@@ -109,15 +104,11 @@ export default function OrganizeScreen() {
   const filteredTasks = useMemo(() => tasks.filter((task) =>
     `${task.title} ${task.category}`.toLowerCase().includes(query.toLowerCase()),
   ), [tasks, query]);
-  const filteredLists = useMemo(() => lists.filter((list) =>
-    `${list.title} ${list.items}`.toLowerCase().includes(query.toLowerCase()),
-  ), [lists, query]);
-
   const create = async (kind: RecordKind, draft: Parameters<typeof saveRecord>[2]) => {
     await saveRecord(database, kind, draft);
     await refresh();
   };
-  const remove = (table: 'notes' | 'tasks' | 'lists', id: number, title: string) => {
+  const remove = (table: 'notes' | 'tasks', id: number, title: string) => {
     if (!window.confirm(`Delete item?\n\nRemove “${title}”?`)) return;
     void deleteRecord(database, table, id).then(refresh).catch((error: unknown) => {
       console.error('Unable to delete organizer item', error);
@@ -233,49 +224,7 @@ export default function OrganizeScreen() {
           )) : <EmptyPanel title="Nothing on your list" detail="Add a task to give your next step a place." />
         ) : null}
         {section === 'Lists' ? (
-          filteredLists.length ? filteredLists.map((list) => {
-            const items: ListItem[] = JSON.parse(list.items);
-            const total = items.reduce(
-              (sum, item) => sum +
-                (Number(item.price) || 0) * (Number(item.quantity) || 1),
-              0,
-            );
-            return (
-              <div key={list.id} style={Object.assign({}, styles.panel, localStyles.recordCard)}>
-                <button
-                  style={localStyles.listButton}
-                  onClick={() => navigate(`/space/records/list/${list.id}`, { state: { from: location.pathname } })}
-                  onContextMenu={(pointerEvent) => {
-                    pointerEvent.preventDefault();
-                    remove('lists', list.id, list.title);
-                  }}
-                >
-                  <span style={localStyles.recordTitle}>{list.title}</span>
-                  <span style={localStyles.bodyText}>
-                    {items.length
-                      ? `${items.filter((item) => item.done).length} of ${items.length} items complete`
-                      : 'No items yet'}
-                  </span>
-                  {list.budget_enabled ? (
-                    <span style={localStyles.bodyText}>
-                      {list.finalized ? 'Finalized · ' : 'Budget · '}
-                      UGX {new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(total)}
-                    </span>
-                  ) : list.finalized ? (
-                    <span style={localStyles.bodyText}>Finalized · list locked</span>
-                  ) : null}
-                  {list.event_id !== null && list.event_title ? (
-                    <span style={localStyles.eventBudgetTag}>
-                      EVENT · {list.event_title}
-                    </span>
-                  ) : null}
-                  <span style={localStyles.hint}>
-                    {list.finalized ? 'Tap to review or reopen' : 'Tap to view and check items · hold title to delete'}
-                  </span>
-                </button>
-              </div>
-            );
-          }) : <EmptyPanel title="No lists yet" detail="Make a checklist for shopping, packing, or anything else." />
+          <OrganizerLists lists={lists} query={query} onChanged={refresh} />
         ) : null}
       </div>
       <RecordComposer
@@ -394,17 +343,6 @@ const localStyles = {
   segmentTextActive: {
     color: colors.ink,
   },
-  recordCard: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  listButton: {
-    display: 'flex',
-    flex: 1,
-    flexDirection: 'column',
-    alignItems: 'stretch',
-    textAlign: 'left',
-  },
   recordTitle: {
     color: colors.ink,
     fontWeight: '800',
@@ -418,19 +356,6 @@ const localStyles = {
     paddingInline: 9,
     paddingBlock: 5,
     borderRadius: 7,
-  },
-  eventBudgetTag: {
-    alignSelf: 'flex-start',
-    color: colors.green,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.4,
-    backgroundColor: colors.greenSoft,
-    paddingInline: 9,
-    paddingBlock: 6,
-    borderRadius: 6,
-    marginTop: 10,
-    overflow: 'hidden',
   },
   bodyText: {
     color: colors.muted,

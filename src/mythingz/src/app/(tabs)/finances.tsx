@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
 import { RecordComposer } from '../../components/RecordComposer';
 import { ScreenHeader, SectionTitle } from '../../components/ScreenHeader';
@@ -7,13 +6,13 @@ import { colors, styles } from '../../components/theme';
 import {
   localDateKey,
   saveRecord,
-  type ListItem,
   type ListRecord,
   type Loan,
   type RecordDraft,
   type RecordKind,
   type Transaction,
 } from '../../services/database';
+import { FinanceBudgetLists, loadLists } from '../../components/ui/list';
 
 type FinanceSection = 'budgets' | 'loans' | 'transactions';
 
@@ -21,8 +20,6 @@ const money = (value: number) =>
   `UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(value)}`;
 
 export default function FinancesScreen() {
-  const location = useLocation();
-  const navigate = useNavigate();
   const database = useDatabase();
   const [section, setSection] = useState<FinanceSection>('transactions');
   const [query, setQuery] = useState('');
@@ -40,13 +37,7 @@ export default function FinancesScreen() {
     const month = localDateKey().slice(0, 7);
     const [transactionRows, listRows, loanRows, incomeTotal, expenseTotal, balance] = await Promise.all([
       database.getAllAsync<Transaction>('SELECT * FROM transactions ORDER BY date DESC, id DESC LIMIT 20'),
-      database.getAllAsync<ListRecord>(
-        `SELECT lists.*, events.title AS event_title
-         FROM lists
-         LEFT JOIN events ON events.id = lists.event_id
-         WHERE lists.budget_enabled = 1
-         ORDER BY lists.id DESC`,
-      ),
+      loadLists(database, { budgetOnly: true }),
       database.getAllAsync<Loan>(
         `SELECT loans.*,
           COALESCE(SUM(CASE WHEN transactions.kind = 'expense' THEN transactions.amount ELSE 0 END), 0) AS repaid
@@ -121,9 +112,6 @@ export default function FinancesScreen() {
     });
     setComposer('loan-repayment');
   };
-  const filteredBudgetLists = useMemo(() => budgetLists.filter((list) =>
-    `${list.title} ${list.items} ${list.event_title ?? ''}`.toLowerCase().includes(query.toLowerCase()),
-  ), [budgetLists, query]);
   const filteredLoans = useMemo(() => loans.filter((loan) =>
     `${loan.lender} ${loan.notes ?? ''} ${loan.due_date ?? ''}`.toLowerCase().includes(query.toLowerCase()),
   ), [loans, query]);
@@ -212,64 +200,15 @@ export default function FinancesScreen() {
           style={localStyles.search}
         />
         {section === 'budgets' ? (
-          <>
-            {filteredBudgetLists.length ? filteredBudgetLists.map((list) => {
-              const items: ListItem[] = JSON.parse(list.items);
-              const plannedTotal = items.reduce(
-                (total, item) => total + (Number(item.price) || 0) * (Number(item.quantity) || 1),
-                0,
-              );
-              const checkedTotal = items.reduce(
-                (total, item) => total + (item.done
-                  ? (Number(item.price) || 0) * (Number(item.quantity) || 1)
-                  : 0),
-                0,
-              );
-              return (
-                <button
-                  key={list.id}
-                  onClick={() => navigate(`/space/records/list/${list.id}`, { state: { from: location.pathname } })}
-                  style={Object.assign({}, styles.panel, localStyles.budgetCard)}
-                >
-                  <div style={localStyles.budgetHeading}>
-                    <div>
-                      <span style={localStyles.title}>{list.title}</span>
-                      <span style={localStyles.secondary}>
-                        {items.length} {items.length === 1 ? 'item' : 'items'}
-                        {list.finalized ? ' · Finalized' : ' · In progress'}
-                      </span>
-                    </div>
-                    <span style={localStyles.amount}>{money(plannedTotal)}</span>
-                  </div>
-                  <span style={localStyles.secondary}>
-                    {list.finalized
-                      ? `${money(checkedTotal)} recorded as expense`
-                      : `${money(checkedTotal)} checked · tap to review`}
-                  </span>
-                  {list.event_id !== null && list.event_title ? (
-                    <span style={localStyles.eventTag}>
-                      EVENT · {list.event_title}
-                    </span>
-                  ) : null}
-                </button>
-              );
-            }) : (
-              <div style={Object.assign({}, styles.panel, localStyles.emptyCard)}>
-                <span style={localStyles.emptyTitle}>Plan expenses with a list</span>
-                <span style={localStyles.secondary}>
-                  Add quantities and unit prices in a budget list, then finalize checked items to record the expense.
-                </span>
-              </div>
-            )}
-          </>
+          <FinanceBudgetLists lists={budgetLists} query={query} />
         ) : null}
         {section === 'loans' ? (
           <>
             {filteredLoans.length ? filteredLoans.map((loan) => {
               const outstanding = Math.max(0, loan.principal + loan.fees - loan.repaid);
               return (
-                <div key={loan.id} style={Object.assign({}, styles.panel, localStyles.budgetCard)}>
-                  <div style={localStyles.budgetHeading}>
+                <div key={loan.id} style={Object.assign({}, styles.panel, localStyles.loanCard)}>
+                  <div style={localStyles.loanHeading}>
                     <div style={localStyles.transactionInfo}>
                       <span style={localStyles.title}>{loan.lender}</span>
                       <span style={localStyles.secondary}>
@@ -295,7 +234,7 @@ export default function FinancesScreen() {
                 </div>
               );
             }) : (
-              <div style={Object.assign({}, styles.panel, localStyles.emptyCard)}>
+              <div style={Object.assign({}, styles.panel, localStyles.emptyLoanCard)}>
                 <span style={localStyles.emptyTitle}>No loans recorded</span>
                 <span style={localStyles.secondary}>
                   Add a loan to include its unspent proceeds in your available balance.
@@ -522,23 +461,10 @@ const localStyles = {
   segmentTextActive: {
     color: colors.ink,
   },
-  budgetCard: {
+  loanCard: {
     marginBottom: 10,
   },
-  eventTag: {
-    alignSelf: 'flex-start',
-    color: colors.green,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.4,
-    backgroundColor: colors.greenSoft,
-    borderRadius: 6,
-    paddingInline: 9,
-    paddingBlock: 6,
-    marginTop: 10,
-    overflow: 'hidden',
-  },
-  budgetHeading: {
+  loanHeading: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -573,7 +499,7 @@ const localStyles = {
     fontSize: 10,
     fontWeight: '700',
   },
-  emptyCard: {
+  emptyLoanCard: {
     backgroundColor: colors.yellowSoft,
     borderColor: colors.yellowSoft,
   },
