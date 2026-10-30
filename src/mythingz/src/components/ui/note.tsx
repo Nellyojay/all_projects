@@ -100,29 +100,30 @@ export function NoteBody({
   onBodyDraftChange,
   onStartEditing,
 }: NoteBodyProps) {
-  return (
-    <>
+  return editing ? (
+    <div>
       <span style={noteStyles.meta}>{note.category}</span>
-      {editing ? (
-        <textarea
-          autoFocus
-          value={bodyDraft}
-          onChange={(event) => onBodyDraftChange(event.currentTarget.value)}
-          aria-label="Note body"
-          placeholder="This note is empty."
-          style={Object.assign({}, noteStyles.body, noteStyles.bodyInput)}
-        />
-      ) : (
-        <button
-          type="button"
-          onClick={onStartEditing}
-          aria-label="Edit note body"
-          style={Object.assign({}, noteStyles.body, noteStyles.editableText)}
-        >
-          {note.notes || 'This note is empty.'}
-        </button>
-      )}
-    </>
+      <textarea
+        autoFocus
+        value={bodyDraft}
+        onChange={(event) => onBodyDraftChange(event.currentTarget.value)}
+        aria-label="Note body"
+        placeholder="This note is empty."
+        style={Object.assign({}, noteStyles.body, noteStyles.bodyInput)}
+      />
+    </div>
+  ) : (
+    <button
+      type="button"
+      onClick={onStartEditing}
+      aria-label="Edit note body"
+      style={noteStyles.bodyEditButton}
+    >
+      <span style={noteStyles.meta}>{note.category}</span>
+      <span style={noteStyles.body}>
+        {note.notes || 'This note is empty.'}
+      </span>
+    </button>
   );
 }
 
@@ -202,7 +203,7 @@ export function NoteDetails({
   useBackButtonBlocker(isEditing, resetBackAction);
 
   return (
-    <>
+    <div style={noteStyles.details}>
       <NoteHeader
         note={note}
         titleDraft={titleDraft}
@@ -233,7 +234,7 @@ export function NoteDetails({
           setEditingBodyId(note.id);
         }}
       />
-    </>
+    </div>
   );
 }
 
@@ -259,6 +260,12 @@ const noteStyles = {
     alignItems: 'center',
     gap: 12,
   },
+  details: {
+    display: 'flex',
+    flex: 1,
+    flexDirection: 'column',
+    minHeight: 0,
+  },
   titleInRow: {
     flex: 1,
     minWidth: 0,
@@ -270,10 +277,6 @@ const noteStyles = {
   editableText: {
     display: 'block',
     width: '100%',
-    border: 0,
-    padding: 0,
-    backgroundColor: 'transparent',
-    fontFamily: 'inherit',
     textAlign: 'left',
     whiteSpace: 'pre-wrap',
   },
@@ -289,10 +292,18 @@ const noteStyles = {
     marginBottom: 14,
   },
   body: {
+    display: 'block',
     color: colors.ink,
     fontSize: 13,
     lineHeight: '23px',
-    marginTop: 14,
+    whiteSpace: 'pre-wrap',
+  },
+  bodyEditButton: {
+    display: 'flex',
+    flex: 1,
+    width: '100%',
+    textAlign: 'left',
+    cursor: 'text',
   },
   bodyInput: {
     flex: 1,
