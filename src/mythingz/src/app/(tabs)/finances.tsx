@@ -35,6 +35,7 @@ export default function FinancesScreen() {
   const [income, setIncome] = useState(0);
   const [expenses, setExpenses] = useState(0);
   const [availableBalance, setAvailableBalance] = useState(0);
+  const [showBalance, setShowBalance] = useState(false);
   const [editingRecord, setEditingRecord] = useState<{ kind: RecordKind; draft: RecordDraft } | null>(null);
 
   const refresh = useCallback(async () => {
@@ -148,7 +149,18 @@ export default function FinancesScreen() {
         />
         <div style={localStyles.balanceCard}>
           <span style={localStyles.kicker}>AVAILABLE BALANCE · ALL TIME</span>
-          <span style={localStyles.net}>{money(availableBalance)}</span>
+          <div style={localStyles.balanceValueRow}>
+            <span style={localStyles.net}>{showBalance ? money(availableBalance) : 'UGX ******'}</span>
+            <button
+              type="button"
+              aria-label={showBalance ? 'Hide available balance' : 'Show available balance'}
+              aria-pressed={showBalance}
+              onClick={() => setShowBalance((visible) => !visible)}
+              style={localStyles.balanceToggle}
+            >
+              {showBalance ? 'Hide' : 'Show'}
+            </button>
+          </div>
           <span style={localStyles.explainer}>
             Income + loan proceeds − recorded expenses
           </span>
@@ -410,11 +422,26 @@ const localStyles = {
     fontWeight: '800',
     letterSpacing: 1.2,
   },
+  balanceValueRow: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
   net: {
     color: colors.ink,
     fontSize: 26,
     fontWeight: '800',
     marginTop: 9,
+  },
+  balanceToggle: {
+    color: colors.green,
+    fontSize: 10,
+    fontWeight: '800',
+    paddingBlock: 10,
+    paddingInline: 10,
+    borderRadius: 7,
   },
   explainer: {
     color: colors.muted,
