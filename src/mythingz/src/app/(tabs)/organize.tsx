@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
 import { RecordComposer } from '../../components/RecordComposer';
-import { ScreenHeader } from '../../components/ScreenHeader';
+import { ScreenHeader, SectionTitle } from '../../components/ScreenHeader';
 import { colors, styles } from '../../components/theme';
 import {
   deleteRecord,
@@ -171,6 +171,20 @@ export default function OrganizeScreen() {
             <span style={localStyles.workspaceCount}>Coming soon</span>
           </div>
         </div>
+        <SectionTitle title="YOUR ORGANIZE TOOLS" />
+        <div style={localStyles.segmented}>
+          {(['Notes', 'Tasks', 'Lists'] as const).map((option) => (
+            <button
+              key={option}
+              onClick={() => { setSection(option); setQuery(''); }}
+              style={Object.assign({}, localStyles.segment, section === option && localStyles.segmentActive)}
+            >
+              <span style={Object.assign({}, localStyles.segmentText, section === option && localStyles.segmentTextActive)}>
+                {option}
+              </span>
+            </button>
+          ))}
+        </div>
         <div style={localStyles.toolbar}>
           <span style={localStyles.sectionHeading}>YOUR {section.toUpperCase()}</span>
           <button
@@ -187,19 +201,6 @@ export default function OrganizeScreen() {
           aria-label={`Search ${section.toLowerCase()}`}
           style={localStyles.search}
         />
-        <div style={localStyles.segmented}>
-          {(['Notes', 'Tasks', 'Lists'] as const).map((option) => (
-            <button
-              key={option}
-              onClick={() => { setSection(option); setQuery(''); }}
-              style={Object.assign({}, localStyles.segment, section === option && localStyles.segmentActive)}
-            >
-              <span style={Object.assign({}, localStyles.segmentText, section === option && localStyles.segmentTextActive)}>
-                {option}
-              </span>
-            </button>
-          ))}
-        </div>
         <div style={styles.panelGrid}>
           {section === 'Notes' ? (
             filteredNotes.length ? filteredNotes.map((note) => (
@@ -340,7 +341,7 @@ const localStyles = {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 26,
+    marginTop: 8,
     marginBottom: 10,
   },
   sectionHeading: {
@@ -367,14 +368,13 @@ const localStyles = {
     paddingInline: 14,
     color: colors.ink,
     fontSize: 12,
+    marginBottom: 10,
   },
   segmented: {
     flexDirection: 'row',
     padding: 4,
     borderRadius: 10,
     backgroundColor: colors.surface,
-    marginTop: 12,
-    marginBottom: 12,
   },
   segment: {
     flex: 1,

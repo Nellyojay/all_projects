@@ -164,6 +164,25 @@ export default function FinancesScreen() {
           </div>
         </div>
 
+        <SectionTitle title="YOUR FINANCE TOOLS" />
+        <div style={localStyles.segmented}>
+          {([
+            ['transactions', 'Transactions'],
+            ['budgets', 'Budget lists', ` (${budgetLists.length})`],
+            ['loans', 'Loans', ` (${loans.length})`],
+          ] as const).map(([id, label, count]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => { setSection(id); setQuery(''); }}
+              style={Object.assign({}, localStyles.segment, section === id && localStyles.segmentActive)}
+            >
+              <span style={Object.assign({}, localStyles.segmentText, section === id && localStyles.segmentTextActive)}>
+                {label}{count ?? ''}
+              </span>
+            </button>
+          ))}
+        </div>
         <div style={localStyles.toolbar}>
           <span style={localStyles.sectionHeading}>
             YOUR {section === 'budgets' ? 'BUDGET LISTS' : section.toUpperCase()}
@@ -178,7 +197,7 @@ export default function FinancesScreen() {
             style={localStyles.addButton}
           >
             <span style={localStyles.addText}>
-              ＋ {section === 'budgets' ? 'Create Budget' : section === 'loans' ? 'Add loan' : 'Income'}
+              ＋ {section === 'budgets' ? 'Create Budget' : section === 'loans' ? 'Add loan' : 'Add Income'}
             </span>
           </button>
         </div>
@@ -189,24 +208,6 @@ export default function FinancesScreen() {
           aria-label={`Search ${section === 'budgets' ? 'budget lists' : section}`}
           style={localStyles.search}
         />
-        <div style={localStyles.segmented}>
-          {([
-            ['budgets', 'Budget lists', ` (${budgetLists.length})`],
-            ['loans', 'Loans', ` (${loans.length})`],
-            ['transactions', 'Transactions'],
-          ] as const).map(([id, label, count]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => { setSection(id); setQuery(''); }}
-              style={Object.assign({}, localStyles.segment, section === id && localStyles.segmentActive)}
-            >
-              <span style={Object.assign({}, localStyles.segmentText, section === id && localStyles.segmentTextActive)}>
-                {label}{count ?? ''}
-              </span>
-            </button>
-          ))}
-        </div>
         {section === 'budgets' ? (
           <>
             {filteredBudgetLists.length ? filteredBudgetLists.map((list) => {
@@ -475,7 +476,7 @@ const localStyles = {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 16,
+    marginTop: 8,
     marginBottom: 10,
   },
   sectionHeading: {
@@ -502,14 +503,13 @@ const localStyles = {
     paddingInline: 14,
     color: colors.ink,
     fontSize: 12,
+    marginBottom: 10,
   },
   segmented: {
     flexDirection: 'row',
     padding: 4,
     borderRadius: 10,
     backgroundColor: colors.surface,
-    marginTop: 12,
-    marginBottom: 12,
   },
   segment: {
     flex: 1,
