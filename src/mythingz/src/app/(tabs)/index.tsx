@@ -7,7 +7,6 @@ import { UpcomingEventRow } from '../../components/UpcomingEventRow';
 import { colors, styles } from '../../components/theme';
 import {
   deleteRecord,
-  InsufficientBalanceError,
   localDateKey,
   saveRecord,
   type RecordDraft,
@@ -106,13 +105,6 @@ export default function HomeScreen() {
     });
     setComposer('list');
   };
-  const confirmDelete = (id: number, title: string) => {
-    if (!window.confirm(`Delete record?\n\nRemove “${title}” from your records?`)) return;
-    void deleteRecord(database, 'transactions', id).then(refresh).catch((error: unknown) => {
-      console.error('Unable to delete transaction', error);
-      window.alert(`${error instanceof InsufficientBalanceError ? 'Not enough available funds' : 'Could not delete'}\n\n${error instanceof InsufficientBalanceError ? error.message : 'Please try again.'}`);
-    });
-  };
   const removeNote = (_table: 'notes', id: number, title: string) => {
     if (!window.confirm(`Delete note?\n\nRemove “${title}” from your records?`)) return;
     void deleteRecord(database, 'notes', id).then(refresh).catch((error: unknown) => {
@@ -201,14 +193,8 @@ export default function HomeScreen() {
         <SectionTitle title="RECENT TRANSACTIONS" />
         <div style={styles.panel}>
           {transactions.length ? transactions.map((transaction) => (
-            <button
+            <div
               key={transaction.id}
-              onContextMenu={transaction.kind === 'income' && transaction.loan_id === null
-                ? (pointerEvent) => {
-                  pointerEvent.preventDefault();
-                  confirmDelete(transaction.id, transaction.title);
-                }
-                : undefined}
               style={localStyles.transactionRow}
             >
               <div style={localStyles.transactionIcon}>
@@ -230,7 +216,7 @@ export default function HomeScreen() {
               )}>
                 {transaction.kind === 'expense' ? '−' : '+'}{formatMoney(transaction.amount)}
               </span>
-            </button>
+            </div>
           )) : <span style={localStyles.muted}>Finalize a budget list to record an expense, or add income.</span>}
         </div>
       </div>
