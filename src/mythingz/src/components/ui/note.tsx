@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MAX_TITLE_LENGTH } from '../RecordComposer';
+import { useBackButtonBlocker } from '../../constants/backButtonBlocker';
 import { useDatabase } from '../../web/DatabaseProvider';
 import { colors, styles } from '../theme';
 import type { CSSProperties } from 'react';
@@ -52,32 +53,34 @@ export function NoteHeader({
 }: NoteHeaderProps) {
   return (
     <div style={noteStyles.titleRow}>
-      {editing ? (
-        <input
-          autoFocus
-          maxLength={MAX_TITLE_LENGTH}
-          value={titleDraft}
-          onChange={(event) => onTitleDraftChange(event.currentTarget.value)}
-          aria-label="Note title"
-          style={Object.assign({}, noteStyles.title, noteStyles.titleInRow, noteStyles.titleInput)}
-        />
-      ) : (
-        <button
-          type="button"
-          onClick={onStartEditing}
-          aria-label="Edit note title"
-          style={Object.assign({}, noteStyles.title, noteStyles.titleInRow, noteStyles.editableText)}
-        >
-          {note.title}
-        </button>
-      )}
-      <span style={noteStyles.updated}>
-        Updated {new Date(note.updated_at).toLocaleDateString('en-GB', {
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric',
-        })}
-      </span>
+      <div style={noteStyles.titleLine}>
+        {editing ? (
+          <input
+            autoFocus
+            maxLength={MAX_TITLE_LENGTH}
+            value={titleDraft}
+            onChange={(event) => onTitleDraftChange(event.currentTarget.value)}
+            aria-label="Note title"
+            style={Object.assign({}, noteStyles.title, noteStyles.titleInRow, noteStyles.titleInput)}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={onStartEditing}
+            aria-label="Edit note title"
+            style={Object.assign({}, noteStyles.title, noteStyles.titleInRow, noteStyles.editableText)}
+          >
+            {note.title}
+          </button>
+        )}
+        <span style={noteStyles.updated}>
+          Updated {new Date(note.updated_at).toLocaleDateString('en-GB', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          })}
+        </span>
+      </div>
     </div>
   );
 }
@@ -86,22 +89,16 @@ type NoteBodyProps = {
   note: NoteRecord;
   bodyDraft: string;
   editing: boolean;
-  saving: boolean;
   onBodyDraftChange: (body: string) => void;
   onStartEditing: () => void;
-  onCancel: () => void;
-  onSave: () => void;
 };
 
 export function NoteBody({
   note,
   bodyDraft,
   editing,
-  saving,
   onBodyDraftChange,
   onStartEditing,
-  onCancel,
-  onSave,
 }: NoteBodyProps) {
   return (
     <>
@@ -114,7 +111,6 @@ export function NoteBody({
           aria-label="Note body"
           placeholder="This note is empty."
           style={Object.assign({}, noteStyles.body, noteStyles.bodyInput)}
-          rows={20}
         />
       ) : (
         <button
@@ -126,74 +122,84 @@ export function NoteBody({
           {note.notes || 'This note is empty.'}
         </button>
       )}
-      {editing ? (
-        <div style={noteStyles.noteEditActions}>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={onCancel}
-            style={noteStyles.noteCancelButton}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={onSave}
-            style={noteStyles.noteSaveButton}
-          >
-            {saving ? 'Saving…' : 'Save changes'}
-          </button>
-        </div>
-      ) : null}
     </>
   );
 }
 
-type NoteDetailsProps = {
+export function NoteDetails({
+  note,
+  onChanged,
+}: {
   note: NoteRecord;
   onChanged: () => Promise<void>;
-};
-
-export function NoteDetails({ note, onChanged }: NoteDetailsProps) {
+}) {
   const database = useDatabase();
   const [editingTitleId, setEditingTitleId] = useState<number | null>(null);
   const [editingBodyId, setEditingBodyId] = useState<number | null>(null);
   const [titleDraft, setTitleDraft] = useState('');
   const [bodyDraft, setBodyDraft] = useState('');
-  const [saving, setSaving] = useState(false);
-
+  const saving = useRef(false);
+  const pendingChanges = useRef({
+    id: note.id,
+    category: note.category,
+    originalTitle: note.title,
+    title: note.title,
+    notes: note.notes,
+    titleChanged: false,
+    bodyChanged: false,
+  });
   const editingTitle = editingTitleId === note.id;
   const editingBody = editingBodyId === note.id;
+  const isEditing = editingTitle || editingBody;
 
-  const cancel = () => {
-    setEditingTitleId(null);
-    setEditingBodyId(null);
-  };
+  const persistPending = useCallback(async (refresh: boolean) => {
+    const pending = pendingChanges.current;
+    if (!pending.titleChanged && !pending.bodyChanged) return true;
 
-  const save = async () => {
-    const titleToSave = editingTitle ? titleDraft : note.title;
-    if (!titleToSave.trim()) {
-      window.alert('Add a title\n\nEnter a name before saving.');
-      return;
+    const title = pending.title.trim() ? pending.title : pending.originalTitle;
+    if (pending.titleChanged && !pending.title.trim()) {
+      window.alert('The title was not saved because it cannot be empty.');
+      return false;
     }
 
-    setSaving(true);
+    if (saving.current) return false;
+    saving.current = true;
     try {
       await saveRecord(database, 'note', {
-        id: note.id,
-        title: titleToSave,
-        category: note.category,
-        notes: editingBody ? bodyDraft : note.notes,
+        id: pending.id,
+        title,
+        category: pending.category,
+        notes: pending.notes,
       });
-      cancel();
-      await onChanged();
-    } catch (error) {
-      window.alert('Could not update note\n\nPlease try again.');
+      pendingChanges.current = {
+        ...pending,
+        originalTitle: title,
+        title,
+        titleChanged: false,
+        bodyChanged: false,
+      };
+      if (refresh) await onChanged();
+      return true;
     } finally {
-      setSaving(false);
+      saving.current = false;
     }
-  };
+  }, [database, onChanged]);
+
+  useEffect(() => () => {
+    void persistPending(false).catch((error: unknown) => {
+      console.error('Unable to save note while leaving details', error);
+      window.alert('Could not save note\n\nPlease try again.');
+    });
+  }, [persistPending]);
+
+  const resetBackAction = useCallback(async () => {
+    const saved = await persistPending(true);
+    if (saved) {
+      setEditingTitleId(null);
+      setEditingBodyId(null);
+    }
+  }, [persistPending]);
+  useBackButtonBlocker(isEditing, resetBackAction);
 
   return (
     <>
@@ -201,8 +207,13 @@ export function NoteDetails({ note, onChanged }: NoteDetailsProps) {
         note={note}
         titleDraft={titleDraft}
         editing={editingTitle}
-        onTitleDraftChange={setTitleDraft}
+        onTitleDraftChange={(title) => {
+          pendingChanges.current.title = title;
+          pendingChanges.current.titleChanged = true;
+          setTitleDraft(title);
+        }}
         onStartEditing={() => {
+          pendingChanges.current.title = note.title;
           setTitleDraft(note.title);
           setEditingTitleId(note.id);
         }}
@@ -211,35 +222,17 @@ export function NoteDetails({ note, onChanged }: NoteDetailsProps) {
         note={note}
         bodyDraft={bodyDraft}
         editing={editingBody}
-        saving={saving}
-        onBodyDraftChange={setBodyDraft}
+        onBodyDraftChange={(body) => {
+          pendingChanges.current.notes = body;
+          pendingChanges.current.bodyChanged = true;
+          setBodyDraft(body);
+        }}
         onStartEditing={() => {
+          pendingChanges.current.notes = note.notes;
           setBodyDraft(note.notes);
           setEditingBodyId(note.id);
         }}
-        onCancel={cancel}
-        onSave={() => void save()}
       />
-      {editingTitle && !editingBody ? (
-        <div style={noteStyles.noteEditActions}>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={cancel}
-            style={noteStyles.noteCancelButton}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => void save()}
-            style={noteStyles.noteSaveButton}
-          >
-            {saving ? 'Saving…' : 'Save changes'}
-          </button>
-        </div>
-      ) : null}
     </>
   );
 }
@@ -258,6 +251,9 @@ const noteStyles = {
     paddingBlock: 8,
     zIndex: 1,
     backgroundColor: colors.background,
+  },
+  titleLine: {
+    display: 'flex',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -299,49 +295,13 @@ const noteStyles = {
     marginTop: 14,
   },
   bodyInput: {
+    flex: 1,
     width: '100%',
+    minHeight: 0,
+    boxSizing: 'border-box',
     outline: 'none',
     fontFamily: 'inherit',
-    resize: 'vertical',
-  },
-  noteEditActions: {
-    position: 'sticky',
-    bottom: 0,
-    display: 'flex',
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 16,
-    paddingBlock: 12,
-    backgroundColor: colors.background,
-    zIndex: 1,
-  },
-  noteCancelButton: {
-    flex: 1,
-    minHeight: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingInline: 14,
-    border: `1px solid ${colors.line}`,
-    borderRadius: 7,
-    backgroundColor: colors.surface,
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  noteSaveButton: {
-    flex: 1,
-    minHeight: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingInline: 14,
-    border: 0,
-    borderRadius: 7,
-    backgroundColor: colors.green,
-    color: colors.surface,
-    fontSize: 11,
-    fontWeight: '700',
+    resize: 'none',
   },
   recordCard: {
     display: 'flex',

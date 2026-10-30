@@ -113,6 +113,13 @@ export default function HomeScreen() {
       window.alert(`${error instanceof InsufficientBalanceError ? 'Not enough available funds' : 'Could not delete'}\n\n${error instanceof InsufficientBalanceError ? error.message : 'Please try again.'}`);
     });
   };
+  const removeNote = (_table: 'notes', id: number, title: string) => {
+    if (!window.confirm(`Delete note?\n\nRemove “${title}” from your records?`)) return;
+    void deleteRecord(database, 'notes', id).then(refresh).catch((error: unknown) => {
+      console.error('Unable to delete note', error);
+      window.alert('Could not delete note\n\nPlease try again.');
+    });
+  };
   return (
     <div style={styles.screen}>
       <div style={styles.scrollContent}>
@@ -187,7 +194,7 @@ export default function HomeScreen() {
         <SectionTitle title="RECENT NOTES" action="Open organize →" onAction={() => navigate('/space/organize')} />
         <div style={styles.panelGrid}>
           {notes.length ? notes.map((note) => (
-            <NoteCard key={note.id} note={note} />
+            <NoteCard key={note.id} note={note} remove={removeNote} />
           )) : <span style={localStyles.muted}>Your recently updated notes will appear here.</span>}
         </div>
 

@@ -228,10 +228,7 @@ export function RecordDetailsModal({
 
             <div style={modalStyles.content}>
               {selected.kind === 'note' ? (
-                <NoteDetails
-                  note={selected.record}
-                  onChanged={onChanged}
-                />
+                <NoteDetails note={selected.record} onChanged={onChanged} />
               ) : (
                 <span style={modalStyles.title}>{selected.record.title}</span>
               )}
@@ -414,6 +411,8 @@ const modalStyles = {
     backgroundColor: colors.background,
   },
   pageContent: {
+    display: 'flex',
+    flexDirection: 'column',
     width: '100%',
     maxWidth: 960,
     minHeight: '100dvh',
@@ -457,6 +456,9 @@ const modalStyles = {
     fontWeight: '700',
   },
   content: {
+    display: 'flex',
+    flex: 1,
+    flexDirection: 'column',
     width: '100%',
     marginInline: 'auto',
     paddingBottom: 28,
