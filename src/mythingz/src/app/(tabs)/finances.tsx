@@ -5,8 +5,6 @@ import { RecordComposer } from '../../components/RecordComposer';
 import { ScreenHeader, SectionTitle } from '../../components/ScreenHeader';
 import { colors, styles } from '../../components/theme';
 import {
-  deleteRecord,
-  InsufficientBalanceError,
   localDateKey,
   saveRecord,
   type ListItem,
@@ -88,13 +86,6 @@ export default function FinancesScreen() {
   const create = async (kind: RecordKind, draft: Parameters<typeof saveRecord>[2]) => {
     await saveRecord(database, kind, draft);
     await refresh();
-  };
-  const removeIncome = (id: number, title: string) => {
-    if (!window.confirm(`Delete record?\n\nRemove “${title}”?`)) return;
-    void deleteRecord(database, 'transactions', id).then(refresh).catch((error: unknown) => {
-      console.error('Unable to delete finance record', error);
-      window.alert(`${error instanceof InsufficientBalanceError ? 'Not enough available funds' : 'Could not delete'}\n\n${error instanceof InsufficientBalanceError ? error.message : 'Please try again.'}`);
-    });
   };
   const addBudgetList = () => {
     setEditingRecord({
@@ -317,33 +308,8 @@ export default function FinancesScreen() {
           <>
             <div style={styles.panel}>
               {filteredTransactions.length ? filteredTransactions.map((transaction) => (
-                <button
+                <div
                   key={transaction.id}
-                  onClick={() => {
-                    if (transaction.kind === 'income' && transaction.loan_id === null) {
-                      setEditingRecord({
-                        kind: 'income', draft: {
-                          id: transaction.id, title: transaction.title, category: transaction.category,
-                          amount: transaction.amount, date: transaction.date, notes: transaction.notes,
-                        }
-                      });
-                      setComposer('income');
-                      return;
-                    }
-                    if (transaction.loan_id !== null) return;
-                    const sourceList = budgetLists.find(
-                      (list) => list.final_transaction_id === transaction.id,
-                    );
-                    if (sourceList) {
-                      navigate(`/space/records/list/${sourceList.id}`, { state: { from: location.pathname } });
-                    }
-                  }}
-                  onContextMenu={transaction.kind === 'income' && transaction.loan_id === null
-                    ? (pointerEvent) => {
-                      pointerEvent.preventDefault();
-                      removeIncome(transaction.id, transaction.title);
-                    }
-                    : undefined}
                   style={localStyles.transaction}
                 >
                   <div style={Object.assign({},
@@ -371,7 +337,7 @@ export default function FinancesScreen() {
                   )}>
                     {transaction.kind === 'income' ? '+' : '−'}{money(transaction.amount)}
                   </span>
-                </button>
+                </div>
               )) : (
                 <span style={localStyles.secondary}>
                   Add income or finalize a budget list to see transactions here.

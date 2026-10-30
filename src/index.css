@@ -287,7 +287,7 @@ textarea::placeholder {
   .mobile-nav {
     position: fixed;
     right: 12px;
-    bottom: max(12px, env(safe-area-inset-bottom));
+    bottom: 0;
     left: 12px;
     z-index: 30;
     display: grid;
@@ -296,7 +296,7 @@ textarea::placeholder {
     margin-inline: auto;
     padding: 5px 7px;
     border-top: 1px solid #292929ac;
-    border-radius: 18px;
+    border-radius: 18px 18px 0 0;
     background: rgba(0, 0, 0, 0.425);
     backdrop-filter: blur(14px);
   }
