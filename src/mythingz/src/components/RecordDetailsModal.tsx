@@ -15,7 +15,7 @@ import type {
   RecordKind,
   TaskRecord,
 } from '../services/database';
-import { colors } from './theme';
+import { colors, styles } from './theme';
 import { EventDetails, EventHeading } from './ui/event';
 import { ListDetails } from './ui/list';
 import { NoteDetails } from './ui/note';
@@ -220,9 +220,9 @@ export function RecordDetailsModal({
                       onEdit(selected.kind, toDraft(recordForEdit));
                       if (closeOnEdit) close();
                     }}
-                    type="button" style={modalStyles.editButton}
+                    type="button" style={styles.button}
                   >
-                    <span style={modalStyles.editText}>
+                    <span style={styles.buttonText}>
                       Edit {recordLabels[selected.kind].toLowerCase()}
                     </span>
                   </button>

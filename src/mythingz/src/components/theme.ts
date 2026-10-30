@@ -40,4 +40,21 @@ export const styles = {
     flexDirection: 'row',
     alignItems: 'center',
   },
+  button: {
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBlock: 12,
+    paddingInline: 12,
+    borderRadius: 8,
+    backgroundColor: colors.greenSoft,
+    border: `1px solid #fff1`,
+  },
+  buttonText: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '800',
+  },
 } as const

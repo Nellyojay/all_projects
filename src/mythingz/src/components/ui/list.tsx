@@ -317,8 +317,8 @@ export function ListDetails({
         </div>
       ) : null}
       {list.budget_enabled && !list.finalized ? (
-        <button type="button" onClick={finalize} style={listStyles.finalizeButton}>
-          <span style={listStyles.finalizeText}>Finalize list</span>
+        <button type="button" onClick={finalize} style={styles.button}>
+          <span style={styles.buttonText}>Finalize list</span>
         </button>
       ) : null}
       {list.finalized ? (
