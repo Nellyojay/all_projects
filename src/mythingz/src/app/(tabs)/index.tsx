@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
+import { ExpenseComposer } from '../../components/ExpenseComposer';
 import { RecordComposer } from '../../components/RecordComposer';
 import { ScreenHeader, SectionTitle } from '../../components/ScreenHeader';
 import { UpcomingEventRow } from '../../components/UpcomingEventRow';
@@ -8,7 +9,9 @@ import { colors, styles } from '../../components/theme';
 import {
   deleteRecord,
   localDateKey,
+  saveExpense,
   saveRecord,
+  type ExpenseDraft,
   type RecordDraft,
   type EventRecord,
   type ListItem,
@@ -34,6 +37,7 @@ export default function HomeScreen() {
   const navigate = useNavigate();
   const database = useDatabase();
   const [composer, setComposer] = useState<RecordKind | null>(null);
+  const [expenseComposerOpen, setExpenseComposerOpen] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
   const [events, setEvents] = useState<EventRecord[]>([]);
@@ -96,6 +100,10 @@ export default function HomeScreen() {
     await saveRecord(database, kind, draft);
     await refresh();
   };
+  const onSaveExpense = async (draft: ExpenseDraft) => {
+    await saveExpense(database, draft);
+    await refresh();
+  };
   const addBudgetList = () => {
     setEditingDraft({
       title: '',
@@ -127,7 +135,7 @@ export default function HomeScreen() {
           {([
             ['budget-list', '☷', 'Budget list'],
             ['note', '✎', 'New note'],
-            ['task', '✓', 'Task'],
+            ['expense', '−', 'Add expense'],
             ['event', '▦', 'Event'],
           ] as const).map(([kind, icon, label]) => (
             <button
@@ -135,6 +143,8 @@ export default function HomeScreen() {
               onClick={() => {
                 if (kind === 'budget-list') {
                   addBudgetList();
+                } else if (kind === 'expense') {
+                  setExpenseComposerOpen(true);
                 } else {
                   setComposer(kind);
                 }
@@ -157,7 +167,6 @@ export default function HomeScreen() {
                 Active budget lists: {formatMoney(activeListPlan)}
               </span>
             </div>
-            <span style={localStyles.financeMark}>↗</span>
           </div>
         </div>
 
@@ -200,8 +209,8 @@ export default function HomeScreen() {
               <div style={localStyles.transactionIcon}>
                 <span>
                   {transaction.kind === 'expense'
-                    ? '↙'
-                    : transaction.loan_id !== null ? '↔' : '↗'}
+                    ? '−'
+                    : transaction.loan_id !== null ? '↔' : '+'}
                 </span>
               </div>
               <div style={localStyles.previewText}>
@@ -230,6 +239,12 @@ export default function HomeScreen() {
         }}
         onSave={onSave}
       />
+      {expenseComposerOpen ? (
+        <ExpenseComposer
+          onClose={() => setExpenseComposerOpen(false)}
+          onSave={onSaveExpense}
+        />
+      ) : null}
     </div>
   );
 }
