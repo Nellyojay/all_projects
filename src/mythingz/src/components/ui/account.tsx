@@ -23,7 +23,7 @@ export function AccountPicker({
   label: string;
 }) {
   return (
-    <>
+    <div style={{ marginTop: 12 }}>
       <label style={accountStyles.label} htmlFor={`account-${label.replace(/\W/g, '-')}`}>
         {label}
       </label>
@@ -41,7 +41,7 @@ export function AccountPicker({
           </option>
         ))}
       </select>
-    </>
+    </div>
   );
 }
 

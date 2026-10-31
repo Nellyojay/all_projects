@@ -6,14 +6,14 @@ import {
   InsufficientBalanceError,
   getAccounts,
   localDateKey,
-  type EventRecord,
   type Account,
-  type ListItem,
   type RecordDraft,
   type RecordKind,
 } from '../services/database';
 import { colors, styles } from './theme';
 import { AccountPicker } from './ui/account';
+import { ListComposer } from './ui/list';
+import { parseItemizedItems, type ItemizedItem } from './ui/itemizedItemsModel';
 
 export const MAX_TITLE_LENGTH = 32;
 
@@ -46,11 +46,6 @@ type Props = {
   amountLocked?: boolean;
   onClose: () => void;
   onSave: (kind: RecordKind, draft: RecordDraft) => Promise<void>;
-};
-
-type ListItemInput = Omit<ListItem, 'price' | 'quantity'> & {
-  price: string;
-  quantity: string;
 };
 
 const incomeCategory = (draft?: RecordDraft) =>
@@ -100,9 +95,7 @@ export function RecordComposer({
   const [notes, setNotes] = useState(initialDraft?.notes ?? '');
   const [budgetEnabled, setBudgetEnabled] = useState(initialDraft?.budgetEnabled ?? false);
   const [eventId, setEventId] = useState<number | null>(initialDraft?.eventId ?? null);
-  const [eventPickerVisible, setEventPickerVisible] = useState(false);
-  const [savedEvents, setSavedEvents] = useState<EventRecord[]>([]);
-  const [listItems, setListItems] = useState<ListItemInput[]>(() => {
+  const [listItems, setListItems] = useState<ItemizedItem[]>(() => {
     const items = initialDraft?.listItems
       ?? initialDraft?.notes?.split(/\r?\n|,/).filter((item) => item.trim()).map((text) => ({
         text: text.trim(),
@@ -163,8 +156,6 @@ export function RecordComposer({
     setNotes('');
     setBudgetEnabled(false);
     setEventId(null);
-    setEventPickerVisible(false);
-    setSavedEvents([]);
     setListItems([{ text: '', done: false, price: '', quantity: '1' }]);
     onClose();
   }, [defaultDate, initialDraft, kind, navigate, onClose]);
@@ -240,26 +231,13 @@ export function RecordComposer({
       window.alert('Check loan fees\n\nEnter interest or fees of zero or more.');
       return;
     }
-    const parsedListItems: ListItem[] = listItems
-      .map((item) => ({
-        text: item.text.trim(),
-        done: item.done,
-        price: item.price.trim() ? Number(item.price.replace(/,/g, '')) : 0,
-        quantity: item.quantity.trim() ? Number(item.quantity) : 1,
-      }))
-      .filter((item) => item.text.length > 0);
-    if (kind === 'list' && listItems.some((item) => {
-      const price = item.price.trim() ? Number(item.price.replace(/,/g, '')) : 0;
-      const quantity = item.quantity.trim() ? Number(item.quantity) : 1;
-      return (item.price.trim() !== '' && (!Number.isFinite(price) || price < 0))
-        || !Number.isInteger(quantity)
-        || quantity < 1;
-    })) {
+    const parsedListItems = kind === 'list' ? parseItemizedItems(listItems) : [];
+    if (parsedListItems === null) {
       window.alert('Check item quantity and price\n\nEnter a whole-number quantity of at least one and a valid unit price of zero or more.');
       return;
     }
     const parsedDate = new Date(`${date}T12:00:00`);
-    if ((kind === 'event' || kind === 'task' || kind === 'income' || kind === 'loan-repayment' || kind === 'transfer') &&
+    if ((kind === 'event' || kind === 'task') &&
       (!/^\d{4}-\d{2}-\d{2}$/.test(date) || localDateKey(parsedDate) !== date)) {
       window.alert('Check the date\n\nUse the YYYY-MM-DD date format.');
       return;
@@ -279,7 +257,7 @@ export function RecordComposer({
         title: title || 'Transfer',
         category: category || (kind === 'task' ? 'Normal' : 'Personal'),
         amount: parsedAmount,
-        date,
+        date: kind === 'event' || kind === 'task' ? date : localDateKey(),
         notes,
         fees: kind === 'loan' ? parsedFees : undefined,
         dueDate: kind === 'loan' ? dueDate : undefined,
@@ -299,22 +277,6 @@ export function RecordComposer({
       window.alert(`${error instanceof InsufficientBalanceError ? 'Not enough available funds' : 'Could not save'}\n\n${error instanceof InsufficientBalanceError ? error.message : 'Please try again.'}`);
     } finally {
       setSaving(false);
-    }
-  };
-
-  const openEventPicker = async () => {
-    try {
-      const events = await database.getAllAsync<EventRecord>(
-        `SELECT events.*,
-          (SELECT COUNT(*) FROM lists WHERE lists.event_id = events.id AND lists.budget_enabled = 1) AS budget_count
-         FROM events
-         ORDER BY date, id`,
-      );
-      setSavedEvents(events);
-      setEventPickerVisible((visible) => !visible);
-    } catch (error) {
-      console.error('Unable to load saved events for budget', error);
-      window.alert('Could not load events\n\nPlease try again.');
     }
   };
 
@@ -470,8 +432,7 @@ export function RecordComposer({
               />
             </>
           ) : null}
-          {kind === 'event' || kind === 'task' || kind === 'income' ||
-            kind === 'loan-repayment' || kind === 'transfer' ? (
+          {kind === 'event' || kind === 'task' ? (
             <>
               <span style={layoutStyles.label}>DATE · YYYY-MM-DD</span>
               <input
@@ -494,157 +455,14 @@ export function RecordComposer({
             </>
           ) : null}
           {kind === 'list' ? (
-            <>
-              <div style={layoutStyles.budgetOption}>
-                <div style={layoutStyles.budgetCopy}>
-                  <span style={layoutStyles.budgetTitle}>Add to budget</span>
-                  <span style={layoutStyles.budgetDescription}>Track item prices and total the list</span>
-                </div>
-                <input type="checkbox"
-                  checked={budgetEnabled}
-                  onChange={(event) => setBudgetEnabled(event.currentTarget.checked)}
-                />
-              </div>
-              {budgetEnabled ? (
-                <div style={layoutStyles.eventBudgetSection}>
-                  <span style={layoutStyles.label}>EVENT</span>
-                  <button
-                    type="button" aria-expanded={eventPickerVisible}
-                    onClick={() => void openEventPicker()}
-                    style={layoutStyles.attachEventButton}
-                  >
-                    <span style={layoutStyles.attachEventButtonText}>
-                      {eventId === null ? '＋  Attach a saved event' : 'Change attached event'}
-                    </span>
-                  </button>
-                  {eventId !== null ? (
-                    <span style={layoutStyles.attachedEventText}>
-                      {savedEvents.find((event) => event.id === eventId)?.title
-                        ?? 'Saved event attached'}
-                    </span>
-                  ) : null}
-                  {eventPickerVisible ? (
-                    <div style={layoutStyles.eventOptions}>
-                      <button
-                        type="button" aria-selected={eventId === null}
-                        onClick={() => {
-                          setEventId(null);
-                          setEventPickerVisible(false);
-                        }}
-                        style={Object.assign({}, layoutStyles.eventOption, eventId === null && layoutStyles.eventOptionSelected)}
-                      >
-                        <span style={layoutStyles.eventOptionTitle}>No event</span>
-                      </button>
-                      {savedEvents.map((event) => (
-                        <button
-                          key={event.id}
-                          type="button" aria-selected={eventId === event.id}
-                          onClick={() => {
-                            setEventId(event.id);
-                            setEventPickerVisible(false);
-                          }}
-                          style={Object.assign({},
-                            layoutStyles.eventOption,
-                            eventId === event.id && layoutStyles.eventOptionSelected,
-                          )}
-                        >
-                          <span style={layoutStyles.eventOptionTitle}>{event.title}</span>
-                          <span style={layoutStyles.eventOptionDate}>{event.date}</span>
-                        </button>
-                      ))}
-                      {savedEvents.length === 0 ? (
-                        <span style={layoutStyles.noSavedEvents}>
-                          Create a calendar event first to attach it to this budget.
-                        </span>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-              <span style={layoutStyles.label}>LIST ITEMS</span>
-              {budgetEnabled ? (
-                <div style={layoutStyles.itemColumnLabels}>
-                  <span style={Object.assign({}, layoutStyles.itemColumnLabel, layoutStyles.itemNameColumn)}>ITEM</span>
-                  <span style={Object.assign({}, layoutStyles.itemColumnLabel, layoutStyles.itemQuantity)}>QTY</span>
-                  <span style={Object.assign({}, layoutStyles.itemColumnLabel, layoutStyles.itemPrice)}>UNIT PRICE · UGX</span>
-                  <div style={layoutStyles.removeSpacer} />
-                </div>
-              ) : null}
-              {listItems.map((item, index) => (
-                <div key={`list-item-${index}`} style={layoutStyles.itemRow}>
-                  <input
-                    value={item.text}
-                    onChange={(event) => {
-                      const text = event.currentTarget.value;
-                      setListItems((current) => current.map((entry, entryIndex) =>
-                        entryIndex === index ? { ...entry, text } : entry,
-                      ));
-                    }}
-                    placeholder={`Item ${index + 1}`}
-                    style={Object.assign({}, layoutStyles.input, layoutStyles.itemNameColumn)}
-                  />
-                  {budgetEnabled ? (
-                    <>
-                      <input
-                        value={item.quantity}
-                        onChange={(event) => {
-                          const quantity = event.currentTarget.value;
-                          setListItems((current) => current.map((entry, entryIndex) =>
-                            entryIndex === index ? { ...entry, quantity } : entry,
-                          ));
-                        }}
-                        placeholder="1" inputMode="numeric"
-                        style={Object.assign({}, layoutStyles.input, layoutStyles.itemQuantity)}
-                      />
-                      <input
-                        value={item.price}
-                        onChange={(event) => {
-                          const price = event.currentTarget.value;
-                          setListItems((current) => current.map((entry, entryIndex) =>
-                            entryIndex === index ? { ...entry, price } : entry,
-                          ));
-                        }}
-                        placeholder="0" inputMode="decimal"
-                        style={Object.assign({}, layoutStyles.input, layoutStyles.itemPrice)}
-                      />
-                    </>
-                  ) : null}
-                  <button
-                    type="button" aria-label={`Remove item ${index + 1}`}
-                    onClick={() => setListItems((current) => current.length > 1
-                      ? current.filter((_, entryIndex) => entryIndex !== index)
-                      : [{ text: '', done: false, price: '', quantity: '1' }])}
-                    style={layoutStyles.removeItem}
-                  >
-                    <span style={layoutStyles.removeItemText}>−</span>
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button" onClick={() => setListItems((current) => [
-                  ...current,
-                  { text: '', done: false, price: '', quantity: '1' },
-                ])}
-                style={layoutStyles.addItem}
-              >
-                <span style={layoutStyles.addItemText}>＋  Add item</span>
-              </button>
-              {budgetEnabled ? (
-                <span style={layoutStyles.listTotal}>
-                  {listItems.filter((item) => item.text.trim()).length}{' '}
-                  {listItems.filter((item) => item.text.trim()).length === 1 ? 'item' : 'items'}
-                  {' · '}List total · UGX {new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(
-                    listItems.reduce((total, item) => {
-                      const price = Number(item.price.replace(/,/g, ''));
-                      const quantity = Number(item.quantity);
-                      return total + (item.text.trim() && Number.isFinite(price) && Number.isInteger(quantity)
-                        ? price * quantity
-                        : 0);
-                    }, 0),
-                  )}
-                </span>
-              ) : null}
-            </>
+            <ListComposer
+              budgetEnabled={budgetEnabled}
+              onBudgetEnabledChange={setBudgetEnabled}
+              eventId={eventId}
+              onEventIdChange={setEventId}
+              listItems={listItems}
+              onListItemsChange={setListItems}
+            />
           ) : kind === 'note' ? (
             editingNoteBody ? (
               <textarea
@@ -845,62 +663,6 @@ const layoutStyles = {
     marginTop: 40,
     fontSize: 13,
   },
-  eventBudgetSection: {
-    marginTop: 4,
-  },
-  attachEventButton: {
-    minHeight: 46,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
-  },
-  attachEventButtonText: {
-    color: colors.ink,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  attachedEventText: {
-    color: colors.green,
-    fontSize: 10,
-    fontWeight: '700',
-    marginTop: 8,
-  },
-  eventOptions: {
-    gap: 8,
-    marginTop: 8,
-  },
-  eventOption: {
-    minHeight: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingInline: 12,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 7,
-    backgroundColor: colors.surface,
-  },
-  eventOptionSelected: {
-    borderColor: colors.green,
-    backgroundColor: colors.greenSoft,
-  },
-  eventOptionTitle: {
-    color: colors.ink,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  eventOptionDate: {
-    color: colors.muted,
-    fontSize: 9,
-  },
-  noSavedEvents: {
-    color: colors.muted,
-    fontSize: 10,
-    lineHeight: '18px',
-  },
   categoryOption: {
     minHeight: 36,
     minWidth: '30%',
@@ -926,100 +688,6 @@ const layoutStyles = {
   multiline: {
     minHeight: 100,
     paddingTop: 12,
-  },
-  budgetOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingBlock: 12,
-    marginTop: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.line,
-  },
-  budgetCopy: {
-    flex: 1,
-    paddingRight: 12,
-  },
-  budgetTitle: {
-    color: colors.ink,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  budgetDescription: {
-    color: colors.muted,
-    fontSize: 9,
-    marginTop: 3,
-  },
-  itemColumnLabels: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
-  },
-  itemColumnLabel: {
-    flex: 1,
-    color: colors.muted,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-  },
-  itemNameColumn: {
-    flex: 1,
-    minWidth: 70,
-  },
-  itemQuantity: {
-    width: 52,
-    flexGrow: 0,
-    flexShrink: 0,
-    textAlign: 'center',
-  },
-  removeSpacer: {
-    width: 32,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  itemPrice: {
-    flex: 0.8,
-    minWidth: 76,
-    paddingInline: 10,
-  },
-  removeItem: {
-    width: 32,
-    height: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 7,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.line,
-  },
-  removeItemText: {
-    color: colors.muted,
-    fontSize: 18,
-  },
-  addItem: {
-    alignSelf: 'flex-start',
-    paddingBlock: 10,
-    paddingInline: 12,
-    borderRadius: 7,
-    backgroundColor: colors.greenSoft,
-    marginTop: 2,
-  },
-  addItemText: {
-    color: colors.ink,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  listTotal: {
-    color: colors.ink,
-    fontSize: 11,
-    fontWeight: '800',
-    textAlign: 'right',
-    marginTop: 12,
   },
   save: {
     minHeight: 52,

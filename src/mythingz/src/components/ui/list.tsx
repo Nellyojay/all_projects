@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { MouseEvent, CSSProperties } from 'react';
+import type { CSSProperties, Dispatch, MouseEvent, SetStateAction } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
 import type { BrowserDatabase } from '../../web/database';
@@ -15,6 +15,8 @@ import {
 import type { Account, EventRecord, ListItem, ListRecord, RecordDraft } from '../../services/database';
 import { colors, styles } from '../theme';
 import { AccountPicker } from './account';
+import { ItemizedItemsEditor } from './itemizedItems';
+import type { ItemizedItem } from './itemizedItemsModel';
 
 type ListRecordOptions = { budgetOnly?: boolean; eventId?: number };
 
@@ -50,6 +52,125 @@ function listTotal(items: ListItem[], checkedOnly = false) {
 
 const money = (amount: number) =>
   `UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(amount)}`;
+
+export function ListComposer({
+  budgetEnabled,
+  onBudgetEnabledChange,
+  eventId,
+  onEventIdChange,
+  listItems,
+  onListItemsChange,
+}: {
+  budgetEnabled: boolean;
+  onBudgetEnabledChange: (enabled: boolean) => void;
+  eventId: number | null;
+  onEventIdChange: (eventId: number | null) => void;
+  listItems: ItemizedItem[];
+  onListItemsChange: Dispatch<SetStateAction<ItemizedItem[]>>;
+}) {
+  const database = useDatabase();
+  const [eventPickerVisible, setEventPickerVisible] = useState(false);
+  const [savedEvents, setSavedEvents] = useState<EventRecord[]>([]);
+
+  const openEventPicker = async () => {
+    try {
+      const events = await database.getAllAsync<EventRecord>(
+        `SELECT events.*,
+          (SELECT COUNT(*) FROM lists WHERE lists.event_id = events.id AND lists.budget_enabled = 1) AS budget_count
+         FROM events
+         ORDER BY date, id`,
+      );
+      setSavedEvents(events);
+      setEventPickerVisible((visible) => !visible);
+    } catch (error) {
+      console.error('Unable to load saved events for budget', error);
+      window.alert('Could not load events\n\nPlease try again.');
+    }
+  };
+
+  return (
+    <>
+      <div style={listComposerStyles.budgetOption}>
+        <div style={listComposerStyles.budgetCopy}>
+          <span style={listComposerStyles.budgetTitle}>Add to budget</span>
+          <span style={listComposerStyles.budgetDescription}>Track item prices and total the list</span>
+        </div>
+        <input
+          type="checkbox"
+          checked={budgetEnabled}
+          onChange={(event) => onBudgetEnabledChange(event.currentTarget.checked)}
+        />
+      </div>
+      {budgetEnabled ? (
+        <div style={listComposerStyles.eventBudgetSection}>
+          <span style={listComposerStyles.label}>EVENT</span>
+          <button
+            type="button" aria-expanded={eventPickerVisible}
+            onClick={() => void openEventPicker()}
+            style={listComposerStyles.attachEventButton}
+          >
+            <span style={listComposerStyles.attachEventButtonText}>
+              {eventId === null ? '＋  Attach a saved event' : 'Change attached event'}
+            </span>
+          </button>
+          {eventId !== null ? (
+            <span style={listComposerStyles.attachedEventText}>
+              {savedEvents.find((event) => event.id === eventId)?.title ?? 'Saved event attached'}
+            </span>
+          ) : null}
+          {eventPickerVisible ? (
+            <div style={listComposerStyles.eventOptions}>
+              <button
+                type="button" aria-selected={eventId === null}
+                onClick={() => {
+                  onEventIdChange(null);
+                  setEventPickerVisible(false);
+                }}
+                style={Object.assign(
+                  {},
+                  listComposerStyles.eventOption,
+                  eventId === null && listComposerStyles.eventOptionSelected,
+                )}
+              >
+                <span style={listComposerStyles.eventOptionTitle}>No event</span>
+              </button>
+              {savedEvents.map((event) => (
+                <button
+                  key={event.id}
+                  type="button" aria-selected={eventId === event.id}
+                  onClick={() => {
+                    onEventIdChange(event.id);
+                    setEventPickerVisible(false);
+                  }}
+                  style={Object.assign(
+                    {},
+                    listComposerStyles.eventOption,
+                    eventId === event.id && listComposerStyles.eventOptionSelected,
+                  )}
+                >
+                  <span style={listComposerStyles.eventOptionTitle}>{event.title}</span>
+                  <span style={listComposerStyles.eventOptionDate}>{event.date}</span>
+                </button>
+              ))}
+              {savedEvents.length === 0 ? (
+                <span style={listComposerStyles.noSavedEvents}>
+                  Create a calendar event first to attach it to this budget.
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      <ItemizedItemsEditor
+        items={listItems}
+        onItemsChange={onListItemsChange}
+        showPricing={budgetEnabled}
+        showTotal={budgetEnabled}
+        totalLabel="List total"
+      />
+    </>
+  );
+}
 
 export function OrganizerLists({
   lists,
@@ -569,4 +690,56 @@ const listStyles = {
   eventBudgetItem: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, paddingTop: 8 },
   eventBudgetItemText: { flex: 1, color: colors.ink, fontSize: 10 },
   eventBudgetItemPrice: { color: colors.muted, fontSize: 9, fontWeight: '600' },
+} satisfies Record<string, CSSProperties>;
+
+const listComposerStyles = {
+  label: {
+    display: 'block',
+    color: colors.muted,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1,
+    marginTop: 12,
+    marginBottom: 7,
+  },
+  budgetOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBlock: 12,
+    marginTop: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+  },
+  budgetCopy: { flex: 1, paddingRight: 12 },
+  budgetTitle: { color: colors.ink, fontSize: 12, fontWeight: '700' },
+  budgetDescription: { color: colors.muted, fontSize: 9, marginTop: 3 },
+  eventBudgetSection: { marginTop: 4 },
+  attachEventButton: {
+    minHeight: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+  },
+  attachEventButtonText: { color: colors.ink, fontSize: 11, fontWeight: '700' },
+  attachedEventText: { color: colors.green, fontSize: 10, fontWeight: '700', marginTop: 8 },
+  eventOptions: { gap: 8, marginTop: 8 },
+  eventOption: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingInline: 12,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 7,
+    backgroundColor: colors.surface,
+  },
+  eventOptionSelected: { borderColor: colors.green, backgroundColor: colors.greenSoft },
+  eventOptionTitle: { color: colors.ink, fontSize: 11, fontWeight: '700' },
+  eventOptionDate: { color: colors.muted, fontSize: 9 },
+  noSavedEvents: { color: colors.muted, fontSize: 10, lineHeight: '18px' },
 } satisfies Record<string, CSSProperties>;

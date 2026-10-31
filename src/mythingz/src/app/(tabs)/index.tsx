@@ -217,7 +217,7 @@ export default function HomeScreen() {
                 {transaction.kind === 'expense' ? '−' : '+'}{formatMoney(transaction.amount)}
               </span>
             </div>
-          )) : <span style={localStyles.muted}>Finalize a budget list to record an expense, or add income.</span>}
+          )) : <span style={localStyles.muted}>Add an expense or income, or finalize a budget list.</span>}
         </div>
       </div>
       <RecordComposer

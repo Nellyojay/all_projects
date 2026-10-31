@@ -12,6 +12,21 @@ export const INCOME_CATEGORIES = [
   'Other',
 ] as const;
 
+export const EXPENSE_CATEGORIES = [
+  'Expense',
+  'Bill',
+  'Payment',
+  'Rent',
+  'Groceries',
+  'Transport',
+  'Utilities',
+  'Healthcare',
+  'Education',
+  'Entertainment',
+  'Shopping',
+  'Other',
+] as const;
+
 export const ACCOUNT_TYPES = [
   'Mobile money',
   'Cash wallet',

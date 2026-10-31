@@ -2,14 +2,17 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
 import { RecordComposer } from '../../components/RecordComposer';
+import { ExpenseComposer } from '../../components/ExpenseComposer';
 import { ScreenHeader, SectionTitle } from '../../components/ScreenHeader';
 import { colors, styles } from '../../components/theme';
 import {
   localDateKey,
   getAccounts,
   getTransfers,
+  saveExpense,
   saveRecord,
   type Account,
+  type ExpenseDraft,
   type ListRecord,
   type Loan,
   type RecordDraft,
@@ -37,6 +40,7 @@ export default function FinancesScreen() {
   });
   const [query, setQuery] = useState('');
   const [composer, setComposer] = useState<RecordKind | null>(null);
+  const [expenseComposerOpen, setExpenseComposerOpen] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transfers, setTransfers] = useState<Transfer[]>([]);
@@ -103,6 +107,10 @@ export default function FinancesScreen() {
 
   const create = async (kind: RecordKind, draft: Parameters<typeof saveRecord>[2]) => {
     await saveRecord(database, kind, draft);
+    await refresh();
+  };
+  const createExpense = async (draft: ExpenseDraft) => {
+    await saveExpense(database, draft);
     await refresh();
   };
   const addAccount = () => {
@@ -193,27 +201,34 @@ export default function FinancesScreen() {
           <span style={localStyles.sectionHeading}>
             YOUR {section === 'budgets' ? 'BUDGET LISTS' : section.toUpperCase()}
           </span>
-          <button
-            type="button"
-            onClick={section === 'budgets'
-              ? addBudgetList
-              : section === 'loans'
-                ? addLoan
-                : section === 'transfers'
-                  ? () => setComposer('transfer')
-                  : () => setComposer('income')}
-            style={localStyles.addButton}
-          >
-            <span style={localStyles.addText}>
-              + {section === 'budgets'
-                ? 'Create Budget'
+          {section === 'transactions' ? (
+            <div style={localStyles.toolbarActions}>
+              <button type="button" onClick={() => setComposer('income')} style={localStyles.addButton}>
+                <span style={localStyles.addText}>+ Add Income</span>
+              </button>
+              <button type="button" onClick={() => setExpenseComposerOpen(true)} style={localStyles.addButton}>
+                <span style={localStyles.addText}>+ Add Expense</span>
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={section === 'budgets'
+                ? addBudgetList
                 : section === 'loans'
-                  ? 'Add loan'
-                  : section === 'transfers'
-                    ? 'Transfer'
-                    : 'Add Income'}
-            </span>
-          </button>
+                  ? addLoan
+                  : () => setComposer('transfer')}
+              style={localStyles.addButton}
+            >
+              <span style={localStyles.addText}>
+                + {section === 'budgets'
+                  ? 'Create Budget'
+                  : section === 'loans'
+                    ? 'Add loan'
+                    : 'Transfer'}
+              </span>
+            </button>
+          )}
         </div>
         <input
           value={query}
@@ -325,7 +340,7 @@ export default function FinancesScreen() {
                 </div>
               )) : (
                 <span style={localStyles.secondary}>
-                  Add income or finalize a budget list to see transactions here.
+                  Add an expense or income, or finalize a budget list to see transactions here.
                 </span>
               )}
             </div>
@@ -353,6 +368,12 @@ export default function FinancesScreen() {
         onClose={() => { setComposer(null); setEditingRecord(null); }}
         onSave={create}
       />
+      {expenseComposerOpen ? (
+        <ExpenseComposer
+          onClose={() => setExpenseComposerOpen(false)}
+          onSave={createExpense}
+        />
+      ) : null}
     </div>
   );
 }
@@ -388,10 +409,17 @@ const localStyles = {
   },
   toolbar: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
     marginTop: 8,
     marginBottom: 10,
+  },
+  toolbarActions: {
+    display: 'flex',
+    flexDirection: 'row',
+    gap: 6,
   },
   sectionHeading: {
     color: colors.ink,

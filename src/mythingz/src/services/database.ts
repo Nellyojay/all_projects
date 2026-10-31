@@ -1,7 +1,7 @@
 import type { BrowserDatabase } from '../web/database';
-import { INCOME_CATEGORIES } from '../constants/finance';
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../constants/finance';
 
-export { INCOME_CATEGORIES } from '../constants/finance';
+export { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../constants/finance';
 
 export type RecordKind =
   | 'income'
@@ -36,6 +36,14 @@ export type ListItem = {
   done: boolean;
   price: number;
   quantity: number;
+};
+
+export type ExpenseDraft = {
+  title: string;
+  category: string;
+  notes: string;
+  accountId: number;
+  items: ListItem[];
 };
 
 export type Transaction = {
@@ -333,6 +341,50 @@ async function ensureAccountBalance(database: BrowserDatabase, accountId: number
   }
 }
 
+export async function saveExpense(database: BrowserDatabase, draft: ExpenseDraft) {
+  const title = draft.title.trim();
+  const category = draft.category.trim();
+  const notes = draft.notes.trim();
+  if (!title) throw new Error('Enter an expense title.');
+  if (!EXPENSE_CATEGORIES.some((expenseCategory) => expenseCategory === category)) {
+    throw new Error('Choose a valid expense category.');
+  }
+  if (!draft.accountId) throw new Error('Choose the account paying for this expense.');
+  if (!draft.items.length || draft.items.some((item) =>
+    !item.text.trim()
+    || !Number.isFinite(item.price)
+    || item.price < 0
+    || !Number.isInteger(item.quantity)
+    || item.quantity < 1
+  )) {
+    throw new Error('Add expense items with valid quantities and unit prices.');
+  }
+
+  const amount = draft.items.reduce((total, item) => total + item.price * item.quantity, 0);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error('The expense total must be greater than zero.');
+  }
+  const itemDetails = draft.items.map((item) =>
+    `${item.quantity} × ${item.text.trim()} · UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(item.price)} each`,
+  ).join('\n');
+  const transactionNotes = [notes, `Items:\n${itemDetails}`].filter(Boolean).join('\n\n');
+  const date = today();
+
+  await database.withTransactionAsync(async () => {
+    await ensureAccountBalance(database, draft.accountId, amount);
+    await database.runAsync(
+      'INSERT INTO transactions (kind, title, category, amount, date, notes, account_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'expense',
+      title,
+      category,
+      amount,
+      date,
+      transactionNotes,
+      draft.accountId,
+    );
+  });
+}
+
 export async function getTransfers(database: BrowserDatabase) {
   return database.getAllAsync<Transfer>(
     `SELECT transfers.*, source.name AS from_account_name, destination.name AS to_account_name
@@ -378,7 +430,7 @@ export async function saveRecord(
           title,
           category,
           amount,
-          draft.date || today(),
+          today(),
           notes,
           accountId,
           id,
@@ -393,7 +445,7 @@ export async function saveRecord(
       title,
       category,
       draft.amount ?? 0,
-      draft.date || today(),
+      today(),
       notes,
       accountId,
     );
@@ -464,7 +516,7 @@ export async function saveRecord(
         `Loan repayment · ${loan.lender}`,
         'Loan repayment',
         amount,
-        draft.date || today(),
+        today(),
         notes,
         loanId,
         accountId,
@@ -488,7 +540,7 @@ export async function saveRecord(
         fromAccountId,
         toAccountId,
         amount,
-        draft.date || today(),
+        today(),
         notes,
       );
     });
