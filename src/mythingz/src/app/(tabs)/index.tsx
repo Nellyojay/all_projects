@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
 import { ExpenseComposer } from '../../components/ExpenseComposer';
 import { RecordComposer } from '../../components/RecordComposer';
+import { TransactionReceipt } from '../../components/TransactionReceipt';
 import { ScreenHeader, SectionTitle } from '../../components/ScreenHeader';
 import { UpcomingEventRow } from '../../components/UpcomingEventRow';
 import { colors, styles } from '../../components/theme';
@@ -19,6 +20,7 @@ import {
   type RecordKind,
   type TaskRecord,
   type Transaction,
+  type Transfer,
 } from '../../services/database';
 import { NoteCard } from '../../components/ui/note';
 
@@ -39,6 +41,7 @@ export default function HomeScreen() {
   const [composer, setComposer] = useState<RecordKind | null>(null);
   const [expenseComposerOpen, setExpenseComposerOpen] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [selectedTransaction, setSelectedTransaction] = useState<(Transaction | Transfer) | null>(null);
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [notes, setNotes] = useState<NoteRecord[]>([]);
@@ -49,7 +52,11 @@ export default function HomeScreen() {
   const refresh = useCallback(async () => {
     const month = localDateKey().slice(0, 7);
     const [transactionRows, taskRows, eventRows, noteRows, spent, budgetLists] = await Promise.all([
-      database.getAllAsync<Transaction>('SELECT * FROM transactions ORDER BY date DESC, id DESC LIMIT 4'),
+      database.getAllAsync<Transaction>(
+        `SELECT transactions.*, accounts.name AS account_name
+         FROM transactions LEFT JOIN accounts ON accounts.id = transactions.account_id
+         ORDER BY transactions.date DESC, transactions.id DESC LIMIT 4`,
+      ),
       database.getAllAsync<TaskRecord>(
         'SELECT * FROM tasks WHERE completed = 0 AND date <= ? ORDER BY date LIMIT 3',
         localDateKey(),
@@ -202,8 +209,10 @@ export default function HomeScreen() {
         <SectionTitle title="RECENT TRANSACTIONS" />
         <div style={styles.panel}>
           {transactions.length ? transactions.map((transaction) => (
-            <div
+            <button
               key={transaction.id}
+              type="button"
+              onClick={() => setSelectedTransaction(transaction)}
               style={localStyles.transactionRow}
             >
               <div style={localStyles.transactionIcon}>
@@ -225,7 +234,7 @@ export default function HomeScreen() {
               )}>
                 {transaction.kind === 'expense' ? '−' : '+'}{formatMoney(transaction.amount)}
               </span>
-            </div>
+            </button>
           )) : <span style={localStyles.muted}>Add an expense or income, or finalize a budget list.</span>}
         </div>
       </div>
@@ -243,6 +252,12 @@ export default function HomeScreen() {
         <ExpenseComposer
           onClose={() => setExpenseComposerOpen(false)}
           onSave={onSaveExpense}
+        />
+      ) : null}
+      {selectedTransaction ? (
+        <TransactionReceipt
+          transaction={selectedTransaction}
+          onClose={() => setSelectedTransaction(null)}
         />
       ) : null}
     </div>
@@ -355,10 +370,17 @@ const localStyles = {
     fontWeight: '700',
   },
   transactionRow: {
+    display: 'flex',
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 11,
     paddingBlock: 8,
+    textAlign: 'left',
+    color: colors.ink,
+    backgroundColor: 'transparent',
+    border: 0,
+    cursor: 'pointer',
   },
   transactionIcon: {
     width: 34,

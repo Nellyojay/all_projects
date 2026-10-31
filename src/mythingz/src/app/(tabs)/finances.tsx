@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
 import { RecordComposer } from '../../components/RecordComposer';
 import { ExpenseComposer } from '../../components/ExpenseComposer';
+import { TransactionReceipt } from '../../components/TransactionReceipt';
 import { ScreenHeader, SectionTitle } from '../../components/ScreenHeader';
 import { colors, styles } from '../../components/theme';
 import {
@@ -42,6 +43,7 @@ export default function FinancesScreen() {
   const [composer, setComposer] = useState<RecordKind | null>(null);
   const [expenseComposerOpen, setExpenseComposerOpen] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [selectedTransaction, setSelectedTransaction] = useState<(Transaction | Transfer) | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [budgetLists, setBudgetLists] = useState<ListRecord[]>([]);
@@ -240,7 +242,12 @@ export default function FinancesScreen() {
         {section === 'transfers' ? (
           <div style={styles.panel}>
             {filteredTransfers.length ? filteredTransfers.map((transfer) => (
-              <div key={transfer.id} style={localStyles.transaction}>
+              <button
+                key={transfer.id}
+                type="button"
+                onClick={() => setSelectedTransaction(transfer)}
+                style={Object.assign({}, localStyles.transaction, localStyles.transactionButton)}
+              >
                 <div style={localStyles.transactionIcon}>
                   <span style={{ color: colors.green }}>↔</span>
                 </div>
@@ -251,7 +258,7 @@ export default function FinancesScreen() {
                   <span style={localStyles.secondary}>{transfer.date}</span>
                 </div>
                 <span style={localStyles.amount}>{money(transfer.amount)}</span>
-              </div>
+              </button>
             )) : (
               <span style={localStyles.secondary}>
                 Transfers between your accounts move money without changing your total balance.
@@ -307,9 +314,11 @@ export default function FinancesScreen() {
           <>
             <div style={styles.panel}>
               {filteredTransactions.length ? filteredTransactions.map((transaction) => (
-                <div
+                <button
                   key={transaction.id}
-                  style={localStyles.transaction}
+                  type="button"
+                  onClick={() => setSelectedTransaction(transaction)}
+                  style={Object.assign({}, localStyles.transaction, localStyles.transactionButton)}
                 >
                   <div style={Object.assign({},
                     localStyles.transactionIcon,
@@ -337,7 +346,7 @@ export default function FinancesScreen() {
                   )}>
                     {transaction.kind === 'income' ? '+' : '−'}{money(transaction.amount)}
                   </span>
-                </div>
+                </button>
               )) : (
                 <span style={localStyles.secondary}>
                   Add an expense or income, or finalize a budget list to see transactions here.
@@ -372,6 +381,12 @@ export default function FinancesScreen() {
         <ExpenseComposer
           onClose={() => setExpenseComposerOpen(false)}
           onSave={createExpense}
+        />
+      ) : null}
+      {selectedTransaction ? (
+        <TransactionReceipt
+          transaction={selectedTransaction}
+          onClose={() => setSelectedTransaction(null)}
         />
       ) : null}
     </div>
@@ -527,6 +542,15 @@ const localStyles = {
     alignItems: 'center',
     gap: 10,
     paddingBlock: 8,
+  },
+  transactionButton: {
+    display: 'flex',
+    width: '100%',
+    textAlign: 'left',
+    color: colors.ink,
+    backgroundColor: 'transparent',
+    border: 0,
+    cursor: 'pointer',
   },
   transactionIcon: {
     width: 36,
