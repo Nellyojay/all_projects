@@ -58,6 +58,8 @@ export function ListComposer({
   onBudgetEnabledChange,
   eventId,
   onEventIdChange,
+  notes,
+  onNotesChange,
   listItems,
   onListItemsChange,
 }: {
@@ -65,6 +67,8 @@ export function ListComposer({
   onBudgetEnabledChange: (enabled: boolean) => void;
   eventId: number | null;
   onEventIdChange: (eventId: number | null) => void;
+  notes: string;
+  onNotesChange: (notes: string) => void;
   listItems: ItemizedItem[];
   onListItemsChange: Dispatch<SetStateAction<ItemizedItem[]>>;
 }) {
@@ -103,6 +107,15 @@ export function ListComposer({
       </div>
       {budgetEnabled ? (
         <div style={listComposerStyles.eventBudgetSection}>
+          <label style={listComposerStyles.label} htmlFor="budget-list-notes">NOTES · OPTIONAL</label>
+          <textarea
+            id="budget-list-notes"
+            value={notes}
+            onChange={(event) => onNotesChange(event.currentTarget.value)}
+            placeholder="Add a note about this budget list"
+            rows={3}
+            style={listComposerStyles.notesInput}
+          />
           <span style={listComposerStyles.label}>EVENT</span>
           <button
             type="button" aria-expanded={eventPickerVisible}
@@ -448,6 +461,12 @@ export function ListDetails({
           ) : null}
         </button>
       )) : <span style={listStyles.detailBody}>This list has no items yet.</span>}
+      {list.notes?.trim() ? (
+        <div style={listStyles.detailBody}>
+          <strong>Notes</strong>
+          <div style={{ whiteSpace: 'pre-wrap' }}>{list.notes}</div>
+        </div>
+      ) : null}
       {list.budget_enabled ? (
         <div style={listStyles.totals}>
           <span style={listStyles.totalLabel}>Number of items</span>
@@ -715,6 +734,18 @@ const listComposerStyles = {
   budgetTitle: { color: colors.ink, fontSize: 12, fontWeight: '700' },
   budgetDescription: { color: colors.muted, fontSize: 9, marginTop: 3 },
   eventBudgetSection: { marginTop: 4 },
+  notesInput: {
+    width: '100%',
+    minHeight: 76,
+    padding: 10,
+    border: `1px solid ${colors.line}`,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
+    color: colors.ink,
+    font: 'inherit',
+    fontSize: 11,
+    resize: 'vertical',
+  },
   attachEventButton: {
     minHeight: 46,
     alignItems: 'center',

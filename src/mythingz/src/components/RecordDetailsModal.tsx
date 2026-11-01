@@ -60,7 +60,7 @@ function toDraft(selected: SelectedRecord): RecordDraft {
       id: record.id,
       title: record.title,
       category: 'Personal',
-      notes: items.map((item) => item.text).join('\n'),
+      notes: record.notes,
       budgetEnabled: Boolean(record.budget_enabled),
       eventId: record.event_id,
       listItems: items.map((item) => ({

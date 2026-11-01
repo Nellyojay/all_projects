@@ -139,6 +139,7 @@ export type NoteRecord = {
 export type ListRecord = {
   id: number;
   title: string;
+  notes: string;
   items: string;
   budget_enabled: number;
   finalized: number;
@@ -146,6 +147,13 @@ export type ListRecord = {
   event_id: number | null;
   event_title?: string | null;
 };
+
+async function ensureListNotesColumn(database: BrowserDatabase) {
+  const columns = await database.getAllAsync<{ name: string }>('PRAGMA table_info(lists)');
+  if (!columns.some((column) => column.name === 'notes')) {
+    await database.execAsync("ALTER TABLE lists ADD COLUMN notes TEXT NOT NULL DEFAULT ''");
+  }
+}
 
 export async function initializeDatabase(database: BrowserDatabase) {
   await database.execAsync(`
@@ -218,6 +226,7 @@ export async function initializeDatabase(database: BrowserDatabase) {
     CREATE TABLE IF NOT EXISTS lists (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
+      notes TEXT NOT NULL DEFAULT '',
       items TEXT NOT NULL DEFAULT '[]',
       budget_enabled INTEGER NOT NULL DEFAULT 0,
       finalized INTEGER NOT NULL DEFAULT 0,
@@ -240,6 +249,7 @@ export async function initializeDatabase(database: BrowserDatabase) {
   if (!columnNames.has('event_id')) {
     await database.execAsync('ALTER TABLE lists ADD COLUMN event_id INTEGER');
   }
+  await ensureListNotesColumn(database);
   await database.execAsync('CREATE INDEX IF NOT EXISTS lists_event_id_idx ON lists(event_id)');
   const transactionColumns = await database.getAllAsync<{ name: string }>(
     'PRAGMA table_info(transactions)',
@@ -623,16 +633,18 @@ export async function saveRecord(
       quantity: Number.isInteger(item.quantity) && item.quantity > 0 ? item.quantity : 1,
     }))
     .filter((item) => item.text.length > 0);
+  await ensureListNotesColumn(database);
   if (draft.id) {
     const listId = draft.id;
     await database.withTransactionAsync(async () => {
       const previous = await database.getFirstAsync<{
         items: string;
+        notes: string;
         budget_enabled: number;
         finalized: number;
         event_id: number | null;
       }>(
-        'SELECT items, budget_enabled, finalized, event_id FROM lists WHERE id = ?',
+        'SELECT items, notes, budget_enabled, finalized, event_id FROM lists WHERE id = ?',
         listId,
       );
       if (!previous) throw new Error('The list no longer exists.');
@@ -656,8 +668,9 @@ export async function saveRecord(
         if (!event) throw new Error('The selected event no longer exists.');
       }
       const update = await database.runAsync(
-        'UPDATE lists SET title = ?, items = ?, budget_enabled = ?, event_id = ? WHERE id = ? AND finalized = 0',
+        'UPDATE lists SET title = ?, notes = ?, items = ?, budget_enabled = ?, event_id = ? WHERE id = ? AND finalized = 0',
         title,
+        draft.notes?.trim() ?? previous.notes,
         JSON.stringify(items),
         Number(budgetEnabled),
         eventId,
@@ -678,8 +691,9 @@ export async function saveRecord(
       if (!event) throw new Error('The selected event no longer exists.');
     }
     await database.runAsync(
-      'INSERT INTO lists (title, items, budget_enabled, event_id) VALUES (?, ?, ?, ?)',
+      'INSERT INTO lists (title, notes, items, budget_enabled, event_id) VALUES (?, ?, ?, ?, ?)',
       title,
+      draft.notes?.trim() ?? '',
       JSON.stringify(items),
       Number(budgetEnabled),
       eventId,
@@ -765,16 +779,18 @@ export async function toggleListItem(
 }
 
 export async function finalizeBudgetList(database: BrowserDatabase, listId: number, accountId: number) {
+  await ensureListNotesColumn(database);
   const finalization: {
     value?: { transactionId: number; total: number; checkedCount: number };
   } = {};
   await database.withTransactionAsync(async () => {
     const list = await database.getFirstAsync<{
       title: string;
+      notes: string;
       items: string;
       budget_enabled: number;
       finalized: number;
-    }>('SELECT title, items, budget_enabled, finalized FROM lists WHERE id = ?', listId);
+    }>('SELECT title, notes, items, budget_enabled, finalized FROM lists WHERE id = ?', listId);
     if (!list) throw new Error('The list no longer exists.');
     if (list.finalized) throw new Error('This list is already finalized.');
     if (!list.budget_enabled) throw new Error('Enable list budgeting before finalizing.');
@@ -792,6 +808,17 @@ export async function finalizeBudgetList(database: BrowserDatabase, listId: numb
 
     const total = checkedItems.reduce((sum, item) => sum + item.quantity * item.price, 0);
     await ensureAccountBalance(database, accountId, total);
+    const notes = [
+      [`Finalized list · ${checkedItems.length} checked items`, list.notes.trim()]
+        .filter(Boolean)
+        .join('\n'),
+      'Items:',
+      ...checkedItems.map((item) =>
+        `${item.quantity} × ${item.text.replace(/\s+/g, ' ').trim()} · UGX ${
+          new Intl.NumberFormat('en-UG', { maximumFractionDigits: 20 }).format(item.price)
+        } each`,
+      ),
+    ].join('\n');
     const insert = await database.runAsync(
       'INSERT INTO transactions (kind, title, category, amount, date, notes, account_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
       'expense',
@@ -799,7 +826,7 @@ export async function finalizeBudgetList(database: BrowserDatabase, listId: numb
       'Expense',
       total,
       today(),
-      `Finalized list · ${checkedItems.length} checked items`,
+      notes,
       accountId,
     );
     const transactionId = insert.lastInsertRowId;

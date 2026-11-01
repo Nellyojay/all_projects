@@ -39,7 +39,7 @@ function expenseReceiptNotes(notes: string): { description: string; items: Recei
   const description = notes.slice(0, markerIndex).trim();
   const itemLines = notes.slice(markerIndex + 'Items:\n'.length).split('\n');
   const items = itemLines.flatMap((line) => {
-    const match = /^(\d+)\s×\s(.+?)\s· UGX ([\d,]+) each$/.exec(line);
+    const match = /^(\d+)\s×\s(.+?)\s· UGX ([\d,]+(?:\.\d+)?) each$/.exec(line);
     if (!match) return [];
     return [{
       quantity: Number(match[1]),
@@ -225,7 +225,9 @@ export function TransactionReceipt({ transaction, onClose }: TransactionReceiptP
           {(expenseNotes?.description || (!isExpense && transaction.notes.trim())) ? (
             <div style={receiptStyles.description}>
               <strong>Description:</strong>
-              <span>{expenseNotes?.description || transaction.notes}</span>
+              <span style={{ whiteSpace: 'pre-line' }}>
+                {expenseNotes?.description || transaction.notes}
+              </span>
             </div>
           ) : null}
           <div style={receiptStyles.divider} className="receipt-divider" />

@@ -460,6 +460,8 @@ export function RecordComposer({
               onBudgetEnabledChange={setBudgetEnabled}
               eventId={eventId}
               onEventIdChange={setEventId}
+              notes={notes}
+              onNotesChange={setNotes}
               listItems={listItems}
               onListItemsChange={setListItems}
             />
