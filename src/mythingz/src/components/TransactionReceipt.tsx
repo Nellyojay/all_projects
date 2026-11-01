@@ -73,29 +73,86 @@ export function TransactionReceipt({ transaction, onClose }: TransactionReceiptP
     };
     const printStyles = document.createElement('style');
     printStyles.textContent = `
+      @page {
+        size: A4 portrait;
+        margin: 50mm;
+      }
       @media print {
         body * { visibility: hidden !important; }
         #mythings-transaction-receipt,
         #mythings-transaction-receipt * { visibility: visible !important; }
+        html, body {
+          width: 100% !important;
+          min-width: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #fff !important;
+        }
         #mythings-transaction-receipt {
           position: absolute !important;
-          inset: 0 !important;
+          inset: 0 auto auto 50% !important;
           width: 100% !important;
-          max-width: none !important;
+          max-width: 170mm !important;
           max-height: none !important;
           overflow: visible !important;
-          padding: 28px !important;
-          color: ${colors.ink} !important;
-          background: #111 !important;
-          border: 1px solid ${colors.line} !important;
-          border-radius: 12px !important;
+          margin: 0 !important;
+          transform: translateX(-50%) !important;
+          padding: 0 !important;
+          color: #111 !important;
+          background: #fff !important;
+          border: 0 !important;
+          border-radius: 0 !important;
           box-shadow: none !important;
-          print-color-adjust: exact;
+          font-family: Arial, Helvetica, sans-serif !important;
+          font-size: 20pt !important;
+          print-color-adjust: economy;
+          -webkit-print-color-adjust: economy;
         }
-        .receipt-modal { position: static !important; display: block !important; padding: 0 !important; background: ${colors.background} !important; }
-        .receipt-actions, .receipt-close { display: none !important; }
-        .receipt-secondary { color: ${colors.muted} !important; }
-        .receipt-divider { border-color: ${colors.line} !important; }
+        #mythings-transaction-receipt * {
+          color: #111 !important;
+          background-color: transparent !important;
+          border-color: #d1d5db !important;
+          box-shadow: none !important;
+        }
+        .receipt-modal {
+          position: static !important;
+          display: block !important;
+          overflow: visible !important;
+          padding: 0 !important;
+          background: #fff !important;
+          backdrop-filter: none !important;
+        }
+        .receipt-close,
+        #mythings-transaction-receipt > button { display: none !important; }
+        .receipt-divider { border-color: #d1d5db !important; }
+        #mythings-transaction-receipt header,
+        #mythings-transaction-receipt .receipt-row,
+        #mythings-transaction-receipt .receipt-item-row,
+        #mythings-transaction-receipt footer,
+        #mythings-transaction-receipt p {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        #mythings-transaction-receipt h1 {
+          margin-block: 4mm !important;
+          font-size: 30pt !important;
+        }
+        #mythings-transaction-receipt header strong { font-size: 20pt !important; }
+        #mythings-transaction-receipt header span { font-size: 14pt !important; }
+        #mythings-transaction-receipt .receipt-hero span { font-size: 12pt !important; }
+        #mythings-transaction-receipt .receipt-row span,
+        #mythings-transaction-receipt .receipt-item-row span,
+        #mythings-transaction-receipt .receipt-item-header span,
+        #mythings-transaction-receipt .receipt-description,
+        #mythings-transaction-receipt .receipt-item-list,
+        #mythings-transaction-receipt .receipt-fees {
+          font-size: 12pt !important;
+          line-height: 1.4 !important;
+        }
+        #mythings-transaction-receipt footer { font-size: 12pt !important; }
+        #mythings-transaction-receipt p { font-size: 10pt !important; }
+        #mythings-transaction-receipt strong { font-weight: 700 !important; }
+        #mythings-transaction-receipt footer { padding-top: 8mm !important; }
       }
     `;
     document.head.appendChild(printStyles);
@@ -154,7 +211,7 @@ export function TransactionReceipt({ transaction, onClose }: TransactionReceiptP
             </span>
           </header>
           <div style={receiptStyles.divider} className="receipt-divider" />
-          <div style={receiptStyles.hero}>
+          <div style={receiptStyles.hero} className="receipt-hero">
             <span style={receiptStyles.type}>{type.toUpperCase()}</span>
             <h1 style={receiptStyles.amount}>
               UGX {Math.abs(transaction.amount).toLocaleString('en-UG')}
@@ -183,7 +240,7 @@ export function TransactionReceipt({ transaction, onClose }: TransactionReceiptP
           </div>
 
           {!isTransfer && transaction.loan_id !== null ? (
-            <div style={receiptStyles.loanDetails}>
+            <div style={receiptStyles.loanDetails} className="receipt-fees">
               {loanDetails ? (
                 <>
                   <ReceiptRow label="Loan principal:" value={money(loanDetails.principal)} />
@@ -200,7 +257,7 @@ export function TransactionReceipt({ transaction, onClose }: TransactionReceiptP
             </div>
           ) : null}
           {isTransfer && transaction.charges.length ? (
-            <div style={receiptStyles.loanDetails}>
+            <div style={receiptStyles.loanDetails} className="receipt-fees">
               <strong>Transfer charges:</strong>
               {transaction.charges.map((charge, index) => (
                 <ReceiptRow
@@ -218,17 +275,17 @@ export function TransactionReceipt({ transaction, onClose }: TransactionReceiptP
 
           <div style={receiptStyles.divider} className="receipt-divider" />
           {expenseNotes?.items.length ? (
-            <div style={receiptStyles.itemList}>
+            <div style={receiptStyles.itemList} className="receipt-item-list">
               <strong>Items:</strong>
               <div style={receiptStyles.itemTable}>
-                <div style={receiptStyles.itemHeader}>
+                <div style={receiptStyles.itemHeader} className="receipt-item-header">
                   <span>Item</span>
                   <span style={receiptStyles.itemNumeric}>Qty</span>
                   <span style={receiptStyles.itemNumeric}>Unit price</span>
                   <span style={receiptStyles.itemNumeric}>Total</span>
                 </div>
                 {expenseNotes.items.map((item, index) => (
-                  <div key={`${item.name}-${index}`} style={receiptStyles.itemRow}>
+                  <div key={`${item.name}-${index}`} style={receiptStyles.itemRow} className="receipt-item-row">
                     <span style={receiptStyles.itemName}>{item.name}</span>
                     <span style={receiptStyles.itemNumeric}>{item.quantity}</span>
                     <span style={receiptStyles.itemNumeric}>{money(item.unitPrice)}</span>
@@ -239,7 +296,7 @@ export function TransactionReceipt({ transaction, onClose }: TransactionReceiptP
             </div>
           ) : null}
           {(expenseNotes?.description || (!isExpense && transaction.notes.trim())) ? (
-            <div style={receiptStyles.description}>
+            <div style={receiptStyles.description} className="receipt-description">
               <strong>Description:</strong>
               <span style={{ whiteSpace: 'pre-line' }}>
                 {expenseNotes?.description || transaction.notes}
@@ -269,7 +326,7 @@ export function TransactionReceipt({ transaction, onClose }: TransactionReceiptP
 
 function ReceiptRow({ label, value }: { label: string; value: string }) {
   return (
-    <div style={receiptStyles.row}>
+    <div style={receiptStyles.row} className="receipt-row">
       <span style={receiptStyles.rowLabel}>{label}</span>
       <span style={receiptStyles.rowValue}>{value}</span>
     </div>
