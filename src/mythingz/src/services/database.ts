@@ -13,6 +13,28 @@ export type RecordKind =
   | 'note'
   | 'list';
 
+const FEES = {
+  'bank-to-cash': 1400,
+  'bank-to-mobilemoney': 1700,
+  'bank-to-mobilemoney-tax': 255,
+} as const;
+
+export type TransferCharge = { label: string; amount: number };
+
+export function getTransferCharges(sourceType: string, destinationType: string): TransferCharge[] {
+  if (sourceType !== 'Bank account') return [];
+  if (destinationType === 'Cash wallet') {
+    return [{ label: 'Transfer charge', amount: FEES['bank-to-cash'] }];
+  }
+  if (destinationType === 'Mobile money') {
+    return [
+      { label: 'Transfer charge', amount: FEES['bank-to-mobilemoney'] },
+      { label: 'Transfer tax', amount: FEES['bank-to-mobilemoney-tax'] },
+    ];
+  }
+  return [];
+}
+
 export type RecordDraft = {
   id?: number;
   title: string;
@@ -75,6 +97,7 @@ export type Transfer = {
   amount: number;
   date: string;
   notes: string;
+  charges: { title: string; amount: number }[];
   from_account_name?: string;
   to_account_name?: string;
 };
@@ -260,6 +283,9 @@ export async function initializeDatabase(database: BrowserDatabase) {
   if (!transactionColumns.some((column) => column.name === 'account_id')) {
     await database.execAsync('ALTER TABLE transactions ADD COLUMN account_id INTEGER REFERENCES accounts(id)');
   }
+  if (!transactionColumns.some((column) => column.name === 'transfer_id')) {
+    await database.execAsync('ALTER TABLE transactions ADD COLUMN transfer_id INTEGER');
+  }
   if (transactionColumns.some((column) => column.name === 'reference_number')) {
     await database.execAsync('ALTER TABLE transactions DROP COLUMN reference_number');
   }
@@ -396,13 +422,35 @@ export async function saveExpense(database: BrowserDatabase, draft: ExpenseDraft
 }
 
 export async function getTransfers(database: BrowserDatabase) {
-  return database.getAllAsync<Transfer>(
+  const transfers = await database.getAllAsync<Transfer>(
     `SELECT transfers.*, source.name AS from_account_name, destination.name AS to_account_name
      FROM transfers
      JOIN accounts AS source ON source.id = transfers.from_account_id
      JOIN accounts AS destination ON destination.id = transfers.to_account_id
      ORDER BY transfers.date DESC, transfers.id DESC LIMIT 50`,
   );
+  const charges = await database.getAllAsync<{
+    transfer_id: number;
+    title: string;
+    amount: number;
+  }>(
+    `SELECT transfer_id, title, amount
+     FROM transactions
+     WHERE transfer_id IN (
+       SELECT id FROM transfers ORDER BY date DESC, id DESC LIMIT 50
+     ) AND category = 'Fees and charges'
+     ORDER BY id`,
+  );
+  const chargesByTransfer = new Map<number, { title: string; amount: number }[]>();
+  for (const charge of charges) {
+    const transferCharges = chargesByTransfer.get(charge.transfer_id) ?? [];
+    transferCharges.push({ title: charge.title, amount: charge.amount });
+    chargesByTransfer.set(charge.transfer_id, transferCharges);
+  }
+  return transfers.map((transfer) => ({
+    ...transfer,
+    charges: chargesByTransfer.get(transfer.id) ?? [],
+  }));
 }
 
 export async function saveRecord(
@@ -544,8 +592,19 @@ export async function saveRecord(
       throw new Error('Choose two different accounts for this transfer.');
     }
     await database.withTransactionAsync(async () => {
-      await ensureAccountBalance(database, fromAccountId, amount);
-      await database.runAsync(
+      const source = await database.getFirstAsync<{ name: string; type: string }>(
+        'SELECT name, type FROM accounts WHERE id = ?',
+        fromAccountId,
+      );
+      const destination = await database.getFirstAsync<{ name: string; type: string }>(
+        'SELECT name, type FROM accounts WHERE id = ?',
+        toAccountId,
+      );
+      if (!source || !destination) throw new Error('Choose valid source and destination accounts.');
+      const charges = getTransferCharges(source.type, destination.type);
+      const chargeTotal = charges.reduce((total, charge) => total + charge.amount, 0);
+      await ensureAccountBalance(database, fromAccountId, amount + chargeTotal);
+      const transfer = await database.runAsync(
         'INSERT INTO transfers (from_account_id, to_account_id, amount, date, notes) VALUES (?, ?, ?, ?, ?)',
         fromAccountId,
         toAccountId,
@@ -553,6 +612,19 @@ export async function saveRecord(
         today(),
         notes,
       );
+      for (const charge of charges) {
+        await database.runAsync(
+          'INSERT INTO transactions (kind, title, category, amount, date, notes, account_id, transfer_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          'expense',
+          `${charge.label}`,
+          'Fees and charges',
+          charge.amount,
+          today(),
+          `${source.name} to ${destination.name} transfer.`,
+          fromAccountId,
+          transfer.lastInsertRowId,
+        );
+      }
     });
     return;
   }
@@ -814,8 +886,7 @@ export async function finalizeBudgetList(database: BrowserDatabase, listId: numb
         .join('\n'),
       'Items:',
       ...checkedItems.map((item) =>
-        `${item.quantity} × ${item.text.replace(/\s+/g, ' ').trim()} · UGX ${
-          new Intl.NumberFormat('en-UG', { maximumFractionDigits: 20 }).format(item.price)
+        `${item.quantity} × ${item.text.replace(/\s+/g, ' ').trim()} · UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 20 }).format(item.price)
         } each`,
       ),
     ].join('\n');

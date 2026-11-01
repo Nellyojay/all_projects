@@ -199,6 +199,22 @@ export function TransactionReceipt({ transaction, onClose }: TransactionReceiptP
               ) : null}
             </div>
           ) : null}
+          {isTransfer && transaction.charges.length ? (
+            <div style={receiptStyles.loanDetails}>
+              <strong>Transfer charges:</strong>
+              {transaction.charges.map((charge, index) => (
+                <ReceiptRow
+                  key={`${charge.title}-${index}`}
+                  label={`${charge.title}:`}
+                  value={money(charge.amount)}
+                />
+              ))}
+              <ReceiptRow
+                label="Total charges:"
+                value={money(transaction.charges.reduce((total, charge) => total + charge.amount, 0))}
+              />
+            </div>
+          ) : null}
 
           <div style={receiptStyles.divider} className="receipt-divider" />
           {expenseNotes?.items.length ? (

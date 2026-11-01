@@ -5,6 +5,7 @@ import {
   INCOME_CATEGORIES,
   InsufficientBalanceError,
   getAccounts,
+  getTransferCharges,
   localDateKey,
   type Account,
   type RecordDraft,
@@ -111,6 +112,13 @@ export function RecordComposer({
       }))
       : [{ text: '', done: false, price: '', quantity: '1' }];
   });
+  const transferCharges = kind === 'transfer'
+    ? getTransferCharges(
+      accounts.find((account) => account.id === fromAccountId)?.type ?? '',
+      accounts.find((account) => account.id === toAccountId)?.type ?? '',
+    )
+    : [];
+  const transferChargeTotal = transferCharges.reduce((total, charge) => total + charge.amount, 0);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -379,6 +387,21 @@ export function RecordComposer({
                 onChange={setToAccountId}
                 label="TO ACCOUNT"
               />
+              {transferCharges.length ? (
+                <div style={layoutStyles.transferCharges}>
+                  <strong>Automatic transfer charges</strong>
+                  {transferCharges.map((charge) => (
+                    <span key={charge.label}>
+                      {charge.label}: UGX {charge.amount.toLocaleString('en-UG')}
+                    </span>
+                  ))}
+                  <strong>
+                    Total deducted: UGX {(
+                      (Number(amount.replace(/,/g, '')) || 0) + transferChargeTotal
+                    ).toLocaleString('en-UG')}
+                  </strong>
+                </div>
+              ) : null}
             </>
           ) : null}
           {kind === 'loan' ? (
@@ -664,6 +687,17 @@ const layoutStyles = {
     minHeight: 140,
     marginTop: 40,
     fontSize: 13,
+  },
+  transferCharges: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    marginTop: 10,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
+    color: colors.ink,
+    fontSize: 11,
   },
   categoryOption: {
     minHeight: 36,
