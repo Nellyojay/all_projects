@@ -65,6 +65,7 @@ function asSqlValue(value: SqlParameter): SqlValue {
 
 function wrapDatabase(database: SqlJsDatabase): BrowserDatabase {
   let transactionDepth = 0;
+  let transactionQueue = Promise.resolve();
 
   const persistIfReady = async () => {
     if (transactionDepth === 0) await persistFile(database);
@@ -101,18 +102,28 @@ function wrapDatabase(database: SqlJsDatabase): BrowserDatabase {
       return rows[0] ?? null;
     },
     async withTransactionAsync(task: () => Promise<void>) {
-      database.run('BEGIN');
-      transactionDepth += 1;
+      const previousTransaction = transactionQueue;
+      let releaseTransaction!: () => void;
+      transactionQueue = new Promise<void>((resolve) => {
+        releaseTransaction = resolve;
+      });
+      await previousTransaction;
       try {
-        await task();
-        database.run('COMMIT');
-      } catch (error) {
-        database.run('ROLLBACK');
-        throw error;
+        database.run('BEGIN');
+        transactionDepth += 1;
+        try {
+          await task();
+          database.run('COMMIT');
+        } catch (error) {
+          database.run('ROLLBACK');
+          throw error;
+        } finally {
+          transactionDepth -= 1;
+        }
+        await persistIfReady();
       } finally {
-        transactionDepth -= 1;
+        releaseTransaction();
       }
-      await persistIfReady();
     },
   };
 

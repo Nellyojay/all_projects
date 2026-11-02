@@ -142,7 +142,8 @@ export default function HomeScreen() {
         getAccounts(database),
         database.getFirstAsync<{ total: number }>(
           `SELECT COALESCE(SUM(amount), 0) AS total FROM transactions
-         WHERE kind = 'income' AND loan_id IS NULL AND substr(date, 1, 7) = ?`,
+         WHERE kind = 'income' AND loan_id IS NULL AND refund_of_transaction_id IS NULL
+           AND substr(date, 1, 7) = ?`,
           month,
         ),
         getReminders(database, 'pending'),
@@ -624,6 +625,7 @@ export default function HomeScreen() {
         <TransactionReceipt
           transaction={selectedTransaction}
           onClose={() => setSelectedTransaction(null)}
+          onChanged={refresh}
         />
       ) : null}
     </div>

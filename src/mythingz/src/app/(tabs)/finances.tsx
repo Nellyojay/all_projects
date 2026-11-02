@@ -24,6 +24,7 @@ import {
 } from '../../services/database';
 import { FinanceBudgetLists, loadLists } from '../../components/ui/list';
 import { FinanceBalanceCard } from '../../components/financeComponents';
+import { RecurringBudgetManager } from '../../components/RecurringBudgetManager';
 
 type FinanceSection = 'accounts' | 'transfers' | 'budgets' | 'loans' | 'transactions';
 
@@ -85,7 +86,9 @@ export default function FinancesScreen() {
          ORDER BY loans.id DESC`,
       ),
       database.getFirstAsync<{ total: number }>(
-        "SELECT COALESCE(SUM(amount), 0) AS total FROM transactions WHERE kind = 'income' AND loan_id IS NULL AND substr(date, 1, 7) = ?",
+        `SELECT COALESCE(SUM(amount), 0) AS total FROM transactions
+         WHERE kind = 'income' AND loan_id IS NULL AND refund_of_transaction_id IS NULL
+           AND substr(date, 1, 7) = ?`,
         month,
       ),
       database.getFirstAsync<{ total: number }>(
@@ -309,7 +312,11 @@ export default function FinancesScreen() {
           </div>
         ) : null}
         {section === 'budgets' ? (
-          <FinanceBudgetLists lists={budgetLists} query={query} />
+          <>
+            <RecurringBudgetManager />
+            <SectionTitle title="ONE-TIME BUDGET LISTS" />
+            <FinanceBudgetLists lists={budgetLists} query={query} />
+          </>
         ) : null}
         {section === 'loans' ? (
           <>
@@ -429,6 +436,7 @@ export default function FinancesScreen() {
         <TransactionReceipt
           transaction={selectedTransaction}
           onClose={() => setSelectedTransaction(null)}
+          onChanged={refresh}
         />
       ) : null}
     </div>

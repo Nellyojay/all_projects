@@ -1,15 +1,30 @@
 import { useEffect, useState } from 'react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, FormEvent } from 'react';
 import { useDatabase } from '../web/DatabaseProvider';
-import type { Transaction, Transfer } from '../services/database';
+import {
+  getBudgetItemsForExpenseDate,
+  getRefundableAmount,
+  getTransactionBudgetAllocations,
+  saveBudgetRefund,
+  saveTransactionBudgetAllocations,
+} from '../services/database';
+import type { BudgetPeriodItem, Transaction, Transfer } from '../services/database';
 import { colors, styles } from './theme';
 
 type ReceiptRecord = Transaction | Transfer;
 type ReceiptItem = { name: string; quantity: number; unitPrice: number };
+type BudgetAllocationOption = BudgetPeriodItem & {
+  template_name: string;
+  start_date: string;
+  end_date: string;
+  period_status: string;
+};
+type SavedBudgetAllocation = Awaited<ReturnType<typeof getTransactionBudgetAllocations>>[number];
 
 type TransactionReceiptProps = {
   transaction: ReceiptRecord;
   onClose: () => void;
+  onChanged?: () => Promise<void>;
 };
 
 const money = (amount: number) =>
@@ -50,15 +65,30 @@ function expenseReceiptNotes(notes: string): { description: string; items: Recei
   return { description, items };
 }
 
-export function TransactionReceipt({ transaction, onClose }: TransactionReceiptProps) {
+export function TransactionReceipt({ transaction, onClose, onChanged }: TransactionReceiptProps) {
   const database = useDatabase();
   const [loanDetails, setLoanDetails] = useState<{ principal: number; fees: number } | null>(null);
   const [loanDetailsUnavailable, setLoanDetailsUnavailable] = useState(false);
+  const [refundRemaining, setRefundRemaining] = useState(0);
+  const [showRefundForm, setShowRefundForm] = useState(false);
+  const [refundAmount, setRefundAmount] = useState('');
+  const [refundSaving, setRefundSaving] = useState(false);
+  const [refundError, setRefundError] = useState<string | null>(null);
+  const [budgetOptions, setBudgetOptions] = useState<BudgetAllocationOption[]>([]);
+  const [savedAllocations, setSavedAllocations] = useState<SavedBudgetAllocation[]>([]);
+  const [allocationAmounts, setAllocationAmounts] = useState<Record<number, string>>({});
+  const [showAllocationForm, setShowAllocationForm] = useState(false);
+  const [allocationLoading, setAllocationLoading] = useState(true);
+  const [allocationSaving, setAllocationSaving] = useState(false);
+  const [allocationError, setAllocationError] = useState<string | null>(null);
+  const [allocationsLoaded, setAllocationsLoaded] = useState(false);
   const isTransfer = 'from_account_id' in transaction;
   const isExpense = !isTransfer && transaction.kind === 'expense';
   const loanId = isTransfer ? null : transaction.loan_id;
   const type = isTransfer
     ? 'Transfer'
+    : transaction.refund_of_transaction_id !== null
+      ? 'Refund received'
     : transaction.category === 'Loan repayment'
       ? 'Loan repayment'
       : transaction.loan_id !== null && transaction.kind === 'income'
@@ -66,6 +96,11 @@ export function TransactionReceipt({ transaction, onClose }: TransactionReceiptP
         : isExpense ? transaction.category : 'Income received';
   const reference = referenceFor(transaction);
   const expenseNotes = isExpense ? expenseReceiptNotes(transaction.notes) : null;
+  const allocationsLocked = savedAllocations.some((allocation) =>
+    !['active', 'awaiting_review'].includes(allocation.period_status),
+  );
+  const budgetAllocatedTotal = Object.values(allocationAmounts)
+    .reduce((sum, amount) => sum + (Number(amount) || 0), 0);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -180,6 +215,110 @@ export function TransactionReceipt({ transaction, onClose }: TransactionReceiptP
     });
     return () => { active = false; };
   }, [database, loanId]);
+
+  useEffect(() => {
+    if (!isExpense) return;
+    let active = true;
+    void getRefundableAmount(database, transaction.id)
+      .then((amount) => { if (active) setRefundRemaining(amount); })
+      .catch((error: unknown) => {
+        console.error('Unable to load refundable expense balance', error);
+        if (active) setRefundError('Refund availability could not be loaded.');
+      });
+    void Promise.all([
+      getBudgetItemsForExpenseDate(database, transaction.date),
+      getTransactionBudgetAllocations(database, transaction.id),
+    ])
+      .then(([options, allocations]) => {
+        if (!active) return;
+        setBudgetOptions(options);
+        setSavedAllocations(allocations);
+        setAllocationAmounts(Object.fromEntries(
+          allocations.map((allocation) => [allocation.period_item_id, String(allocation.amount)]),
+        ));
+        setAllocationsLoaded(true);
+        setAllocationError(null);
+      })
+      .catch((error: unknown) => {
+        console.error('Unable to load budget allocations for expense', error);
+        if (active) {
+          setAllocationError('Budget allocations could not be loaded.');
+        }
+      })
+      .finally(() => {
+        if (active) setAllocationLoading(false);
+      });
+    return () => { active = false; };
+  }, [database, isExpense, transaction.id, transaction.date]);
+
+  const submitBudgetAllocations = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const allocations = budgetOptions.flatMap((item) => {
+      const amount = Number(allocationAmounts[item.id] ?? 0);
+      return amount > 0 ? [{ periodItemId: item.id, amount }] : [];
+    });
+    const allocatedAmount = allocations.reduce((sum, allocation) => sum + allocation.amount, 0);
+    if (allocatedAmount > transaction.amount) {
+      setAllocationError('Allocations cannot exceed the full expense amount.');
+      return;
+    }
+    setAllocationSaving(true);
+    setAllocationError(null);
+    try {
+      await saveTransactionBudgetAllocations(database, transaction.id, allocations);
+    } catch (reason) {
+      console.error('Unable to update expense budget allocations', reason);
+      setAllocationError(reason instanceof Error ? reason.message : 'Budget allocations could not be saved.');
+      return;
+    } finally {
+      setAllocationSaving(false);
+    }
+    setSavedAllocations(allocations.flatMap((allocation) => {
+      const option = budgetOptions.find((item) => item.id === allocation.periodItemId);
+      return option ? [{
+        period_item_id: option.id,
+        amount: allocation.amount,
+        item_name: option.name,
+        template_name: option.template_name,
+        period_status: option.period_status,
+      }] : [];
+    }));
+    setShowAllocationForm(false);
+    try {
+      await onChanged?.();
+    } catch (reason) {
+      console.error('Unable to refresh finances after allocation update', reason);
+      window.alert('Budget allocation saved, but the finance view could not be refreshed.');
+    }
+  };
+
+  const submitRefund = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setRefundSaving(true);
+    setRefundError(null);
+    try {
+      await saveBudgetRefund(database, transaction.id, Number(refundAmount));
+      setRefundRemaining(0);
+    } catch (reason) {
+      console.error('Unable to record expense refund', reason);
+      setRefundError(reason instanceof Error ? reason.message : 'The refund could not be recorded.');
+      try {
+        setRefundRemaining(await getRefundableAmount(database, transaction.id));
+      } catch (refreshError) {
+        console.error('Unable to refresh refundable expense balance', refreshError);
+      }
+      return;
+    } finally {
+      setRefundSaving(false);
+    }
+    try {
+      await onChanged?.();
+    } catch (reason) {
+      console.error('Unable to refresh finances after refund', reason);
+      window.alert('Refund recorded\n\nThe refund was saved, but the finance view could not be refreshed.');
+    }
+    onClose();
+  };
 
   const printReceipt = () => {
     window.print();
@@ -318,6 +457,140 @@ export function TransactionReceipt({ transaction, onClose }: TransactionReceiptP
           <button type="button" onClick={printReceipt} style={styles.button}>
             Download Receipt
           </button>
+          {isExpense ? (
+            <div style={receiptStyles.refundSection}>
+              <strong>Budget allocation</strong>
+              {allocationLoading ? (
+                <span style={receiptStyles.refundHint}>Loading budget items…</span>
+              ) : (
+                <>
+                  {savedAllocations.length ? savedAllocations.map((allocation) => (
+                    <span key={allocation.period_item_id} style={receiptStyles.refundHint}>
+                      {allocation.template_name} · {allocation.item_name}: {money(allocation.amount)}
+                    </span>
+                  )) : (
+                    <span style={receiptStyles.refundHint}>
+                      No budget allocation yet · {money(transaction.amount)} unallocated
+                    </span>
+                  )}
+                  {savedAllocations.length ? (
+                    <span style={receiptStyles.refundHint}>
+                      {money(Math.max(0, transaction.amount - savedAllocations
+                        .reduce((sum, allocation) => sum + allocation.amount, 0)))} remains unallocated.
+                    </span>
+                  ) : null}
+                  {allocationsLocked ? (
+                    <span style={receiptStyles.refundError}>
+                      Reopen the closed period or restore the budget period before changing these allocations.
+                    </span>
+                  ) : showAllocationForm ? (
+                    <form onSubmit={(event) => void submitBudgetAllocations(event)} style={receiptStyles.refundForm}>
+                      <strong>Split this expense across budget items</strong>
+                      {budgetOptions.length ? budgetOptions.map((item) => (
+                        <label key={item.id} style={receiptStyles.allocationRow}>
+                          <span>{item.template_name} · {item.name}</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={allocationAmounts[item.id] ?? ''}
+                            onChange={(event) => setAllocationAmounts({
+                              ...allocationAmounts,
+                              [item.id]: event.currentTarget.value,
+                            })}
+                            aria-label={`Amount allocated to ${item.template_name} · ${item.name}`}
+                            style={receiptStyles.refundInput}
+                          />
+                        </label>
+                      )) : (
+                        <span style={receiptStyles.refundHint}>
+                          No open budget period covers this expense date.
+                        </span>
+                      )}
+                      <span style={receiptStyles.refundHint}>
+                        Allocated {money(budgetAllocatedTotal)} of {money(transaction.amount)}.
+                        {' '}{money(Math.max(0, transaction.amount - budgetAllocatedTotal))} will remain unallocated.
+                      </span>
+                      {allocationError ? (
+                        <span role="alert" style={receiptStyles.refundError}>{allocationError}</span>
+                      ) : null}
+                      <div style={receiptStyles.refundActions}>
+                        <button
+                          type="button"
+                          onClick={() => { setShowAllocationForm(false); setAllocationError(null); }}
+                          style={receiptStyles.refundCancel}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={allocationSaving || !allocationsLoaded}
+                          style={receiptStyles.refundSave}
+                        >
+                          {allocationSaving ? 'Saving…' : budgetAllocatedTotal === 0 ? 'Leave unallocated' : 'Save allocation'}
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => { setShowAllocationForm(true); setAllocationError(null); }}
+                      disabled={!allocationsLoaded}
+                      style={receiptStyles.refundOpen}
+                    >
+                      {savedAllocations.length ? 'Edit budget allocation' : 'Allocate to a budget'}
+                    </button>
+                  )}
+                </>
+              )}
+              {allocationError && !showAllocationForm ? (
+                <span role="alert" style={receiptStyles.refundError}>{allocationError}</span>
+              ) : null}
+            </div>
+          ) : null}
+          {isExpense && refundRemaining > 0 ? (
+            <div style={receiptStyles.refundSection}>
+              {showRefundForm ? (
+                <form onSubmit={(event) => void submitRefund(event)} style={receiptStyles.refundForm}>
+                  <strong>Record a refund</strong>
+                  <span style={receiptStyles.refundHint}>
+                    Up to {money(refundRemaining)} can be returned to {transaction.account_name || 'the original account'}.
+                    Budget item allocations will be reversed proportionally.
+                  </span>
+                  <input
+                    type="number"
+                    min="1"
+                    max={refundRemaining}
+                    step="1"
+                    value={refundAmount}
+                    onChange={(event) => setRefundAmount(event.currentTarget.value)}
+                    placeholder="Refund amount in UGX"
+                    aria-label="Refund amount in UGX"
+                    style={receiptStyles.refundInput}
+                  />
+                  {refundError ? <span role="alert" style={receiptStyles.refundError}>{refundError}</span> : null}
+                  <div style={receiptStyles.refundActions}>
+                    <button type="button" onClick={() => setShowRefundForm(false)} style={receiptStyles.refundCancel}>
+                      Cancel
+                    </button>
+                    <button type="submit" disabled={refundSaving || !refundAmount} style={receiptStyles.refundSave}>
+                      {refundSaving ? 'Saving…' : 'Save refund'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { setShowRefundForm(true); setRefundError(null); }}
+                  style={receiptStyles.refundOpen}
+                >
+                  Record refund · {money(refundRemaining)} remaining
+                </button>
+              )}
+            </div>
+          ) : isExpense && refundError ? (
+            <span role="alert" style={receiptStyles.refundError}>{refundError}</span>
+          ) : null}
         </section>
       </div>
     </div>
@@ -429,4 +702,14 @@ const receiptStyles = {
   },
   footer: { paddingTop: 14, textAlign: 'center', fontSize: 11, fontWeight: '700' },
   actionMessage: { display: 'block', marginTop: 9, color: colors.muted, textAlign: 'center', fontSize: 9 },
+  refundSection: { marginTop: 14 },
+  refundForm: { display: 'flex', flexDirection: 'column', gap: 8, padding: 12, border: `1px solid ${colors.line}`, borderRadius: 8, color: colors.ink, fontSize: 11 },
+  refundHint: { color: colors.muted, fontSize: 9, lineHeight: '15px' },
+  refundInput: { minHeight: 40, paddingInline: 10, border: `1px solid ${colors.line}`, borderRadius: 7, backgroundColor: colors.background, color: colors.ink, fontSize: 11 },
+  allocationRow: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(110px, 0.6fr)', alignItems: 'center', gap: 8, color: colors.ink, fontSize: 10 },
+  refundActions: { display: 'flex', flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
+  refundCancel: { minHeight: 34, paddingInline: 10, border: `1px solid ${colors.line}`, borderRadius: 6, backgroundColor: colors.surface, color: colors.muted, fontSize: 9 },
+  refundSave: { minHeight: 34, paddingInline: 10, border: 0, borderRadius: 6, backgroundColor: colors.green, color: colors.background, fontSize: 9, fontWeight: '700' },
+  refundOpen: { minHeight: 38, width: '100%', marginTop: 12, border: `1px solid ${colors.line}`, borderRadius: 7, backgroundColor: colors.surface, color: colors.ink, fontSize: 10, fontWeight: '700' },
+  refundError: { color: colors.orange, fontSize: 9 },
 } satisfies Record<string, CSSProperties>;

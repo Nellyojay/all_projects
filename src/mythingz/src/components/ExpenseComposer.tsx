@@ -6,9 +6,11 @@ import type { CSSProperties } from 'react';
 import {
   EXPENSE_CATEGORIES,
   getAccounts,
+  getAllocatableBudgetItems,
   InsufficientBalanceError,
   type Account,
   type ExpenseDraft,
+  type BudgetPeriodItem,
 } from '../services/database';
 import { colors } from './theme';
 import { AccountPicker } from './ui/account';
@@ -38,7 +40,22 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountId, setAccountId] = useState<number | null>(null);
   const [items, setItems] = useState<ItemizedItem[]>([createEmptyItemizedItem()]);
+  const [budgetItems, setBudgetItems] = useState<(BudgetPeriodItem & {
+    template_name: string;
+    start_date: string;
+    end_date: string;
+  })[]>([]);
+  const [selectedBudgetItemId, setSelectedBudgetItemId] = useState('');
+  const [budgetAllocationAmount, setBudgetAllocationAmount] = useState('');
+  const [budgetAllocations, setBudgetAllocations] = useState<NonNullable<ExpenseDraft['budgetAllocations']>>([]);
   const [saving, setSaving] = useState(false);
+  const expenseTotal = items.reduce((sum, item) => {
+    const price = item.price.trim() ? Number(item.price.replace(/,/g, '')) : 0;
+    const quantity = item.quantity.trim() ? Number(item.quantity) : 1;
+    return Number.isFinite(price) && Number.isFinite(quantity) ? sum + price * quantity : sum;
+  }, 0);
+  const allocatedTotal = budgetAllocations.reduce((sum, allocation) => sum + allocation.amount, 0);
+  const allocationRemainder = expenseTotal - allocatedTotal;
 
   useEffect(() => {
     let active = true;
@@ -55,6 +72,17 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
       .catch((error: unknown) => {
         console.error('Unable to load accounts for expense', error);
         window.alert('Could not load accounts\n\nPlease try again.');
+      });
+    return () => { active = false; };
+  }, [database]);
+
+  useEffect(() => {
+    let active = true;
+    void getAllocatableBudgetItems(database)
+      .then((rows) => { if (active) setBudgetItems(rows); })
+      .catch((error: unknown) => {
+        console.error('Unable to load recurring budget items', error);
+        if (active) window.alert('Could not load recurring budgets\n\nPlease try again.');
       });
     return () => { active = false; };
   }, [database]);
@@ -132,6 +160,10 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
       window.alert('Check the expense total\n\nEnter item prices that add up to more than zero.');
       return;
     }
+    if (budgetAllocations.reduce((sum, item) => sum + item.amount, 0) > total) {
+      window.alert('Check budget allocation\n\nAllocated amounts cannot exceed the expense total.');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -141,6 +173,7 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
         notes: notes.trim(),
         accountId,
         items: parsedItems,
+        budgetAllocations,
       });
       close();
     } catch (error) {
@@ -197,6 +230,87 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
             onItemsChange={setItems}
             itemsLabel="EXPENSE ITEMS"
           />
+          <section style={expenseStyles.budgetSection} aria-label="Optional recurring budget allocation">
+            <span style={expenseStyles.label}>BUDGET ALLOCATION · OPTIONAL</span>
+            {budgetItems.length ? (
+              <>
+                <div style={expenseStyles.allocationControls}>
+                  <select
+                    value={selectedBudgetItemId}
+                    onChange={(event) => setSelectedBudgetItemId(event.currentTarget.value)}
+                    aria-label="Choose a recurring budget item"
+                    style={expenseStyles.input}
+                  >
+                    <option value="">Choose a budget item</option>
+                    {budgetItems.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.template_name} · {item.name} ({item.start_date}–{item.end_date})
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    max={Math.max(0, allocationRemainder)}
+                    value={budgetAllocationAmount}
+                    onChange={(event) => setBudgetAllocationAmount(event.currentTarget.value)}
+                    placeholder={`Amount · up to ${Math.max(0, allocationRemainder)}`}
+                    aria-label="Amount to allocate to this budget item"
+                    style={expenseStyles.input}
+                  />
+                  <button
+                    type="button"
+                    disabled={!selectedBudgetItemId || !budgetAllocationAmount}
+                    onClick={() => {
+                      const periodItemId = Number(selectedBudgetItemId);
+                      const amount = Number(budgetAllocationAmount);
+                      if (!Number.isSafeInteger(amount) || amount <= 0
+                        || budgetAllocations.some((allocation) => allocation.periodItemId === periodItemId)
+                        || amount > allocationRemainder) {
+                        window.alert('Check budget allocation\n\nChoose a new item and a whole amount within the unallocated balance.');
+                        return;
+                      }
+                      setBudgetAllocations((current) => [...current, { periodItemId, amount }]);
+                      setSelectedBudgetItemId('');
+                      setBudgetAllocationAmount('');
+                    }}
+                    style={expenseStyles.addAllocation}
+                  >
+                    Add item
+                  </button>
+                </div>
+                {budgetAllocations.map((allocation) => {
+                  const item = budgetItems.find((candidate) => candidate.id === allocation.periodItemId);
+                  return (
+                    <div key={allocation.periodItemId} style={expenseStyles.allocationRow}>
+                      <span style={expenseStyles.allocationName}>
+                        {item ? `${item.template_name} · ${item.name}` : 'Budget item'}
+                      </span>
+                      <span>{allocation.amount.toLocaleString('en-UG')} UGX</span>
+                      <button
+                        type="button"
+                        aria-label={`Remove ${item?.name ?? 'budget item'} allocation`}
+                        onClick={() => setBudgetAllocations((current) =>
+                          current.filter((entry) => entry.periodItemId !== allocation.periodItemId),
+                        )}
+                        style={expenseStyles.removeAllocation}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  );
+                })}
+                <span style={expenseStyles.allocationBalance}>
+                  {allocatedTotal > 0
+                    ? `${Math.max(0, allocationRemainder).toLocaleString('en-UG')} UGX remains unallocated. You can leave this balance unassigned.`
+                    : 'Choose one or more items, or leave the full expense unallocated.'}
+                </span>
+              </>
+            ) : (
+              <span style={expenseStyles.allocationBalance}>No active recurring budget items cover today.</span>
+            )}
+          </section>
           <label style={expenseStyles.label} htmlFor="expense-notes">NOTES · OPTIONAL</label>
           <textarea
             id="expense-notes"
@@ -297,6 +411,38 @@ const expenseStyles = {
     fontSize: 13,
     resize: 'vertical',
   },
+  budgetSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    marginTop: 16,
+    padding: 12,
+    border: `1px solid ${colors.line}`,
+    borderRadius: 10,
+    backgroundColor: colors.surface,
+  },
+  allocationControls: { display: 'flex', flexDirection: 'column', gap: 8 },
+  addAllocation: {
+    minHeight: 40,
+    alignSelf: 'flex-start',
+    paddingInline: 14,
+    borderRadius: 8,
+    backgroundColor: colors.green,
+    color: colors.background,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  allocationRow: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    fontSize: 10,
+    color: colors.ink,
+  },
+  allocationName: { flex: 1 },
+  removeAllocation: { color: colors.muted, fontSize: 9 },
+  allocationBalance: { color: colors.muted, fontSize: 10, lineHeight: '16px' },
   save: {
     minHeight: 52,
     justifyContent: 'center',
