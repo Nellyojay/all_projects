@@ -13,6 +13,19 @@ export type RecordKind =
   | 'note'
   | 'list';
 
+export type LinkedRecordType =
+  | 'event'
+  | 'task'
+  | 'note'
+  | 'budget'
+  | 'transaction'
+  | 'list'
+  | 'reminder'
+  | 'inbox';
+
+export type ReminderStatus = 'pending' | 'completed' | 'dismissed';
+export type InboxStatus = 'inbox' | 'converted' | 'linked' | 'dismissed';
+
 const FEES = {
   'bank-to-cash': 1400,
   'bank-to-mobilemoney': 1700,
@@ -149,6 +162,7 @@ export type TaskRecord = {
   date: string;
   notes: string;
   completed: number;
+  completed_at: string | null;
 };
 
 export type NoteRecord = {
@@ -171,11 +185,231 @@ export type ListRecord = {
   event_title?: string | null;
 };
 
+export type RecordLink = {
+  id: number;
+  source_type: LinkedRecordType;
+  source_id: number;
+  target_type: LinkedRecordType;
+  target_id: number;
+  created_at: string;
+};
+
+export type RelatedRecord = {
+  linkId: number;
+  type: LinkedRecordType;
+  id: number;
+  title: string;
+};
+
+function sameLinkedRecord(
+  left: { type: LinkedRecordType; id: number },
+  right: { type: LinkedRecordType; id: number },
+) {
+  const sameType = left.type === right.type
+    || (left.type === 'list' || left.type === 'budget')
+    && (right.type === 'list' || right.type === 'budget');
+  return sameType && left.id === right.id;
+}
+
+export type ReminderRecord = {
+  id: number;
+  title: string;
+  description: string;
+  due_at: string;
+  status: ReminderStatus;
+  related_type: LinkedRecordType | null;
+  related_id: number | null;
+  created_at: string;
+  completed_at: string | null;
+};
+
+export type InboxItem = {
+  id: number;
+  content: string;
+  captured_at: string;
+  suggested_type: 'note' | 'task' | 'event' | 'reminder' | 'list' | 'budget' | 'idea' | null;
+  status: InboxStatus;
+  destination_type: LinkedRecordType | null;
+  destination_id: number | null;
+};
+
+export type ActivityRecord = {
+  id: number;
+  action: string;
+  module: string;
+  record_id: number | null;
+  description: string;
+  occurred_at: string;
+};
+
+export type UniversalSearchModule =
+  | 'Notes'
+  | 'Tasks'
+  | 'Events'
+  | 'Finances'
+  | 'Lists'
+  | 'Reminders';
+export type UniversalSearchFilter = 'All' | UniversalSearchModule;
+export type UniversalSearchResult = {
+  id: number;
+  kind: 'note' | 'task' | 'event' | 'transaction' | 'transfer' | 'budget' | 'list' | 'reminder';
+  module: UniversalSearchModule;
+  title: string;
+  detail: string;
+};
+
 async function ensureListNotesColumn(database: BrowserDatabase) {
   const columns = await database.getAllAsync<{ name: string }>('PRAGMA table_info(lists)');
   if (!columns.some((column) => column.name === 'notes')) {
     await database.execAsync("ALTER TABLE lists ADD COLUMN notes TEXT NOT NULL DEFAULT ''");
   }
+}
+
+async function installActivityTriggers(database: BrowserDatabase) {
+  await database.execAsync(`
+    CREATE TRIGGER IF NOT EXISTS activity_events_insert AFTER INSERT ON events BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES ('created', 'events', NEW.id, 'Event created', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_events_update AFTER UPDATE ON events
+      WHEN OLD.title IS NOT NEW.title OR OLD.category IS NOT NEW.category
+        OR OLD.date IS NOT NEW.date OR OLD.notes IS NOT NEW.notes BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES ('updated', 'events', NEW.id, 'Event updated', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_events_delete AFTER DELETE ON events BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES ('deleted', 'events', OLD.id, 'Event deleted', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_tasks_insert AFTER INSERT ON tasks BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES ('created', 'tasks', NEW.id, 'Task created', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_tasks_update AFTER UPDATE ON tasks
+      WHEN OLD.title IS NOT NEW.title OR OLD.category IS NOT NEW.category OR OLD.date IS NOT NEW.date
+        OR OLD.notes IS NOT NEW.notes OR OLD.completed IS NOT NEW.completed BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES (
+        CASE WHEN OLD.completed IS NOT NEW.completed
+          THEN CASE WHEN NEW.completed = 1 THEN 'completed' ELSE 'reopened' END
+          ELSE 'updated' END,
+        'tasks', NEW.id,
+        CASE WHEN OLD.completed IS NOT NEW.completed
+          THEN CASE WHEN NEW.completed = 1 THEN 'Task completed' ELSE 'Task reopened' END
+          ELSE 'Task updated' END,
+        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+      );
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_tasks_delete AFTER DELETE ON tasks BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES ('deleted', 'tasks', OLD.id, 'Task deleted', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_notes_insert AFTER INSERT ON notes BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES ('created', 'notes', NEW.id, 'Note created', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_notes_update AFTER UPDATE ON notes
+      WHEN OLD.title IS NOT NEW.title OR OLD.category IS NOT NEW.category OR OLD.notes IS NOT NEW.notes BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES ('updated', 'notes', NEW.id, 'Note updated', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_notes_delete AFTER DELETE ON notes BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES ('deleted', 'notes', OLD.id, 'Note deleted', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_lists_insert AFTER INSERT ON lists BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES ('created', 'lists', NEW.id, 'List created', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_lists_update AFTER UPDATE ON lists
+      WHEN OLD.title IS NOT NEW.title OR OLD.notes IS NOT NEW.notes OR OLD.items IS NOT NEW.items
+        OR OLD.budget_enabled IS NOT NEW.budget_enabled OR OLD.finalized IS NOT NEW.finalized BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES (
+        CASE WHEN OLD.finalized IS NOT NEW.finalized THEN 'finalized' ELSE 'updated' END,
+        'lists', NEW.id,
+        CASE WHEN OLD.finalized IS NOT NEW.finalized
+          THEN CASE WHEN NEW.finalized = 1 THEN 'Budget list finalized' ELSE 'Budget list reopened' END
+          ELSE 'List updated' END,
+        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+      );
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_lists_delete AFTER DELETE ON lists BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES ('deleted', 'lists', OLD.id, 'List deleted', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_transactions_insert AFTER INSERT ON transactions BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES (
+        'created', 'finances', NEW.id,
+        CASE WHEN NEW.loan_id IS NOT NULL THEN 'Loan transaction recorded'
+          WHEN NEW.category = 'Fees and charges' THEN 'Transfer charge recorded'
+          WHEN NEW.kind = 'expense' THEN 'Expense recorded'
+          ELSE 'Income recorded' END,
+        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+      );
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_transactions_update AFTER UPDATE ON transactions
+      WHEN OLD.kind IS NOT NEW.kind OR OLD.title IS NOT NEW.title OR OLD.category IS NOT NEW.category
+        OR OLD.amount IS NOT NEW.amount OR OLD.date IS NOT NEW.date OR OLD.notes IS NOT NEW.notes BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES ('updated', 'finances', NEW.id, 'Transaction updated', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_transactions_delete AFTER DELETE ON transactions BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES ('deleted', 'finances', OLD.id, 'Transaction removed', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_transfers_insert AFTER INSERT ON transfers BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES ('created', 'finances', NEW.id, 'Transfer recorded', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_transfers_delete AFTER DELETE ON transfers BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES ('deleted', 'finances', OLD.id, 'Transfer removed', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_reminders_insert AFTER INSERT ON reminders BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES ('created', 'reminders', NEW.id, 'Reminder created', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_reminders_update AFTER UPDATE ON reminders
+      WHEN OLD.title IS NOT NEW.title OR OLD.description IS NOT NEW.description
+        OR OLD.due_at IS NOT NEW.due_at OR OLD.status IS NOT NEW.status BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES (
+        CASE WHEN OLD.status IS NOT NEW.status AND NEW.status = 'completed' THEN 'completed'
+          ELSE 'updated' END,
+        'reminders', NEW.id,
+        CASE WHEN OLD.status IS NOT NEW.status AND NEW.status = 'completed'
+          THEN 'Reminder completed' ELSE 'Reminder updated' END,
+        strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+      );
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_reminders_delete AFTER DELETE ON reminders BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES ('deleted', 'reminders', OLD.id, 'Reminder deleted', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_inbox_insert AFTER INSERT ON inbox_items BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES ('captured', 'inbox', NEW.id, 'Quick capture added to inbox', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_inbox_update AFTER UPDATE ON inbox_items
+      WHEN OLD.status IS NOT NEW.status OR OLD.content IS NOT NEW.content BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES ('organized', 'inbox', NEW.id, 'Inbox item organized', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_inbox_delete AFTER DELETE ON inbox_items BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES ('deleted', 'inbox', OLD.id, 'Inbox item deleted', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_links_insert AFTER INSERT ON record_links BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES ('linked', 'links', NEW.id, 'Records linked', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+    END;
+    CREATE TRIGGER IF NOT EXISTS activity_links_delete AFTER DELETE ON record_links BEGIN
+      INSERT INTO activity_logs (action, module, record_id, description, occurred_at)
+      VALUES ('unlinked', 'links', OLD.id, 'Record link removed', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+    END;
+  `);
 }
 
 export async function initializeDatabase(database: BrowserDatabase) {
@@ -237,7 +471,8 @@ export async function initializeDatabase(database: BrowserDatabase) {
       category TEXT NOT NULL DEFAULT 'Normal',
       date TEXT NOT NULL,
       notes TEXT NOT NULL DEFAULT '',
-      completed INTEGER NOT NULL DEFAULT 0
+      completed INTEGER NOT NULL DEFAULT 0,
+      completed_at TEXT
     );
     CREATE TABLE IF NOT EXISTS notes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -256,6 +491,48 @@ export async function initializeDatabase(database: BrowserDatabase) {
       final_transaction_id INTEGER,
       event_id INTEGER
     );
+    CREATE TABLE IF NOT EXISTS record_links (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source_type TEXT NOT NULL,
+      source_id INTEGER NOT NULL,
+      target_type TEXT NOT NULL,
+      target_id INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      UNIQUE (source_type, source_id, target_type, target_id),
+      CHECK (source_type != target_type OR source_id != target_id)
+    );
+    CREATE TABLE IF NOT EXISTS reminders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      due_at TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'completed', 'dismissed')),
+      related_type TEXT,
+      related_id INTEGER,
+      created_at TEXT NOT NULL,
+      completed_at TEXT,
+      CHECK ((related_type IS NULL) = (related_id IS NULL))
+    );
+    CREATE TABLE IF NOT EXISTS inbox_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      content TEXT NOT NULL,
+      captured_at TEXT NOT NULL,
+      suggested_type TEXT,
+      status TEXT NOT NULL DEFAULT 'inbox'
+        CHECK (status IN ('inbox', 'converted', 'linked', 'dismissed')),
+      destination_type TEXT,
+      destination_id INTEGER,
+      CHECK ((destination_type IS NULL) = (destination_id IS NULL))
+    );
+    CREATE TABLE IF NOT EXISTS activity_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      action TEXT NOT NULL,
+      module TEXT NOT NULL,
+      record_id INTEGER,
+      description TEXT NOT NULL,
+      occurred_at TEXT NOT NULL
+    );
   `);
 
   const listColumns = await database.getAllAsync<{ name: string }>('PRAGMA table_info(lists)');
@@ -273,7 +550,29 @@ export async function initializeDatabase(database: BrowserDatabase) {
     await database.execAsync('ALTER TABLE lists ADD COLUMN event_id INTEGER');
   }
   await ensureListNotesColumn(database);
+  const taskColumns = await database.getAllAsync<{ name: string }>('PRAGMA table_info(tasks)');
+  if (!taskColumns.some((column) => column.name === 'completed_at')) {
+    await database.execAsync('ALTER TABLE tasks ADD COLUMN completed_at TEXT');
+    await database.execAsync(
+      "UPDATE tasks SET completed_at = datetime('now') WHERE completed = 1 AND completed_at IS NULL",
+    );
+  }
   await database.execAsync('CREATE INDEX IF NOT EXISTS lists_event_id_idx ON lists(event_id)');
+  await database.execAsync(
+    'CREATE INDEX IF NOT EXISTS record_links_source_idx ON record_links(source_type, source_id)',
+  );
+  await database.execAsync(
+    'CREATE INDEX IF NOT EXISTS record_links_target_idx ON record_links(target_type, target_id)',
+  );
+  await database.execAsync(
+    'CREATE INDEX IF NOT EXISTS reminders_due_status_idx ON reminders(status, due_at)',
+  );
+  await database.execAsync(
+    'CREATE INDEX IF NOT EXISTS inbox_items_status_idx ON inbox_items(status, captured_at)',
+  );
+  await database.execAsync(
+    'CREATE INDEX IF NOT EXISTS activity_logs_occurred_at_idx ON activity_logs(occurred_at)',
+  );
   const transactionColumns = await database.getAllAsync<{ name: string }>(
     'PRAGMA table_info(transactions)',
   );
@@ -329,12 +628,715 @@ export async function initializeDatabase(database: BrowserDatabase) {
       await database.runAsync('DELETE FROM budgets');
     }
   });
+  await installActivityTriggers(database);
 }
 
 export const localDateKey = (date = new Date()) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
 const today = () => localDateKey();
+
+const linkedRecordQueries = {
+  event: 'SELECT id FROM events WHERE id = ?',
+  task: 'SELECT id FROM tasks WHERE id = ?',
+  note: 'SELECT id FROM notes WHERE id = ?',
+  budget: 'SELECT id FROM lists WHERE id = ? AND budget_enabled = 1',
+  transaction: 'SELECT id FROM transactions WHERE id = ?',
+  list: 'SELECT id FROM lists WHERE id = ?',
+  reminder: 'SELECT id FROM reminders WHERE id = ?',
+  inbox: "SELECT id FROM inbox_items WHERE id = ? AND status IN ('inbox', 'converted', 'linked')",
+} satisfies Record<LinkedRecordType, string>;
+
+async function requireLinkedRecord(
+  database: BrowserDatabase,
+  type: LinkedRecordType,
+  id: number,
+) {
+  if (!Number.isSafeInteger(id) || id < 1) throw new Error('Choose a valid linked record.');
+  const record = await database.getFirstAsync<{ id: number }>(linkedRecordQueries[type], id);
+  if (!record) throw new Error(`The selected ${type} no longer exists.`);
+}
+
+export async function recordActivity(
+  database: BrowserDatabase,
+  activity: Omit<ActivityRecord, 'id' | 'occurred_at'> & { occurred_at?: string },
+) {
+  const description = activity.description.trim();
+  if (!activity.action.trim() || !activity.module.trim() || !description) {
+    throw new Error('Activity action, module, and description are required.');
+  }
+  await database.runAsync(
+    'INSERT INTO activity_logs (action, module, record_id, description, occurred_at) VALUES (?, ?, ?, ?, ?)',
+    activity.action,
+    activity.module,
+    activity.record_id,
+    description,
+    activity.occurred_at ?? new Date().toISOString(),
+  );
+}
+
+export function getRecentActivity(database: BrowserDatabase, limit = 20) {
+  if (!Number.isSafeInteger(limit) || limit < 1) throw new Error('Activity limit must be positive.');
+  return database.getAllAsync<ActivityRecord>(
+    'SELECT * FROM activity_logs ORDER BY occurred_at DESC, id DESC LIMIT ?',
+    limit,
+  );
+}
+
+export async function createRecordLink(
+  database: BrowserDatabase,
+  source: { type: LinkedRecordType; id: number },
+  target: { type: LinkedRecordType; id: number },
+) {
+  await requireLinkedRecord(database, source.type, source.id);
+  await requireLinkedRecord(database, target.type, target.id);
+  if (sameLinkedRecord(source, target)) {
+    throw new Error('A record cannot be linked to itself.');
+  }
+
+  const existingLinks = await getRecordLinks(database, source);
+  const existing = existingLinks.find((link) => {
+    const linkedRecord = sameLinkedRecord(source, { type: link.source_type, id: link.source_id })
+      ? { type: link.target_type, id: link.target_id }
+      : { type: link.source_type, id: link.source_id };
+    return sameLinkedRecord(linkedRecord, target);
+  });
+  if (existing) return existing.id;
+
+  const endpoints = [source, target].sort((left, right) =>
+    `${left.type}:${left.id}`.localeCompare(`${right.type}:${right.id}`),
+  );
+  const [first, second] = endpoints;
+  const result = await database.runAsync(
+    `INSERT INTO record_links (source_type, source_id, target_type, target_id, created_at)
+     VALUES (?, ?, ?, ?, ?)`,
+    first.type,
+    first.id,
+    second.type,
+    second.id,
+    new Date().toISOString(),
+  );
+  return result.lastInsertRowId;
+}
+
+export function getRecordLinks(
+  database: BrowserDatabase,
+  record: { type: LinkedRecordType; id: number },
+) {
+  const types = record.type === 'budget' || record.type === 'list'
+    ? ['budget', 'list']
+    : [record.type];
+  const placeholders = types.map(() => '?').join(', ');
+  return database.getAllAsync<RecordLink>(
+    `SELECT * FROM record_links
+     WHERE (source_type IN (${placeholders}) AND source_id = ?)
+        OR (target_type IN (${placeholders}) AND target_id = ?)
+     ORDER BY id`,
+    ...types,
+    record.id,
+    ...types,
+    record.id,
+  );
+}
+
+export async function getRelatedRecords(
+  database: BrowserDatabase,
+  record: { type: LinkedRecordType; id: number },
+) {
+  const links = await getRecordLinks(database, record);
+  const relatedRecords = await Promise.all(links.map(async (link): Promise<RelatedRecord | null> => {
+    const isSource = sameLinkedRecord(
+      { type: link.source_type, id: link.source_id },
+      record,
+    );
+    const type = isSource ? link.target_type : link.source_type;
+    const id = isSource ? link.target_id : link.source_id;
+    const titleQueries = {
+      event: 'SELECT title FROM events WHERE id = ?',
+      task: 'SELECT title FROM tasks WHERE id = ?',
+      note: 'SELECT title FROM notes WHERE id = ?',
+      budget: 'SELECT title FROM lists WHERE id = ? AND budget_enabled = 1',
+      transaction: 'SELECT title FROM transactions WHERE id = ?',
+      list: 'SELECT title FROM lists WHERE id = ?',
+      reminder: 'SELECT title FROM reminders WHERE id = ?',
+      inbox: "SELECT substr(content, 1, 80) AS title FROM inbox_items WHERE id = ? AND status != 'dismissed'",
+    } satisfies Record<LinkedRecordType, string>;
+    const row = await database.getFirstAsync<{ title: string }>(titleQueries[type], id);
+    if (!row) return null;
+    return {
+      linkId: link.id,
+      type,
+      id,
+      title: row.title,
+    };
+  }));
+  return relatedRecords.filter((related): related is RelatedRecord => related !== null);
+}
+
+export async function deleteRecordLink(database: BrowserDatabase, id: number) {
+  await database.withTransactionAsync(async () => {
+    const link = await database.getFirstAsync<Pick<RecordLink,
+      'source_type' | 'source_id' | 'target_type' | 'target_id'
+    >>('SELECT source_type, source_id, target_type, target_id FROM record_links WHERE id = ?', id);
+    if (!link) throw new Error('This record link no longer exists.');
+    await database.runAsync('DELETE FROM record_links WHERE id = ?', id);
+    const inboxId = link.source_type === 'inbox'
+      ? link.source_id
+      : link.target_type === 'inbox' ? link.target_id : null;
+    if (inboxId !== null) {
+      await database.runAsync(
+        `UPDATE inbox_items
+         SET destination_type = NULL, destination_id = NULL,
+             status = CASE WHEN status = 'linked' THEN 'inbox' ELSE status END
+         WHERE id = ?`,
+        inboxId,
+      );
+    }
+  });
+}
+
+export async function createReminder(
+  database: BrowserDatabase,
+  reminder: {
+    title: string;
+    description?: string;
+    dueAt: string;
+    related?: { type: LinkedRecordType; id: number } | null;
+  },
+) {
+  const title = reminder.title.trim();
+  if (!title) throw new Error('Enter a reminder title.');
+  if (!reminder.dueAt.trim() || Number.isNaN(Date.parse(reminder.dueAt))) {
+    throw new Error('Enter a valid reminder date and time.');
+  }
+  if (reminder.related) {
+    await requireLinkedRecord(database, reminder.related.type, reminder.related.id);
+  }
+  const result = await database.runAsync(
+    `INSERT INTO reminders
+      (title, description, due_at, related_type, related_id, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    title,
+    reminder.description?.trim() ?? '',
+    reminder.dueAt,
+    reminder.related?.type ?? null,
+    reminder.related?.id ?? null,
+    new Date().toISOString(),
+  );
+  return result.lastInsertRowId;
+}
+
+export function getReminders(database: BrowserDatabase, status?: ReminderStatus) {
+  if (status) {
+    return database.getAllAsync<ReminderRecord>(
+      'SELECT * FROM reminders WHERE status = ? ORDER BY due_at, id',
+      status,
+    );
+  }
+  return database.getAllAsync<ReminderRecord>('SELECT * FROM reminders ORDER BY due_at, id');
+}
+
+export async function setReminderStatus(
+  database: BrowserDatabase,
+  id: number,
+  status: ReminderStatus,
+) {
+  const result = await database.runAsync(
+    'UPDATE reminders SET status = ?, completed_at = ? WHERE id = ?',
+    status,
+    status === 'completed' ? new Date().toISOString() : null,
+    id,
+  );
+  if (!result.changes) throw new Error('This reminder no longer exists.');
+}
+
+export async function deleteReminder(database: BrowserDatabase, id: number) {
+  await database.withTransactionAsync(async () => {
+    await database.runAsync(
+      `DELETE FROM record_links
+       WHERE (source_type = 'reminder' AND source_id = ?)
+          OR (target_type = 'reminder' AND target_id = ?)`,
+      id,
+      id,
+    );
+    await database.runAsync(
+      "UPDATE reminders SET related_type = NULL, related_id = NULL WHERE related_type = 'reminder' AND related_id = ?",
+      id,
+    );
+    await database.runAsync(
+      `UPDATE inbox_items
+       SET destination_type = NULL, destination_id = NULL,
+           status = CASE WHEN status = 'linked' THEN 'inbox' ELSE status END
+       WHERE destination_type = 'reminder' AND destination_id = ?`,
+      id,
+    );
+    const result = await database.runAsync('DELETE FROM reminders WHERE id = ?', id);
+    if (!result.changes) throw new Error('This reminder no longer exists.');
+  });
+}
+
+export async function createInboxItem(
+  database: BrowserDatabase,
+  content: string,
+  suggestedType: InboxItem['suggested_type'] = null,
+) {
+  const value = content.trim();
+  if (!value) throw new Error('Capture some text before saving.');
+  const result = await database.runAsync(
+    'INSERT INTO inbox_items (content, captured_at, suggested_type) VALUES (?, ?, ?)',
+    value,
+    new Date().toISOString(),
+    suggestedType,
+  );
+  return result.lastInsertRowId;
+}
+
+export function getInboxItems(database: BrowserDatabase, status: InboxStatus | 'active' = 'active') {
+  if (status === 'active') {
+    return database.getAllAsync<InboxItem>(
+      "SELECT * FROM inbox_items WHERE status != 'dismissed' ORDER BY captured_at DESC, id DESC",
+    );
+  }
+  return database.getAllAsync<InboxItem>(
+    'SELECT * FROM inbox_items WHERE status = ? ORDER BY captured_at DESC, id DESC',
+    status,
+  );
+}
+
+export async function linkInboxItem(
+  database: BrowserDatabase,
+  inboxId: number,
+  target: { type: LinkedRecordType; id: number },
+) {
+  await requireLinkedRecord(database, target.type, target.id);
+  await database.withTransactionAsync(async () => {
+    const item = await database.getFirstAsync<{ id: number; destination_type: string | null; destination_id: number | null }>(
+      "SELECT id, destination_type, destination_id FROM inbox_items WHERE id = ? AND status != 'dismissed'",
+      inboxId,
+    );
+    if (!item) throw new Error('This inbox item is no longer available.');
+    await linkRecordToInboxGroup(database, inboxId, target);
+    const result = await database.runAsync(
+      `UPDATE inbox_items
+       SET status = 'linked',
+           destination_type = COALESCE(destination_type, ?),
+           destination_id = COALESCE(destination_id, ?)
+       WHERE id = ? AND status != 'dismissed'`,
+      item.destination_type ?? target.type,
+      item.destination_id ?? target.id,
+      inboxId,
+    );
+    if (!result.changes) throw new Error('This inbox item is no longer available.');
+  });
+}
+
+async function linkRecordToInboxGroup(
+  database: BrowserDatabase,
+  inboxId: number,
+  record: { type: LinkedRecordType; id: number },
+) {
+  const links = await getRecordLinks(database, { type: 'inbox', id: inboxId });
+  for (const link of links) {
+    const related = link.source_type === 'inbox'
+      ? { type: link.target_type, id: link.target_id }
+      : { type: link.source_type, id: link.source_id };
+    if (related.type === 'inbox') continue;
+    if (sameLinkedRecord(related, record)) continue;
+    await createRecordLink(database, record, related);
+  }
+  await createRecordLink(database, { type: 'inbox', id: inboxId }, record);
+}
+
+export async function dismissInboxItem(database: BrowserDatabase, inboxId: number) {
+  const result = await database.runAsync(
+    `UPDATE inbox_items SET status = 'dismissed' WHERE id = ? AND status IN ('inbox', 'converted', 'linked')`,
+    inboxId,
+  );
+  if (!result.changes) throw new Error('This inbox item is no longer available.');
+}
+
+export async function deleteInboxItem(database: BrowserDatabase, inboxId: number) {
+  await database.withTransactionAsync(async () => {
+    const item = await database.getFirstAsync<{ id: number }>(
+      "SELECT id FROM inbox_items WHERE id = ? AND status IN ('inbox', 'converted', 'linked')",
+      inboxId,
+    );
+    if (!item) throw new Error('This inbox item is no longer available.');
+    await database.runAsync(
+      `DELETE FROM record_links
+       WHERE (source_type = 'inbox' AND source_id = ?)
+          OR (target_type = 'inbox' AND target_id = ?)`,
+      inboxId,
+      inboxId,
+    );
+    const result = await database.runAsync('DELETE FROM inbox_items WHERE id = ?', inboxId);
+    if (!result.changes) throw new Error('This inbox item is no longer available.');
+  });
+}
+
+export async function convertInboxItem(
+  database: BrowserDatabase,
+  inboxId: number,
+  destination: 'note' | 'task' | 'event' | 'list' | 'reminder',
+  dueAt?: string,
+) {
+  if (destination === 'list') await ensureListNotesColumn(database);
+  if (destination === 'reminder' && (!dueAt || Number.isNaN(Date.parse(dueAt)))) {
+    throw new Error('Choose a valid date and time for this reminder.');
+  }
+  let destinationId: number | null = null;
+  await database.withTransactionAsync(async () => {
+    const item = await database.getFirstAsync<{
+      content: string;
+      destination_type: string | null;
+      destination_id: number | null;
+    }>(
+      "SELECT content, destination_type, destination_id FROM inbox_items WHERE id = ? AND status != 'dismissed'",
+      inboxId,
+    );
+    if (!item) throw new Error('This inbox item is no longer available.');
+    const title = (item.content.split(/\r?\n/, 1)[0].trim() || 'Quick capture').slice(0, 32);
+    if (destination === 'note') {
+      const result = await database.runAsync(
+        'INSERT INTO notes (title, category, notes, updated_at) VALUES (?, ?, ?, ?)',
+        title,
+        'Personal',
+        item.content,
+        new Date().toISOString(),
+      );
+      destinationId = result.lastInsertRowId;
+    } else if (destination === 'task') {
+      const result = await database.runAsync(
+        'INSERT INTO tasks (title, category, date, notes) VALUES (?, ?, ?, ?)',
+        title,
+        'Normal',
+        today(),
+        item.content,
+      );
+      destinationId = result.lastInsertRowId;
+    } else if (destination === 'event') {
+      const result = await database.runAsync(
+        'INSERT INTO events (title, category, date, notes) VALUES (?, ?, ?, ?)',
+        title,
+        'Personal',
+        today(),
+        item.content,
+      );
+      destinationId = result.lastInsertRowId;
+    } else if (destination === 'list') {
+      const result = await database.runAsync(
+        'INSERT INTO lists (title, notes, items, budget_enabled) VALUES (?, ?, ?, 0)',
+        title,
+        item.content,
+        '[]',
+      );
+      destinationId = result.lastInsertRowId;
+    } else {
+      const result = await database.runAsync(
+        'INSERT INTO reminders (title, description, due_at, created_at) VALUES (?, ?, ?, ?)',
+        title,
+        item.content,
+        dueAt,
+        new Date().toISOString(),
+      );
+      destinationId = result.lastInsertRowId;
+    }
+
+    await linkRecordToInboxGroup(database, inboxId, { type: destination, id: destinationId });
+    const update = await database.runAsync(
+      `UPDATE inbox_items
+       SET status = CASE WHEN status = 'linked' THEN 'linked' ELSE 'converted' END,
+           suggested_type = ?,
+           destination_type = COALESCE(destination_type, ?),
+           destination_id = COALESCE(destination_id, ?)
+       WHERE id = ? AND status != 'dismissed'`,
+      destination,
+      destination,
+      destinationId,
+      inboxId,
+    );
+    if (!update.changes) throw new Error('This inbox item is no longer available.');
+  });
+  if (destinationId === null) throw new Error('Inbox conversion did not complete.');
+  return { type: destination, id: destinationId };
+}
+
+async function getLinkedSearchResult(
+  database: BrowserDatabase,
+  type: LinkedRecordType,
+  id: number,
+): Promise<UniversalSearchResult | null> {
+  if (type === 'event') {
+    const row = await database.getFirstAsync<{ title: string; category: string; date: string }>(
+      'SELECT title, category, date FROM events WHERE id = ?',
+      id,
+    );
+    return row ? { id, kind: type, module: 'Events', title: row.title, detail: `${row.category} · ${row.date}` } : null;
+  }
+  if (type === 'task') {
+    const row = await database.getFirstAsync<{ title: string; category: string; date: string }>(
+      'SELECT title, category, date FROM tasks WHERE id = ?',
+      id,
+    );
+    return row ? { id, kind: type, module: 'Tasks', title: row.title, detail: `${row.category} · ${row.date}` } : null;
+  }
+  if (type === 'note') {
+    const row = await database.getFirstAsync<{ title: string; category: string }>(
+      'SELECT title, category FROM notes WHERE id = ?',
+      id,
+    );
+    return row ? { id, kind: type, module: 'Notes', title: row.title, detail: row.category } : null;
+  }
+  if (type === 'budget' || type === 'list') {
+    const row = await database.getFirstAsync<{ title: string }>(
+      'SELECT title FROM lists WHERE id = ? AND budget_enabled = ?',
+      id,
+      Number(type === 'budget'),
+    );
+    return row ? {
+      id,
+      kind: type,
+      module: type === 'budget' ? 'Finances' : 'Lists',
+      title: row.title,
+      detail: type === 'budget' ? 'Budget' : 'List',
+    } : null;
+  }
+  if (type === 'transaction') {
+    const row = await database.getFirstAsync<{ title: string; category: string; date: string }>(
+      'SELECT title, category, date FROM transactions WHERE id = ?',
+      id,
+    );
+    return row ? { id, kind: type, module: 'Finances', title: row.title, detail: `${row.category} · ${row.date}` } : null;
+  }
+  if (type === 'reminder') {
+    const row = await database.getFirstAsync<{ title: string; status: string; due_at: string }>(
+      'SELECT title, status, due_at FROM reminders WHERE id = ?',
+      id,
+    );
+    return row ? { id, kind: type, module: 'Reminders', title: row.title, detail: `${row.status} · ${row.due_at}` } : null;
+  }
+  return null;
+}
+
+export async function searchRecords(
+  database: BrowserDatabase,
+  query: string,
+  filter: UniversalSearchFilter = 'All',
+) {
+  const search = query.trim();
+  if (!search) return [];
+  const pattern = `%${search.replace(/!/g, '!!').replace(/%/g, '!%').replace(/_/g, '!_')}%`;
+  const results: UniversalSearchResult[] = [];
+  const searchNotes = filter === 'All' || filter === 'Notes';
+  const searchTasks = filter === 'All' || filter === 'Tasks';
+  const searchEvents = filter === 'All' || filter === 'Events';
+  const searchFinance = filter === 'All' || filter === 'Finances';
+  const searchLists = filter === 'All' || filter === 'Lists';
+  const searchReminders = filter === 'All' || filter === 'Reminders';
+  const [notes, tasks, events, transactions, transfers, budgets, lists, reminders] = await Promise.all([
+    searchNotes
+      ? database.getAllAsync<{ id: number; title: string; category: string }>(
+        `SELECT id, title, category FROM notes
+         WHERE title LIKE ? ESCAPE '!' COLLATE NOCASE
+            OR category LIKE ? ESCAPE '!' COLLATE NOCASE
+            OR notes LIKE ? ESCAPE '!' COLLATE NOCASE
+         ORDER BY updated_at DESC LIMIT 40`,
+        pattern, pattern, pattern,
+      )
+      : [],
+    searchTasks
+      ? database.getAllAsync<{ id: number; title: string; category: string; date: string }>(
+        `SELECT id, title, category, date FROM tasks
+         WHERE title LIKE ? ESCAPE '!' COLLATE NOCASE
+            OR category LIKE ? ESCAPE '!' COLLATE NOCASE
+            OR notes LIKE ? ESCAPE '!' COLLATE NOCASE
+         ORDER BY date, id LIMIT 40`,
+        pattern, pattern, pattern,
+      )
+      : [],
+    searchEvents
+      ? database.getAllAsync<{ id: number; title: string; category: string; date: string }>(
+        `SELECT id, title, category, date FROM events
+         WHERE title LIKE ? ESCAPE '!' COLLATE NOCASE
+            OR category LIKE ? ESCAPE '!' COLLATE NOCASE
+            OR notes LIKE ? ESCAPE '!' COLLATE NOCASE
+         ORDER BY date, id LIMIT 40`,
+        pattern, pattern, pattern,
+      )
+      : [],
+    searchFinance
+      ? database.getAllAsync<{ id: number; title: string; category: string; date: string }>(
+        `SELECT id, title, category, date FROM transactions
+         WHERE title LIKE ? ESCAPE '!' COLLATE NOCASE
+            OR category LIKE ? ESCAPE '!' COLLATE NOCASE
+            OR notes LIKE ? ESCAPE '!' COLLATE NOCASE
+         ORDER BY date DESC, id DESC LIMIT 40`,
+        pattern, pattern, pattern,
+      )
+      : [],
+    searchFinance
+      ? database.getAllAsync<{
+        id: number;
+        date: string;
+        notes: string;
+        from_account_name: string;
+        to_account_name: string;
+      }>(
+        `SELECT transfers.id, transfers.date, transfers.notes,
+           source.name AS from_account_name, destination.name AS to_account_name
+         FROM transfers
+         JOIN accounts AS source ON source.id = transfers.from_account_id
+         JOIN accounts AS destination ON destination.id = transfers.to_account_id
+         WHERE source.name LIKE ? ESCAPE '!' COLLATE NOCASE
+            OR destination.name LIKE ? ESCAPE '!' COLLATE NOCASE
+            OR transfers.notes LIKE ? ESCAPE '!' COLLATE NOCASE
+         ORDER BY transfers.date DESC, transfers.id DESC LIMIT 40`,
+        pattern, pattern, pattern,
+      )
+      : [],
+    searchFinance
+      ? database.getAllAsync<{ id: number; title: string; notes: string; items: string }>(
+        `SELECT id, title, notes, items FROM lists WHERE budget_enabled = 1
+         AND (title LIKE ? ESCAPE '!' COLLATE NOCASE
+           OR notes LIKE ? ESCAPE '!' COLLATE NOCASE
+           OR items LIKE ? ESCAPE '!' COLLATE NOCASE)
+         ORDER BY id DESC LIMIT 40`,
+        pattern, pattern, pattern,
+      )
+      : [],
+    searchLists
+      ? database.getAllAsync<{ id: number; title: string; notes: string; items: string }>(
+        `SELECT id, title, notes, items FROM lists WHERE budget_enabled = 0
+         AND (title LIKE ? ESCAPE '!' COLLATE NOCASE
+           OR notes LIKE ? ESCAPE '!' COLLATE NOCASE
+           OR items LIKE ? ESCAPE '!' COLLATE NOCASE)
+         ORDER BY id DESC LIMIT 40`,
+        pattern, pattern, pattern,
+      )
+      : [],
+    searchReminders
+      ? database.getAllAsync<{ id: number; title: string; due_at: string; status: string }>(
+        `SELECT id, title, due_at, status FROM reminders
+         WHERE title LIKE ? ESCAPE '!' COLLATE NOCASE
+            OR description LIKE ? ESCAPE '!' COLLATE NOCASE
+         ORDER BY due_at DESC LIMIT 40`,
+        pattern, pattern,
+      )
+      : [],
+  ]);
+  results.push(
+    ...notes.map((record) => ({
+      id: record.id,
+      kind: 'note' as const,
+      module: 'Notes' as const,
+      title: record.title,
+      detail: record.category,
+    })),
+    ...tasks.map((record) => ({
+      id: record.id,
+      kind: 'task' as const,
+      module: 'Tasks' as const,
+      title: record.title,
+      detail: `${record.category} · ${record.date}`,
+    })),
+    ...events.map((record) => ({
+      id: record.id,
+      kind: 'event' as const,
+      module: 'Events' as const,
+      title: record.title,
+      detail: `${record.category} · ${record.date}`,
+    })),
+    ...transactions.map((record) => ({
+      id: record.id,
+      kind: 'transaction' as const,
+      module: 'Finances' as const,
+      title: record.title,
+      detail: `${record.category} · ${record.date}`,
+    })),
+    ...transfers.map((record) => ({
+      id: record.id,
+      kind: 'transfer' as const,
+      module: 'Finances' as const,
+      title: `${record.from_account_name} → ${record.to_account_name}`,
+      detail: `Transfer · ${record.date}`,
+    })),
+    ...budgets.map((record) => ({
+      id: record.id,
+      kind: 'budget' as const,
+      module: 'Finances' as const,
+      title: record.title,
+      detail: 'Budget',
+    })),
+    ...lists.map((record) => ({
+      id: record.id,
+      kind: 'list' as const,
+      module: 'Lists' as const,
+      title: record.title,
+      detail: 'List',
+    })),
+    ...reminders.map((record) => ({
+      id: record.id,
+      kind: 'reminder' as const,
+      module: 'Reminders' as const,
+      title: record.title,
+      detail: `${record.status} · ${record.due_at}`,
+    })),
+  );
+
+  const seedRecords = results.filter((record) => record.kind !== 'transfer');
+  const visited = new Set(seedRecords.map((record) => `${record.kind}:${record.id}`));
+  const linkedKeys = new Set<string>();
+  let frontier = seedRecords.map((record) => ({
+    type: record.kind as LinkedRecordType,
+    id: record.id,
+  }));
+  for (let depth = 0; depth < 4 && frontier.length > 0; depth += 1) {
+    const nextFrontier: { type: LinkedRecordType; id: number }[] = [];
+    for (let index = 0; index < frontier.length; index += 200) {
+      const batch = frontier.slice(index, index + 200);
+      const frontierKeys = new Set(batch.map((record) => `${record.type}:${record.id}`));
+      const conditions = batch.map(() =>
+        '((source_type = ? AND source_id = ?) OR (target_type = ? AND target_id = ?))',
+      );
+      const parameters = batch.flatMap((record) => [
+        record.type,
+        record.id,
+        record.type,
+        record.id,
+      ]);
+      const links = await database.getAllAsync<Pick<RecordLink,
+        'source_type' | 'source_id' | 'target_type' | 'target_id'
+      >>(`SELECT source_type, source_id, target_type, target_id
+          FROM record_links WHERE ${conditions.join(' OR ')}`, ...parameters);
+      for (const link of links) {
+        const sourceKey = `${link.source_type}:${link.source_id}`;
+        const targetKey = `${link.target_type}:${link.target_id}`;
+        const endpoint = frontierKeys.has(sourceKey)
+          ? { key: targetKey, type: link.target_type, id: link.target_id }
+          : frontierKeys.has(targetKey)
+            ? { key: sourceKey, type: link.source_type, id: link.source_id }
+            : null;
+        if (endpoint && !visited.has(endpoint.key)) {
+          visited.add(endpoint.key);
+          linkedKeys.add(endpoint.key);
+          nextFrontier.push({ type: endpoint.type, id: endpoint.id });
+        }
+      }
+    }
+    frontier = nextFrontier.filter((record) => record.type !== 'inbox');
+  }
+  for (const linkedKey of linkedKeys) {
+    const separator = linkedKey.indexOf(':');
+    const type = linkedKey.slice(0, separator) as LinkedRecordType;
+    const id = Number(linkedKey.slice(separator + 1));
+    if (!Number.isSafeInteger(id) || id < 1) continue;
+    const linked = await getLinkedSearchResult(database, type, id);
+    if (!linked || (filter !== 'All' && linked.module !== filter)) continue;
+    if (results.some((result) => result.kind === linked.kind && result.id === linked.id)) continue;
+    results.push(linked);
+  }
+  return results;
+}
 
 export async function getAccounts(database: BrowserDatabase) {
   return database.getAllAsync<Account>(
@@ -421,14 +1423,12 @@ export async function saveExpense(database: BrowserDatabase, draft: ExpenseDraft
   });
 }
 
-export async function getTransfers(database: BrowserDatabase) {
-  const transfers = await database.getAllAsync<Transfer>(
-    `SELECT transfers.*, source.name AS from_account_name, destination.name AS to_account_name
-     FROM transfers
-     JOIN accounts AS source ON source.id = transfers.from_account_id
-     JOIN accounts AS destination ON destination.id = transfers.to_account_id
-     ORDER BY transfers.date DESC, transfers.id DESC LIMIT 50`,
-  );
+type TransferRow = Omit<Transfer, 'charges'>;
+
+async function attachTransferCharges(database: BrowserDatabase, transfers: TransferRow[]) {
+  if (!transfers.length) return [];
+  const transferIds = transfers.map((transfer) => transfer.id);
+  const placeholders = transferIds.map(() => '?').join(', ');
   const charges = await database.getAllAsync<{
     transfer_id: number;
     title: string;
@@ -436,10 +1436,9 @@ export async function getTransfers(database: BrowserDatabase) {
   }>(
     `SELECT transfer_id, title, amount
      FROM transactions
-     WHERE transfer_id IN (
-       SELECT id FROM transfers ORDER BY date DESC, id DESC LIMIT 50
-     ) AND category = 'Fees and charges'
+     WHERE transfer_id IN (${placeholders}) AND category = 'Fees and charges'
      ORDER BY id`,
+    ...transferIds,
   );
   const chargesByTransfer = new Map<number, { title: string; amount: number }[]>();
   for (const charge of charges) {
@@ -451,6 +1450,30 @@ export async function getTransfers(database: BrowserDatabase) {
     ...transfer,
     charges: chargesByTransfer.get(transfer.id) ?? [],
   }));
+}
+
+export async function getTransfers(database: BrowserDatabase) {
+  const transfers = await database.getAllAsync<TransferRow>(
+    `SELECT transfers.*, source.name AS from_account_name, destination.name AS to_account_name
+     FROM transfers
+     JOIN accounts AS source ON source.id = transfers.from_account_id
+     JOIN accounts AS destination ON destination.id = transfers.to_account_id
+     ORDER BY transfers.date DESC, transfers.id DESC LIMIT 50`,
+  );
+  return attachTransferCharges(database, transfers);
+}
+
+export async function getTransferById(database: BrowserDatabase, id: number) {
+  const transfer = await database.getFirstAsync<TransferRow>(
+    `SELECT transfers.*, source.name AS from_account_name, destination.name AS to_account_name
+     FROM transfers
+     JOIN accounts AS source ON source.id = transfers.from_account_id
+     JOIN accounts AS destination ON destination.id = transfers.to_account_id
+     WHERE transfers.id = ?`,
+    id,
+  );
+  if (!transfer) return null;
+  return (await attachTransferCharges(database, [transfer]))[0];
 }
 
 export async function saveRecord(
@@ -773,11 +1796,44 @@ export async function saveRecord(
   });
 }
 
+async function detachRecordReferences(
+  database: BrowserDatabase,
+  type: LinkedRecordType,
+  recordId: number,
+) {
+  await database.runAsync(
+    `DELETE FROM record_links
+     WHERE (source_type = ? AND source_id = ?) OR (target_type = ? AND target_id = ?)`,
+    type,
+    recordId,
+    type,
+    recordId,
+  );
+  await database.runAsync(
+    'UPDATE reminders SET related_type = NULL, related_id = NULL WHERE related_type = ? AND related_id = ?',
+    type,
+    recordId,
+  );
+  await database.runAsync(
+    `UPDATE inbox_items
+     SET destination_type = NULL, destination_id = NULL,
+         status = CASE WHEN status = 'linked' THEN 'inbox' ELSE status END
+     WHERE destination_type = ? AND destination_id = ?`,
+    type,
+    recordId,
+  );
+}
+
 export async function deleteRecord(
   database: BrowserDatabase,
   table: 'transactions' | 'events' | 'tasks' | 'notes' | 'lists',
   id: number,
 ) {
+  const recordTypes: LinkedRecordType[] = table === 'lists'
+    ? ['list', 'budget']
+    : [table === 'transactions' ? 'transaction' : table === 'events' ? 'event' : table === 'tasks' ? 'task' : 'note'];
+  const detachReferences = (type: LinkedRecordType, recordId: number) =>
+    detachRecordReferences(database, type, recordId);
   if (table === 'lists') {
     await database.withTransactionAsync(async () => {
       const list = await database.getFirstAsync<{ final_transaction_id: number | null }>(
@@ -785,14 +1841,17 @@ export async function deleteRecord(
         id,
       );
       if (list?.final_transaction_id) {
+        await detachReferences('transaction', list.final_transaction_id);
         await database.runAsync('DELETE FROM transactions WHERE id = ?', list.final_transaction_id);
       }
+      for (const type of recordTypes) await detachReferences(type, id);
       await database.runAsync('DELETE FROM lists WHERE id = ?', id);
     });
     return;
   }
   if (table === 'events') {
     await database.withTransactionAsync(async () => {
+      await detachReferences('event', id);
       await database.runAsync('UPDATE lists SET event_id = NULL WHERE event_id = ?', id);
       await database.runAsync('DELETE FROM events WHERE id = ?', id);
     });
@@ -811,19 +1870,27 @@ export async function deleteRecord(
       if (transaction?.kind === 'income' && transaction.account_id !== null) {
         await ensureAccountBalance(database, transaction.account_id, transaction.amount);
       }
+      await detachReferences('transaction', id);
       await database.runAsync('DELETE FROM transactions WHERE id = ?', id);
     });
     return;
   }
-  await database.runAsync(`DELETE FROM ${table} WHERE id = ?`, id);
+  await database.withTransactionAsync(async () => {
+    for (const type of recordTypes) await detachReferences(type, id);
+    await database.runAsync(`DELETE FROM ${table} WHERE id = ?`, id);
+  });
 }
 
 export async function toggleTask(database: BrowserDatabase, id: number, completed: boolean) {
-  await database.runAsync(
-    'UPDATE tasks SET completed = ? WHERE id = ?',
-    completed ? 0 : 1,
+  const nextCompleted = completed ? 0 : 1;
+  const result = await database.runAsync(
+    'UPDATE tasks SET completed = ?, completed_at = ? WHERE id = ? AND completed = ?',
+    nextCompleted,
+    nextCompleted ? new Date().toISOString() : null,
     id,
+    completed ? 1 : 0,
   );
+  if (!result.changes) throw new Error('This task no longer exists or has already changed.');
 }
 
 export async function toggleListItem(

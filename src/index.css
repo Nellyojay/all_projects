@@ -291,7 +291,7 @@ textarea::placeholder {
     left: 12px;
     z-index: 30;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     max-width: 420px;
     margin-inline: auto;
     padding: 5px 7px;

@@ -101,7 +101,7 @@ export function NoteBody({
   onStartEditing,
 }: NoteBodyProps) {
   return editing ? (
-    <div>
+    <div style={noteStyles.bodyEditor}>
       <span style={noteStyles.meta}>{note.category}</span>
       <textarea
         autoFocus
@@ -297,6 +297,17 @@ const noteStyles = {
     fontSize: 13,
     lineHeight: '23px',
     whiteSpace: 'pre-wrap',
+    backgroundColor: colors.surface,
+    flex: 1,
+    minHeight: 0,
+    padding: 8,
+    borderRadius: 8,
+  },
+  bodyEditor: {
+    display: 'flex',
+    flex: 1,
+    flexDirection: 'column',
+    minHeight: 0,
   },
   bodyEditButton: {
     display: 'flex',

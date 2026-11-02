@@ -9,6 +9,7 @@ import { colors, styles } from '../../components/theme';
 import {
   localDateKey,
   getAccounts,
+  getTransferById,
   getTransfers,
   saveExpense,
   saveRecord,
@@ -35,8 +36,12 @@ export default function FinancesScreen() {
   const location = useLocation();
   const [section, setSection] = useState<FinanceSection>(() => {
     const state = location.state;
-    return typeof state === 'object' && state !== null && 'section' in state && state.section === 'accounts'
-      ? 'accounts'
+    const requested = typeof state === 'object' && state !== null && 'section' in state
+      ? state.section
+      : null;
+    return requested === 'accounts' || requested === 'transfers' || requested === 'budgets'
+      || requested === 'loans' || requested === 'transactions'
+      ? requested
       : 'transactions';
   });
   const [query, setQuery] = useState('');
@@ -106,6 +111,43 @@ export default function FinancesScreen() {
       window.alert('Unable to load\n\nYour finance summary could not be opened.');
     });
   }, [refresh]);
+
+  useEffect(() => {
+    const state = location.state;
+    if (typeof state !== 'object' || state === null || !('focusRecord' in state)) return;
+    const target = state.focusRecord;
+    if (typeof target !== 'object' || target === null
+      || !('kind' in target) || !('id' in target)
+      || typeof target.id !== 'number' || !Number.isSafeInteger(target.id)
+      || target.id < 1
+      || (target.kind !== 'transaction' && target.kind !== 'transfer')) return;
+
+    let active = true;
+    void (async () => {
+      if (target.kind === 'transfer') return getTransferById(database, target.id);
+      return database.getFirstAsync<Transaction>(
+        `SELECT transactions.*, accounts.name AS account_name
+         FROM transactions LEFT JOIN accounts ON accounts.id = transactions.account_id
+         WHERE transactions.id = ?`,
+        target.id,
+      );
+    })().then((record) => {
+      if (!active) return;
+      if (record) {
+        setSelectedTransaction(record);
+      } else {
+        window.alert('Record not found\n\nThis finance record may have been deleted.');
+      }
+      navigate(location.pathname, { replace: true, state: null });
+    }).catch((error: unknown) => {
+      console.error('Unable to open searched finance record', error);
+      if (active) {
+        window.alert('Could not open record\n\nPlease try again.');
+        navigate(location.pathname, { replace: true, state: null });
+      }
+    });
+    return () => { active = false; };
+  }, [database, location.pathname, location.state, navigate]);
 
   const create = async (kind: RecordKind, draft: Parameters<typeof saveRecord>[2]) => {
     await saveRecord(database, kind, draft);

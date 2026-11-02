@@ -19,6 +19,7 @@ import { colors, styles } from './theme';
 import { EventDetails, EventHeading } from './ui/event';
 import { ListDetails } from './ui/list';
 import { NoteDetails } from './ui/note';
+import { RelatedRecords } from './RelatedRecords';
 
 export type SelectedRecord =
   | { kind: 'event'; record: EventRecord }
@@ -207,6 +208,14 @@ export function RecordDetailsModal({
                   onLoanDraft={setLoanDraft}
                 />
               ) : null}
+              <RelatedRecords
+                record={{
+                  type: selected.kind === 'list' && selected.record.budget_enabled
+                    ? 'budget'
+                    : selected.kind,
+                  id: selected.record.id,
+                }}
+              />
 
               {selected.kind !== 'note' && (selected.kind !== 'list' || !(checkedList?.id === selected.record.id
                 ? checkedList.finalized
@@ -311,7 +320,6 @@ const modalStyles = {
     flexDirection: 'column',
     width: '100%',
     marginInline: 'auto',
-    paddingBottom: 28,
   },
   typeBadge: {
     alignSelf: 'flex-start',

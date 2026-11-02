@@ -3,6 +3,7 @@ import CalendarScreen from './mythingz/src/app/(tabs)/calendar';
 import FinancesScreen from './mythingz/src/app/(tabs)/finances';
 import HomeScreen from './mythingz/src/app/(tabs)/index';
 import OrganizeScreen from './mythingz/src/app/(tabs)/organize';
+import SearchScreen from './mythingz/src/app/search';
 import RecordDetailsRoute from './mythingz/src/components/RecordDetailsRoute';
 import { CreateAccountPage } from './mythingz/src/components/ui/account';
 import SettingsScreen from './mythingz/src/app/settings';
@@ -14,6 +15,7 @@ const sections = [
   { path: 'space/finances', route: 'finances', label: 'Finances', icon: '◉' },
   { path: 'space/calendar', route: 'calendar', label: 'Calendar', icon: '▦' },
   { path: 'space/organize', route: 'organize', label: 'Organize', icon: '▤' },
+  { path: 'space/search', route: 'search', label: 'Search', icon: '⌕' },
 ] as const;
 
 function WorkspaceRoute() {
@@ -113,6 +115,7 @@ const router = createHashRouter([
       { path: 'finances/accounts/new', Component: CreateAccountPage },
       { path: 'calendar', Component: CalendarScreen },
       { path: 'organize', Component: OrganizeScreen },
+      { path: 'search', Component: SearchScreen },
       { path: 'settings', Component: SettingsScreen },
       { path: 'records/:kind/:id', Component: RecordDetailsRoute },
     ],
