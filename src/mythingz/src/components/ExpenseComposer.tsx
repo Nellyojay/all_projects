@@ -56,6 +56,7 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
   }, 0);
   const allocatedTotal = budgetAllocations.reduce((sum, allocation) => sum + allocation.amount, 0);
   const allocationRemainder = expenseTotal - allocatedTotal;
+  console.log("Budget items:", budgetItems);
 
   useEffect(() => {
     let active = true;
@@ -237,7 +238,14 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
                 <div style={expenseStyles.allocationControls}>
                   <select
                     value={selectedBudgetItemId}
-                    onChange={(event) => setSelectedBudgetItemId(event.currentTarget.value)}
+                    onChange={(event) => {
+                      const selectedId = event.currentTarget.value;
+                      setSelectedBudgetItemId(selectedId);
+                      const selectedItem = budgetItems.find((item) => String(item.id) === selectedId);
+                      setBudgetAllocationAmount(
+                        selectedItem ? String(selectedItem.actual_amount) : '',
+                      );
+                    }}
                     aria-label="Choose a recurring budget item"
                     style={expenseStyles.input}
                   >

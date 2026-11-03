@@ -106,12 +106,11 @@ export function BudgetTemplateEditor({
           />
           <input
             type="number"
-            min="0"
-            step="1"
-            value={item.allocated_amount}
+            value={item.allocated_amount || ''}
+            placeholder="Allocate amount"
             aria-label={`Budget allocation for ${item.name || `item ${index + 1}`}`}
             onChange={(event) => onUpdateItem(index, {
-              allocated_amount: event.currentTarget.value === '' ? 0 : Number(event.currentTarget.value),
+              allocated_amount: Number(event.currentTarget.value),
             })}
             style={budgetStyles.input}
           />

@@ -11,6 +11,7 @@ import {
   getBudgetAlerts,
   getBudgetTemplates,
   getUnallocatedExpenses,
+  localDateKey,
   reopenBudgetPeriod,
   saveBudgetTemplate,
   setBudgetTemplateState,
@@ -61,10 +62,14 @@ export function RecurringBudgetManager() {
     setPeriods(nextPeriods);
     setUnallocated(expenses);
     setAlerts(nextAlerts);
+    const today = localDateKey();
     setSelectedPeriodId((current) =>
       current !== null && nextPeriods.some((period) => period.id === current)
         ? current
-        : nextPeriods[0]?.id ?? null,
+        : nextPeriods.find((period) => period.status === 'active')?.id
+          ?? nextPeriods.find((period) => period.start_date <= today && period.end_date >= today)?.id
+          ?? nextPeriods[0]?.id
+          ?? null,
     );
     setLoading(false);
   }, [database]);
