@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
-import { ExpenseComposer } from '../../components/ExpenseComposer';
-import { RecordComposer } from '../../components/RecordComposer';
-import { TransactionReceipt } from '../../components/TransactionReceipt';
-import { ScreenHeader, SectionTitle } from '../../components/ScreenHeader';
-import { colors, styles } from '../../components/theme';
+import { ExpenseComposer } from '../../components/finance/transactions/ExpenseComposer';
+import { TransactionReceipt } from '../../components/finance/transactions/TransactionReceipt';
+import { RecordComposer } from '../../components/records/RecordComposer';
+import { ScreenHeader, SectionTitle } from '../../components/shared/ScreenHeader';
+import { colors, styles } from '../../components/shared/theme';
 import {
   deleteRecord,
   getAccounts,
@@ -27,7 +27,7 @@ import {
   type Transaction,
   type Transfer,
 } from '../../services/database';
-import { NoteCard } from '../../components/ui/note';
+import { NoteCard } from '../../components/notes/note';
 
 const formatMoney = (amount: number) =>
   `UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(amount)}`;

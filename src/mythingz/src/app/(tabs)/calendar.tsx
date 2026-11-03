@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
-import { RecordComposer } from '../../components/RecordComposer';
-import { ScreenHeader, SectionTitle } from '../../components/ScreenHeader';
-import { UpcomingEventRow } from '../../components/UpcomingEventRow';
-import { colors, styles } from '../../components/theme';
+import { UpcomingEventRow } from '../../components/calendar/UpcomingEventRow';
+import { RecordComposer } from '../../components/records/RecordComposer';
+import { ScreenHeader, SectionTitle } from '../../components/shared/ScreenHeader';
+import { colors, styles } from '../../components/shared/theme';
 import {
   deleteRecord,
   saveRecord,

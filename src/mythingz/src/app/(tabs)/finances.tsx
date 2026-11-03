@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
-import { RecordComposer } from '../../components/RecordComposer';
-import { ExpenseComposer } from '../../components/ExpenseComposer';
-import { TransactionReceipt } from '../../components/TransactionReceipt';
-import { ScreenHeader, SectionTitle } from '../../components/ScreenHeader';
-import { colors, styles } from '../../components/theme';
+import { ExpenseComposer } from '../../components/finance/transactions/ExpenseComposer';
+import { FinanceBalanceCard } from '../../components/finance/FinanceBalanceCard';
+import { RecurringBudgetManager } from '../../components/finance/budgets/RecurringBudgetManager';
+import { TransactionReceipt } from '../../components/finance/transactions/TransactionReceipt';
+import { RecordComposer } from '../../components/records/RecordComposer';
+import { ActionPopup } from '../../components/shared/ActionPopup';
+import { ScreenHeader, SectionTitle } from '../../components/shared/ScreenHeader';
+import { colors, styles } from '../../components/shared/theme';
 import {
   localDateKey,
   getAccounts,
@@ -22,10 +25,7 @@ import {
   type Transfer,
   type Transaction,
 } from '../../services/database';
-import { FinanceBudgetLists, loadLists } from '../../components/ui/list';
-import { FinanceBalanceCard } from '../../components/financeComponents';
-import { ActionPopup } from '../../components/ui/popup';
-import { RecurringBudgetManager } from '../../components/RecurringBudgetManager';
+import { FinanceBudgetLists, loadLists } from '../../components/lists/list';
 
 type FinanceSection = 'accounts' | 'transfers' | 'budgets' | 'loans' | 'transactions';
 

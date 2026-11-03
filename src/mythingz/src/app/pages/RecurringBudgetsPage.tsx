@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { RecurringBudgetManager } from '../../components/RecurringBudgetManager';
-import { ScreenHeader } from '../../components/ScreenHeader';
-import { styles } from '../../components/theme';
+import { RecurringBudgetManager } from '../../components/finance/budgets/RecurringBudgetManager';
+import { ScreenHeader } from '../../components/shared/ScreenHeader';
+import { styles } from '../../components/shared/theme';
 
 export default function RecurringBudgetsPage() {
   const navigate = useNavigate();

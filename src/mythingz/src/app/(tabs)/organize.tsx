@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
-import { RecordComposer } from '../../components/RecordComposer';
-import { ScreenHeader, SectionTitle } from '../../components/ScreenHeader';
-import { colors, styles } from '../../components/theme';
+import { RecordComposer } from '../../components/records/RecordComposer';
+import { ScreenHeader, SectionTitle } from '../../components/shared/ScreenHeader';
+import { colors, styles } from '../../components/shared/theme';
 import {
   convertInboxItem,
   createInboxItem,
@@ -32,8 +32,8 @@ import {
   type UniversalSearchResult,
   type RelatedRecord,
 } from '../../services/database';
-import { NoteCard } from '../../components/ui/note';
-import { loadLists, OrganizerLists } from '../../components/ui/list';
+import { NoteCard } from '../../components/notes/note';
+import { loadLists, OrganizerLists } from '../../components/lists/list';
 
 export type Section = 'Notes' | 'Tasks' | 'Lists' | 'Inbox' | 'Reminders' | 'Activity';
 const sectionKinds: Partial<Record<Section, RecordKind>> = {
