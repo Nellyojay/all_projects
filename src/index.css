@@ -51,8 +51,6 @@ body {
 .app-content button {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
   border: 0;
   padding: 0;
   margin: 0;
@@ -263,6 +261,11 @@ textarea::placeholder {
   .app-content {
     min-height: calc(100vh - 128px);
     padding: calc(66px + env(safe-area-inset-top)) 0 calc(96px + env(safe-area-inset-bottom));
+  }
+
+  .app-main.without-mobile-nav .app-content {
+    min-height: calc(100vh - 66px);
+    padding-bottom: max(28px, env(safe-area-inset-bottom));
   }
 
   .screen-header {

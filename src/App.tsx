@@ -7,6 +7,7 @@ import SearchScreen from './mythingz/src/app/search';
 import RecordDetailsRoute from './mythingz/src/components/RecordDetailsRoute';
 import { CreateAccountPage } from './mythingz/src/components/ui/account';
 import SettingsScreen from './mythingz/src/app/settings';
+import RecurringBudgetsPage from './mythingz/src/app/pages/RecurringBudgetsPage';
 import { DatabaseProvider } from './mythingz/src/web/DatabaseProvider';
 import Intro from './components/intro';
 
@@ -35,7 +36,11 @@ function WorkspaceLayout() {
     && 'from' in locationState && typeof locationState.from === 'string'
     ? locationState.from
     : location.pathname;
-  const activeSection = sections.find((section) => sourcePath === `/${section.path}`);
+  const activeSection = sections.find((section) =>
+    sourcePath === `/${section.path}`
+    || (section.route === 'finances' && sourcePath.startsWith('/space/finances/')),
+  );
+  const isRecurringBudgetsPage = location.pathname.startsWith('/space/finances/recurring-budgets');
 
   return (
     <div className="app-shell">
@@ -69,23 +74,25 @@ function WorkspaceLayout() {
         </div>
       </aside>
 
-      <div className="app-main">
+      <div className={`app-main${isRecurringBudgetsPage ? ' without-mobile-nav' : ''}`}>
         <main className="app-content">
           <Outlet />
         </main>
-        <nav className="mobile-nav" aria-label="Main navigation">
-          {sections.map((section) => (
-            <button
-              key={section.path}
-              className={`mobile-nav-link${activeSection?.route === section.route ? ' active' : ''}`}
-              onClick={() => navigate(`/${section.path}`)}
-              aria-current={activeSection?.route === section.route ? 'page' : undefined}
-            >
-              <span className="nav-icon">{section.icon}</span>
-              <span>{section.label}</span>
-            </button>
-          ))}
-        </nav>
+        {!isRecurringBudgetsPage ? (
+          <nav className="mobile-nav" aria-label="Main navigation">
+            {sections.map((section) => (
+              <button
+                key={section.path}
+                className={`mobile-nav-link${activeSection?.route === section.route ? ' active' : ''}`}
+                onClick={() => navigate(`/${section.path}`)}
+                aria-current={activeSection?.route === section.route ? 'page' : undefined}
+              >
+                <span className="nav-icon">{section.icon}</span>
+                <span>{section.label}</span>
+              </button>
+            ))}
+          </nav>
+        ) : null}
       </div>
     </div>
   );
@@ -112,6 +119,7 @@ const router = createHashRouter([
     children: [
       { index: true, Component: HomeScreen },
       { path: 'finances', Component: FinancesScreen },
+      { path: 'finances/recurring-budgets', Component: RecurringBudgetsPage },
       { path: 'finances/accounts/new', Component: CreateAccountPage },
       { path: 'calendar', Component: CalendarScreen },
       { path: 'organize', Component: OrganizeScreen },

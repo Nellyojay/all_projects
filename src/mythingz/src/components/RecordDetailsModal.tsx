@@ -229,7 +229,7 @@ export function RecordDetailsModal({
                       onEdit(selected.kind, toDraft(recordForEdit));
                       if (closeOnEdit) close();
                     }}
-                    type="button" style={styles.button}
+                    type="button" style={Object.assign({}, styles.button, styles.buttonTextOnly)}
                   >
                     <span style={styles.buttonText}>
                       Edit {recordLabels[selected.kind].toLowerCase()}

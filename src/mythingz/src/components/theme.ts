@@ -45,12 +45,15 @@ export const styles = {
     display: 'flex',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     paddingBlock: 12,
     paddingInline: 12,
     borderRadius: 8,
     backgroundColor: colors.greenSoft,
     border: `1px solid #fff3`,
+  },
+  buttonTextOnly: {
+    justifyContent: 'center',
   },
   buttonText: {
     color: colors.ink,

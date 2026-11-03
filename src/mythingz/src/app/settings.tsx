@@ -19,7 +19,7 @@ export default function SettingsScreen() {
         <ScreenHeader
           title="Your profile"
           subtitle="Make this space feel like yours"
-          action={{ label: 'PROUD.DEV', onPress: () => navigate('/'), compact: true }}
+          action={{ label: 'PROUD.DEV', onPress: () => navigate('/intro'), compact: true }}
         />
         <div style={localStyles.profile}>
           <div style={localStyles.avatar}><span style={localStyles.avatarText}>M</span></div>

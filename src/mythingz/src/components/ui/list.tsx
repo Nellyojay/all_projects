@@ -491,7 +491,11 @@ export function ListDetails({
       </div>
 
       {list.budget_enabled && !list.finalized ? (
-        <button type="button" onClick={finalize} style={styles.button}>
+        <button
+          type="button"
+          onClick={finalize}
+          style={Object.assign({}, styles.button, styles.buttonTextOnly)}
+        >
           <span style={styles.buttonText}>Finalize list</span>
         </button>
       ) : null}
@@ -636,10 +640,10 @@ const listStyles = {
   emptyState: { alignItems: 'center', paddingBlock: 22 },
   emptyBudgetCard: { backgroundColor: colors.yellowSoft, borderColor: colors.yellowSoft },
   emptyTitle: { color: colors.ink, fontSize: 13, fontWeight: '800' },
-  secondary: { color: colors.muted, fontSize: 10, marginTop: 4, lineHeight: '17px' },
+  secondary: { color: colors.muted, fontSize: 10, marginTop: 4, lineHeight: '17px', display: 'flex', alignItems: 'flex-start' },
   budgetCard: { marginBottom: 10 },
   budgetHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  budgetTitle: { color: colors.ink, fontWeight: '700', fontSize: 12 },
+  budgetTitle: { color: colors.ink, fontWeight: '700', fontSize: 12, alignSelf: 'flex-start' },
   amount: { color: colors.ink, fontSize: 11, fontWeight: '700' },
   detailCard: {
     backgroundColor: colors.surface, borderRadius: 11, padding: 16, borderWidth: 1,

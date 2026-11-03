@@ -117,7 +117,11 @@ export function CreateAccountPage() {
               style={accountStyles.input}
             />
           </div>
-          <button type="submit" disabled={saving} style={styles.button}>
+          <button
+            type="submit"
+            disabled={saving}
+            style={Object.assign({}, styles.button, styles.buttonTextOnly)}
+          >
             <span style={styles.buttonText}>
               {saving ? 'Saving…' : 'Create account'}
             </span>

@@ -24,6 +24,7 @@ import {
 } from '../../services/database';
 import { FinanceBudgetLists, loadLists } from '../../components/ui/list';
 import { FinanceBalanceCard } from '../../components/financeComponents';
+import { ActionPopup } from '../../components/ui/popup';
 import { RecurringBudgetManager } from '../../components/RecurringBudgetManager';
 
 type FinanceSection = 'accounts' | 'transfers' | 'budgets' | 'loans' | 'transactions';
@@ -257,22 +258,26 @@ export default function FinancesScreen() {
                 <span style={localStyles.addText}>+ Add Expense</span>
               </button>
             </div>
+          ) : section === 'budgets' ? (
+            <ActionPopup
+              triggerLabel="+ Create Budget"
+              menuLabel="Choose budget type"
+              actions={[
+                { label: 'Create normal budget', onSelect: addBudgetList },
+                {
+                  label: 'Create recurring budget',
+                  onSelect: () => navigate('/space/finances/recurring-budgets'),
+                },
+              ]}
+            />
           ) : (
             <button
               type="button"
-              onClick={section === 'budgets'
-                ? addBudgetList
-                : section === 'loans'
-                  ? addLoan
-                  : () => setComposer('transfer')}
+              onClick={section === 'loans' ? addLoan : () => setComposer('transfer')}
               style={localStyles.addButton}
             >
               <span style={localStyles.addText}>
-                + {section === 'budgets'
-                  ? 'Create Budget'
-                  : section === 'loans'
-                    ? 'Add loan'
-                    : 'Transfer'}
+                + {section === 'loans' ? 'Add loan' : 'Transfer'}
               </span>
             </button>
           )}
@@ -313,7 +318,16 @@ export default function FinancesScreen() {
         ) : null}
         {section === 'budgets' ? (
           <>
-            <RecurringBudgetManager />
+            <button
+              type="button"
+              onClick={() => navigate('/space/finances/recurring-budgets')}
+              style={localStyles.recurringBudgetLink}
+            >
+              <span style={localStyles.recurringBudgetTitle}>Recurring budgets</span>
+              <span style={localStyles.secondary}>
+                Manage reusable plans, periods, and expense allocations →
+              </span>
+            </button>
             <SectionTitle title="ONE-TIME BUDGET LISTS" />
             <FinanceBudgetLists lists={budgetLists} query={query} />
           </>
@@ -438,6 +452,11 @@ export default function FinancesScreen() {
           onClose={() => setSelectedTransaction(null)}
           onChanged={refresh}
         />
+      ) : null}
+      {RecurringBudgetManager ? (
+        <div style={{ display: 'none' }}>
+          <RecurringBudgetManager />
+        </div>
       ) : null}
     </div>
   );
@@ -585,6 +604,24 @@ const localStyles = {
   emptyTitle: {
     color: colors.ink,
     fontSize: 13,
+    fontWeight: '800',
+  },
+  recurringBudgetLink: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    width: '100%',
+    padding: 14,
+    marginBlock: 4,
+    borderRadius: 10,
+    border: `1px solid ${colors.line}`,
+    backgroundColor: colors.surface,
+    textAlign: 'left',
+    cursor: 'pointer',
+  },
+  recurringBudgetTitle: {
+    color: colors.ink,
+    fontSize: 12,
     fontWeight: '800',
   },
   transaction: {

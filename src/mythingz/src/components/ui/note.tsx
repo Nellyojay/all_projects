@@ -328,6 +328,7 @@ const noteStyles = {
   recordCard: {
     display: 'flex',
     flexDirection: 'column',
+    alignItems: 'flex-start',
   },
   cardHeading: {
     flexDirection: 'row',
@@ -343,14 +344,14 @@ const noteStyles = {
     color: colors.muted,
     fontSize: 10,
     lineHeight: '18px',
-    marginTop: 7,
+    marginTop: 2,
     whiteSpace: 'pre-wrap',
   },
   hint: {
     color: colors.muted,
     fontSize: 6,
     marginTop: 'auto',
-    paddingTop: 9,
+    paddingTop: 4,
     fontWeight: '700',
   },
 } satisfies Record<string, CSSProperties>;

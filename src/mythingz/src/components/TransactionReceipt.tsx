@@ -89,11 +89,11 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
     ? 'Transfer'
     : transaction.refund_of_transaction_id !== null
       ? 'Refund received'
-    : transaction.category === 'Loan repayment'
-      ? 'Loan repayment'
-      : transaction.loan_id !== null && transaction.kind === 'income'
-        ? 'Loan proceeds'
-        : isExpense ? transaction.category : 'Income received';
+      : transaction.category === 'Loan repayment'
+        ? 'Loan repayment'
+        : transaction.loan_id !== null && transaction.kind === 'income'
+          ? 'Loan proceeds'
+          : isExpense ? transaction.category : 'Income received';
   const reference = referenceFor(transaction);
   const expenseNotes = isExpense ? expenseReceiptNotes(transaction.notes) : null;
   const allocationsLocked = savedAllocations.some((allocation) =>
@@ -454,7 +454,11 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
           <p style={receiptStyles.disclaimer} className="receipt-secondary">
             Personal transaction record; not verified by a bank or mobile-money provider.
           </p>
-          <button type="button" onClick={printReceipt} style={styles.button}>
+          <button
+            type="button"
+            onClick={printReceipt}
+            style={Object.assign({}, styles.button, styles.buttonTextOnly)}
+          >
             Download Receipt
           </button>
           {isExpense ? (
@@ -710,6 +714,19 @@ const receiptStyles = {
   refundActions: { display: 'flex', flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
   refundCancel: { minHeight: 34, paddingInline: 10, border: `1px solid ${colors.line}`, borderRadius: 6, backgroundColor: colors.surface, color: colors.muted, fontSize: 9 },
   refundSave: { minHeight: 34, paddingInline: 10, border: 0, borderRadius: 6, backgroundColor: colors.green, color: colors.background, fontSize: 9, fontWeight: '700' },
-  refundOpen: { minHeight: 38, width: '100%', marginTop: 12, border: `1px solid ${colors.line}`, borderRadius: 7, backgroundColor: colors.surface, color: colors.ink, fontSize: 10, fontWeight: '700' },
+  refundOpen: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 38,
+    width: '100%',
+    marginTop: 12,
+    border: `1px solid ${colors.line}`,
+    borderRadius: 7,
+    backgroundColor: colors.surface,
+    color: colors.ink,
+    fontSize: 10,
+    fontWeight: '700'
+  },
   refundError: { color: colors.orange, fontSize: 9 },
 } satisfies Record<string, CSSProperties>;
