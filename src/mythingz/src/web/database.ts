@@ -18,13 +18,14 @@ export type BrowserDatabase = {
 
 const storageName = 'mine-sqlite';
 const storageKey = 'mine.db';
+const storageObjectStoreName = 'files';
 let databasePromise: Promise<BrowserDatabase> | undefined;
 
 function openStorage() {
   return new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(storageName, 1);
     request.onupgradeneeded = () => {
-      request.result.createObjectStore('files');
+      request.result.createObjectStore(storageObjectStoreName);
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error ?? new Error('Could not open local SQLite storage.'));
@@ -34,7 +35,9 @@ function openStorage() {
 async function loadFile() {
   const storage = await openStorage();
   return new Promise<Uint8Array | undefined>((resolve, reject) => {
-    const request = storage.transaction('files', 'readonly').objectStore('files').get(storageKey);
+    const request = storage.transaction(storageObjectStoreName, 'readonly')
+      .objectStore(storageObjectStoreName)
+      .get(storageKey);
     request.onsuccess = () => {
       const value = request.result as ArrayBuffer | Uint8Array | undefined;
       storage.close();
@@ -51,8 +54,8 @@ async function persistFile(database: SqlJsDatabase) {
   const bytes = database.export();
   const storage = await openStorage();
   await new Promise<void>((resolve, reject) => {
-    const transaction = storage.transaction('files', 'readwrite');
-    transaction.objectStore('files').put(bytes, storageKey);
+    const transaction = storage.transaction(storageObjectStoreName, 'readwrite');
+    transaction.objectStore(storageObjectStoreName).put(bytes, storageKey);
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error ?? new Error('Could not save the local SQLite database.'));
     transaction.onabort = () => reject(transaction.error ?? new Error('Saving the local SQLite database was aborted.'));
