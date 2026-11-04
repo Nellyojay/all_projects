@@ -1,0 +1,587 @@
+.recurring-budget-page {
+  min-height: 100vh;
+  background: #000;
+}
+
+.recurring-budget-page .scrollContent {
+  box-sizing: border-box;
+  width: min(100%, 1120px);
+  margin: 0 auto;
+  padding: 28px 32px 48px;
+}
+
+.recurring-budget-page .screen-header {
+  margin-bottom: 20px !important;
+}
+
+.recurring-budget-page .screen-header>button {
+  border: 1px solid #303030;
+  background: #191919;
+  color: #fff;
+}
+
+.budget-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.budget-dashboard-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.budget-dashboard-stat {
+  display: flex;
+  align-items: center;
+  min-height: 100px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid #303030;
+  border-radius: 14px;
+  background: #191919;
+}
+
+.budget-dashboard-stat-value {
+  color: #fff;
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 750;
+  letter-spacing: -0.8px;
+  line-height: 1;
+}
+
+.budget-dashboard-stat-label {
+  color: #a0a0a0;
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.budget-dashboard-create {
+  display: flex;
+  width: 100%;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #383838;
+  border-radius: 12px;
+  background: #222;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.budget-dashboard-create:hover,
+.budget-dashboard-shortcut:hover {
+  background: #292929;
+}
+
+.budget-dashboard-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.budget-dashboard-shortcut {
+  display: grid;
+  min-height: 104px;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  align-content: center;
+  gap: 7px 10px;
+  padding: 14px;
+  border: 1px solid #303030;
+  border-radius: 14px;
+  background: #191919;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.budget-dashboard-shortcut-icon {
+  grid-column: 1 / -1;
+  color: #d0d0d0;
+  font-size: 17px;
+  line-height: 1;
+}
+
+.budget-dashboard-shortcut-title {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.budget-dashboard-shortcut-description {
+  margin-top: 3px;
+  color: #a0a0a0;
+  font-size: 11px;
+  font-weight: 450;
+}
+
+.budget-dashboard-shortcut-arrow {
+  align-self: center;
+  color: #a0a0a0;
+  font-size: 18px;
+}
+
+.budget-dashboard-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid #303030;
+  border-radius: 16px;
+  background: #191919;
+  scroll-margin-top: 20px;
+}
+
+.budget-template-periods-toggle {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.budget-template-periods-toggle>span:first-child {
+  width: 100%;
+}
+
+.budget-template-description {
+  margin-top: 5px;
+}
+
+.budget-template-periods-label {
+  color: #a0a0a0;
+  font-size: 11px;
+}
+
+.budget-template-periods {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #303030;
+}
+
+.budget-template-past-periods {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid #303030;
+}
+
+.budget-template-past-periods-title {
+  margin: 0;
+  color: #a0a0a0;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.budget-dashboard-section-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.budget-dashboard-section-title {
+  margin: 0;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.budget-dashboard-view-action {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: #b7b7b7;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.budget-dashboard-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #222;
+  color: #fff;
+}
+
+.budget-dashboard-empty p {
+  margin: 0;
+  color: #a0a0a0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.budget-dashboard-empty strong {
+  font-size: 13px;
+}
+
+.budget-dashboard-period {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.budget-dashboard-period-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.budget-dashboard-period-analysis[hidden] {
+  display: none;
+}
+
+.budget-dashboard-period-analysis>section {
+  margin: 0;
+  background: #222;
+}
+
+.budget-dashboard-period-copy,
+.budget-dashboard-expense-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.budget-dashboard-period-name,
+.budget-dashboard-expense-name {
+  overflow: hidden;
+  color: #f5f5f5;
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.budget-dashboard-period-meta,
+.budget-dashboard-expense-meta {
+  color: #a0a0a0;
+  font-size: 11px;
+}
+
+.budget-dashboard-period-amount,
+.budget-dashboard-expense-amount {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+}
+
+.budget-dashboard-arrow {
+  color: #858585;
+  font-size: 16px;
+}
+
+.budget-dashboard-unallocated-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 18px;
+}
+
+.budget-dashboard-unallocated-count {
+  color: #fff;
+  font-size: 26px;
+  font-weight: 750;
+  letter-spacing: -0.5px;
+}
+
+.budget-dashboard-unallocated-total {
+  color: #e6e6e6;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.budget-dashboard-unallocated-subtitle {
+  margin: 0;
+  color: #a0a0a0;
+  font-size: 12px;
+}
+
+.budget-dashboard-unallocated-action {
+  display: flex;
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+  border: 1px solid #383838;
+  border-radius: 10px;
+  background: #222;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.budget-manager--dashboard .budget-dashboard-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  scroll-margin-top: 20px;
+}
+
+.budget-manager--dashboard .budget-dashboard-details>section {
+  margin: 0;
+}
+
+.budget-manager--dashboard .budget-dashboard-report {
+  scroll-margin-top: 20px;
+}
+
+@media (max-width: 800px) {
+  .app-content:has(.recurring-budget-page) {
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  .recurring-budget-page .scrollContent {
+    padding: max(18px, env(safe-area-inset-top)) 16px 36px;
+  }
+
+  .recurring-budget-page .screen-header {
+    position: static;
+    min-height: 62px !important;
+    margin-bottom: 16px !important;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    backdrop-filter: none;
+  }
+
+  .recurring-budget-page .screen-header>button {
+    min-height: 36px;
+    height: 36px;
+  }
+
+  .budget-dashboard {
+    gap: 12px;
+  }
+
+  .budget-dashboard-summary,
+  .budget-dashboard-shortcuts {
+    gap: 8px;
+  }
+
+  .budget-dashboard-stat {
+    min-height: 84px;
+    gap: 6px;
+    padding: 12px 10px;
+    border-radius: 12px;
+  }
+
+  .budget-dashboard-stat-label {
+    font-size: 10px;
+    line-height: 1.3;
+  }
+
+  .budget-dashboard-shortcut {
+    min-height: 92px;
+    gap: 6px 4px;
+    padding: 11px 9px;
+    border-radius: 12px;
+  }
+
+  .budget-dashboard-shortcut-title {
+    font-size: 12px;
+  }
+
+  .budget-dashboard-shortcut-description {
+    font-size: 10px;
+  }
+
+  .budget-dashboard-section {
+    gap: 10px;
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .budget-manager--dashboard .budget-dashboard-details {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 380px) {
+  .budget-dashboard-stat {
+    padding-inline: 8px;
+  }
+
+  .budget-dashboard-stat-label {
+    font-size: 9px;
+  }
+
+  .budget-dashboard-shortcut {
+    padding-inline: 7px;
+  }
+}
+
+.recurring-budget-page .screen-header>button {
+  background-color: #191919 !important;
+}
+
+.recurring-budget-page .screen-header>button>span {
+  color: #fff !important;
+}
+
+.app-content .budget-dashboard-summary,
+.app-content .budget-dashboard-shortcuts {
+  display: grid;
+}
+
+.app-content .budget-dashboard-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.app-content .budget-dashboard-shortcuts {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.app-content .budget-dashboard-section-header {
+  flex-direction: row;
+  justify-content: space-between;
+  text-align: left;
+}
+
+.app-content .budget-dashboard-create,
+.app-content .budget-dashboard-unallocated-action {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid #383838;
+  border-radius: 12px;
+  background: #222;
+  color: #fff;
+  text-align: center;
+}
+
+.app-content .budget-dashboard-shortcut {
+  display: grid;
+  flex-direction: initial;
+  padding: 14px;
+  border: 1px solid #303030;
+  border-radius: 14px;
+  background: #191919;
+  color: #fff;
+  text-align: left;
+}
+
+.app-content .budget-dashboard-period,
+.app-content .budget-dashboard-expense {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  color: #fff;
+  text-align: left;
+}
+
+.app-content .budget-dashboard-period-entry {
+  display: flex;
+}
+
+.app-content .budget-template-periods-toggle {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.app-content .budget-template-periods {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-content .budget-template-periods .budget-template-period-row {
+  min-height: 0;
+  padding: 9px 0;
+  border: 0;
+  border-bottom: 1px solid #303030;
+  border-radius: 0;
+  background: transparent;
+  font-size: 11px;
+}
+
+.app-content .budget-template-periods .budget-template-period-row:hover,
+.app-content .budget-template-periods .budget-template-period-row:active {
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-content .budget-template-periods .budget-template-period-row .budget-dashboard-period-name {
+  font-size: 11px;
+}
+
+.app-content .budget-template-periods .budget-template-period-row .budget-dashboard-period-meta,
+.app-content .budget-template-periods .budget-template-period-row .budget-dashboard-period-amount {
+  font-size: 10px;
+}
+
+.app-content .budget-dashboard-period-analysis>section {
+  display: flex;
+}
+
+.app-content .budget-dashboard-view-action {
+  display: inline-flex;
+  flex-direction: row;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: #b7b7b7;
+  text-align: center;
+}
+
+.app-content .budget-dashboard-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 800px) {
+  .app-content .budget-dashboard-details {
+    grid-template-columns: 1fr;
+  }
+
+  .app-content .budget-dashboard-shortcut {
+    padding: 11px 9px;
+  }
+}
+
+@media (max-width: 380px) {
+  .app-content .budget-dashboard-shortcut {
+    padding-inline: 7px;
+  }
+}

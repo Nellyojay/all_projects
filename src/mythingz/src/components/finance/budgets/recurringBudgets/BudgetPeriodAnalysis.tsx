@@ -136,7 +136,7 @@ export function BudgetPeriodAnalysis({
   onClosePeriod,
 }: Props) {
   return (
-    <section style={budgetStyles.card}>
+    <section style={budgetStyles.analysisCard}>
       <h3 style={budgetStyles.subheading}>Period analysis</h3>
       {period ? (
         <>
@@ -145,9 +145,10 @@ export function BudgetPeriodAnalysis({
             {period.start_date} – {period.end_date} · {periodStatus(period)}
           </span>
           <div style={budgetStyles.summaryGrid}>
-            <span>Allocated <strong>{money(period.allocated_amount)}</strong></span>
-            <span>Actual <strong>{money(period.actual_amount)}</strong></span>
-            <span>{period.remaining_amount < 0 ? 'Overspent' : 'Remaining'}
+            <span>Allocated - <strong>{money(period.allocated_amount)}</strong></span>
+            <span>Actual Expense - <strong>{money(period.actual_amount)}</strong></span>
+            <span>
+              {period.remaining_amount < 0 ? 'Overspent - ' : 'Remaining - '}
               <strong>{money(Math.abs(period.remaining_amount))}</strong>
             </span>
           </div>

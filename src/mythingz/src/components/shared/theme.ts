@@ -12,6 +12,8 @@ export const colors = {
   yellow: '#F5F5F5',
   yellowSoft: '#303030',
   blueSoft: '#303030',
+  red: '#ef4441',
+  greenColor: '#22c55e',
 };
 
 export const styles = {

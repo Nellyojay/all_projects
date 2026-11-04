@@ -9,6 +9,7 @@ import { CreateAccountPage } from './mythingz/src/components/finance/accounts/ac
 import SettingsScreen from './mythingz/src/app/pages/settings';
 import RecurringBudgetsPage from './mythingz/src/app/pages/RecurringBudgetsPage';
 import { DatabaseProvider } from './mythingz/src/web/DatabaseProvider';
+import { TransactionReceiptProvider } from './mythingz/src/components/finance/transactions/TransactionReceiptProvider';
 import Intro from './components/intro';
 
 const sections = [
@@ -22,7 +23,9 @@ const sections = [
 function WorkspaceRoute() {
   return (
     <DatabaseProvider>
-      <WorkspaceLayout />
+      <TransactionReceiptProvider>
+        <WorkspaceLayout />
+      </TransactionReceiptProvider>
     </DatabaseProvider>
   );
 }

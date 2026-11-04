@@ -1,10 +1,11 @@
 import type { CSSProperties } from 'react';
-import { colors, styles } from '../../../shared/theme';
+import { colors } from '../../../shared/theme';
 
 export const budgetStyles = {
   section: { display: 'flex', flexDirection: 'column', gap: 12, marginBlock: 8 },
   headingRow: { display: 'flex', flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  card: { ...styles.panel, display: 'flex', flexDirection: 'column', gap: 9 },
+  card: { display: 'flex', flexDirection: 'column', gap: 9, backgroundColor: '#191919', border: '1px solid #303030', borderRadius: 12, padding: 14 },
+  analysisCard: { display: 'flex', flexDirection: 'column', gap: 9, padding: 8, borderRadius: 10 },
   archivedSection: { display: 'flex', flexDirection: 'column', gap: 9, padding: 12, border: `1px solid ${colors.line}`, borderRadius: 10, backgroundColor: colors.background },
   subheading: { margin: 0, color: colors.ink, fontSize: 12, fontWeight: '800' },
   muted: { color: colors.muted, fontSize: 10, lineHeight: '16px' },
@@ -24,18 +25,18 @@ export const budgetStyles = {
   itemHeading: { display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
   itemEditor: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 7, padding: 8, borderRadius: 8, backgroundColor: colors.background },
   formActions: { display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 6 },
-  primaryButton: { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 38, paddingInline: 12, border: 0, borderRadius: 7, backgroundColor: colors.green, color: colors.background, fontSize: 10, fontWeight: '800' },
+  primaryButton: { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 38, paddingInline: 12, border: `1px solid ${colors.line}`, borderRadius: 7, backgroundColor: '#222222', color: colors.ink, fontSize: 10, fontWeight: '800' },
   secondaryButton: { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 34, alignSelf: 'flex-start', paddingInline: 10, border: `1px solid ${colors.line}`, borderRadius: 7, backgroundColor: colors.surface, color: colors.ink, fontSize: 9, fontWeight: '700' },
-  removeButton: { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 34, alignSelf: 'flex-start', paddingInline: 10, border: `1px solid ${colors.line}`, borderRadius: 7, backgroundColor: colors.surface, color: colors.orange, fontSize: 9, fontWeight: '700' },
+  removeButton: { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 34, alignSelf: 'flex-start', paddingInline: 10, border: `1px solid ${colors.line}`, borderRadius: 7, backgroundColor: colors.surface, color: colors.muted, fontSize: 9, fontWeight: '700' },
   templateHeader: { display: 'flex', flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  status: { alignSelf: 'flex-start', padding: 6, borderRadius: 6, backgroundColor: colors.greenSoft, color: colors.green, fontSize: 9, fontWeight: '800', textTransform: 'capitalize' },
+  status: { alignSelf: 'flex-start', padding: 6, borderRadius: 6, backgroundColor: '#222222', color: colors.muted, fontSize: 9, fontWeight: '800', textTransform: 'capitalize' },
   templateItems: { display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   itemSummary: { padding: 6, borderRadius: 6, backgroundColor: colors.background, color: colors.ink, fontSize: 9 },
   analysisGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 10 },
   periodList: { display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 340, overflowY: 'auto' },
   periodButton: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3, padding: 9, border: `1px solid ${colors.line}`, borderRadius: 7, backgroundColor: colors.background, color: colors.ink, fontSize: 9, textAlign: 'left' },
-  periodSelected: { borderColor: colors.green, backgroundColor: colors.greenSoft },
-  summaryGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 7, marginBlock: 5, color: colors.muted, fontSize: 9 },
+  periodSelected: { borderColor: '#a0a0a0', backgroundColor: '#222222' },
+  summaryGrid: { display: 'flex', flexDirection: 'column', gap: 7, marginBlock: 5, color: colors.muted, fontSize: 9 },
   periodItem: { display: 'flex', flexDirection: 'column', gap: 5, paddingBlock: 8, borderTop: `1px solid ${colors.line}` },
   transactionRow: { display: 'flex', flexDirection: 'row', justifyContent: 'space-between', gap: 8, padding: 7, borderRadius: 6, backgroundColor: colors.background, color: colors.ink, fontSize: 9, textAlign: 'left' },
   itemSummaryRow: { display: 'flex', flexDirection: 'row', justifyContent: 'space-between', gap: 8, color: colors.ink, fontSize: 10, textTransform: 'capitalize' },

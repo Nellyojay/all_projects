@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useDatabase } from '../../../web/DatabaseProvider';
 import {
   adjustBudgetPeriodItem,
@@ -28,15 +27,16 @@ import { BudgetPeriodComparison } from './recurringBudgets/BudgetPeriodCompariso
 import { BudgetPeriodHistory } from './recurringBudgets/BudgetPeriodHistory';
 import { BudgetTemplateEditor } from './recurringBudgets/BudgetTemplateEditor';
 import { BudgetTemplateLibrary } from './recurringBudgets/BudgetTemplateLibrary';
+import { useTransactionReceipt } from '../transactions/useTransactionReceipt';
 import { blankTemplate, type TemplateDraft, type TemplateWithItems } from './recurringBudgets/RecurringBudgetModels';
 import { budgetStyles } from './recurringBudgets/RecurringBudgetStyles';
 import { UnallocatedExpenses } from './recurringBudgets/UnallocatedExpenses';
 
 type UnallocatedExpense = Transaction & { unallocated_amount: number };
 
-export function RecurringBudgetManager() {
+export function RecurringBudgetManager({ dashboard = false }: { dashboard?: boolean }) {
   const database = useDatabase();
-  const navigate = useNavigate();
+  const openTransactionReceipt = useTransactionReceipt();
   const [templates, setTemplates] = useState<TemplateWithItems[]>([]);
   const [periods, setPeriods] = useState<BudgetSummary[]>([]);
   const [unallocated, setUnallocated] = useState<UnallocatedExpense[]>([]);
@@ -49,6 +49,8 @@ export function RecurringBudgetManager() {
   const [error, setError] = useState<string | null>(null);
   const [compareFirst, setCompareFirst] = useState('');
   const [compareSecond, setCompareSecond] = useState('');
+  const [showAllTemplates, setShowAllTemplates] = useState(false);
+  const [showAllUnallocated, setShowAllUnallocated] = useState(false);
 
   const refresh = useCallback(async () => {
     await generateBudgetPeriods(database);
@@ -67,9 +69,9 @@ export function RecurringBudgetManager() {
       current !== null && nextPeriods.some((period) => period.id === current)
         ? current
         : nextPeriods.find((period) => period.status === 'active')?.id
-          ?? nextPeriods.find((period) => period.start_date <= today && period.end_date >= today)?.id
-          ?? nextPeriods[0]?.id
-          ?? null,
+        ?? nextPeriods.find((period) => period.start_date <= today && period.end_date >= today)?.id
+        ?? nextPeriods[0]?.id
+        ?? null,
     );
     setLoading(false);
   }, [database]);
@@ -103,6 +105,7 @@ export function RecurringBudgetManager() {
     [periods],
   );
   const activeTemplates = templates.filter((template) => !template.archived);
+  const activeTemplateCount = activeTemplates.filter((template) => template.active).length;
   const archivedTemplates = templates.filter((template) => Boolean(template.archived));
   const comparisonFirst = periods.find((period) => String(period.id) === compareFirst);
   const comparisonSecond = periods.find((period) => String(period.id) === compareSecond);
@@ -228,20 +231,170 @@ export function RecurringBudgetManager() {
   };
 
   const openExpense = (transactionId: number) => {
-    navigate('/space/finances', {
-      state: {
-        section: 'transactions',
-        focusRecord: { kind: 'transaction', id: transactionId },
-      },
-    });
+    void openTransactionReceipt({ kind: 'transaction', id: transactionId }, refresh)
+      .then(() => setError(null))
+      .catch((reason: unknown) => {
+        console.error('Unable to open expense receipt', reason);
+        setError(reason instanceof Error ? reason.message : 'The expense receipt could not be opened.');
+      });
   };
+
+  const createTemplate = () => {
+    setDraft(blankTemplate());
+    setError(null);
+  };
+
+  const selectPeriod = (periodId: number) => {
+    setPeriodItems([]);
+    setSelectedPeriodId(periodId);
+  };
+
+  const scrollToSection = (sectionId: string) => {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const renderPeriodAnalysis = (period: BudgetSummary) => (
+    <BudgetPeriodAnalysis
+      period={period}
+      items={periodItems}
+      unallocatedCount={unallocated.filter((expense) =>
+        expense.date >= period.start_date && expense.date <= period.end_date,
+      ).length}
+      onAdjustItem={(item) => void adjustItem(item)}
+      onOpenExpense={openExpense}
+      onReopenPeriod={() => void reopenPeriod()}
+      onClosePeriod={() => void closePeriod()}
+    />
+  );
+
+  if (dashboard) {
+    return (
+      <section className="budget-manager budget-manager--dashboard" aria-label="Recurring budgets">
+        <div className="budget-dashboard">
+          <div className="budget-dashboard-summary" aria-label="Recurring budget summary">
+            <div className="budget-dashboard-stat">
+              <strong className="budget-dashboard-stat-value">{activeTemplateCount}</strong>
+              <span className="budget-dashboard-stat-label">Active templates</span>
+            </div>
+            <div className="budget-dashboard-stat">
+              <strong className="budget-dashboard-stat-value">{periods.length}</strong>
+              <span className="budget-dashboard-stat-label">Generated periods</span>
+            </div>
+            <div className="budget-dashboard-stat">
+              <strong className="budget-dashboard-stat-value">{unallocated.length}</strong>
+              <span className="budget-dashboard-stat-label">Unallocated</span>
+            </div>
+          </div>
+
+          <button type="button" className="budget-dashboard-create" onClick={createTemplate}>
+            Create recurring budget
+          </button>
+
+          <nav className="budget-dashboard-shortcuts" aria-label="Recurring budget sections">
+            <button
+              type="button"
+              className="budget-dashboard-shortcut"
+              onClick={() => scrollToSection('budget-templates')}
+            >
+              <span className="budget-dashboard-shortcut-icon" aria-hidden="true">▤</span>
+              <span>
+                <span className="budget-dashboard-shortcut-title">Templates</span>
+                <span className="budget-dashboard-shortcut-description">Manage templates</span>
+              </span>
+              <span className="budget-dashboard-shortcut-arrow" aria-hidden="true">›</span>
+            </button>
+            <button
+              type="button"
+              className="budget-dashboard-shortcut"
+              onClick={() => scrollToSection('budget-periods')}
+            >
+              <span className="budget-dashboard-shortcut-icon" aria-hidden="true">◷</span>
+              <span>
+                <span className="budget-dashboard-shortcut-title">Periods</span>
+                <span className="budget-dashboard-shortcut-description">View budget periods</span>
+              </span>
+              <span className="budget-dashboard-shortcut-arrow" aria-hidden="true">›</span>
+            </button>
+            <button
+              type="button"
+              className="budget-dashboard-shortcut"
+              onClick={() => scrollToSection('budget-analysis')}
+            >
+              <span className="budget-dashboard-shortcut-icon" aria-hidden="true">◌</span>
+              <span>
+                <span className="budget-dashboard-shortcut-title">Analysis</span>
+                <span className="budget-dashboard-shortcut-description">Insights and reports</span>
+              </span>
+              <span className="budget-dashboard-shortcut-arrow" aria-hidden="true">›</span>
+            </button>
+          </nav>
+
+          {error ? <p role="alert" style={budgetStyles.error}>{error}</p> : null}
+          {draft ? (
+            <BudgetTemplateEditor
+              draft={draft}
+              saving={saving}
+              onChange={setDraft}
+              onUpdateItem={updateItem}
+              onSave={() => void saveTemplate()}
+              onCancel={() => setDraft(null)}
+            />
+          ) : null}
+
+          <div id="budget-templates">
+            <BudgetTemplateLibrary
+              loading={loading}
+              alerts={alerts}
+              activeTemplates={activeTemplates}
+              archivedTemplates={archivedTemplates}
+              onEdit={editTemplate}
+              onChangeState={(template, state) => void changeTemplateState(template, state)}
+              onRemove={(template) => void removeTemplate(template)}
+              dashboard
+              showAll={showAllTemplates}
+              onToggleShowAll={() => setShowAllTemplates((current) => !current)}
+              periods={periods}
+              selectedPeriodId={selectedPeriodId}
+              onSelectPeriod={selectPeriod}
+              renderPeriodAnalysis={renderPeriodAnalysis}
+            />
+          </div>
+
+          <div id="budget-unallocated">
+            <UnallocatedExpenses
+              expenses={unallocated}
+              onOpenExpense={openExpense}
+              dashboard
+              showAll={showAllUnallocated}
+              onToggleShowAll={() => setShowAllUnallocated((current) => !current)}
+            />
+          </div>
+
+          <div className="budget-dashboard-details" id="budget-analysis">
+            <div className="budget-dashboard-report">
+              <BudgetPeriodComparison
+                periods={periods}
+                firstPeriodId={compareFirst}
+                secondPeriodId={compareSecond}
+                onFirstPeriodChange={setCompareFirst}
+                onSecondPeriodChange={setCompareSecond}
+                firstPeriod={comparisonFirst}
+                secondPeriod={comparisonSecond}
+              />
+            </div>
+          </div>
+
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section style={budgetStyles.section} aria-label="Recurring budgets">
       <div style={budgetStyles.headingRow}>
         <button
           type="button"
-          onClick={() => { setDraft(blankTemplate()); setError(null); }}
+          onClick={createTemplate}
           style={budgetStyles.primaryButton}
         >
           + Create recurring budget
@@ -268,6 +421,10 @@ export function RecurringBudgetManager() {
         onEdit={editTemplate}
         onChangeState={(template, state) => void changeTemplateState(template, state)}
         onRemove={(template) => void removeTemplate(template)}
+        periods={periods}
+        selectedPeriodId={selectedPeriodId}
+        onSelectPeriod={selectPeriod}
+        renderPeriodAnalysis={renderPeriodAnalysis}
       />
 
       <div style={budgetStyles.analysisGrid}>
@@ -275,7 +432,7 @@ export function RecurringBudgetManager() {
           periods={periods}
           currentPeriods={currentPeriods}
           selectedPeriodId={selectedPeriodId}
-          onSelectPeriod={setSelectedPeriodId}
+          onSelectPeriod={selectPeriod}
         />
         <BudgetPeriodAnalysis
           period={selectedPeriod}

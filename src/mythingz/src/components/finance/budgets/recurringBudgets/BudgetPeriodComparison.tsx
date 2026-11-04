@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { BudgetSummary } from '../../../../services/database';
 import { money } from './RecurringBudgetUtils';
 import { budgetStyles } from './RecurringBudgetStyles';
@@ -21,58 +22,77 @@ export function BudgetPeriodComparison({
   firstPeriod,
   secondPeriod,
 }: Props) {
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
     <section style={budgetStyles.card}>
-      <h3 style={budgetStyles.subheading}>Compare periods</h3>
-      <div style={budgetStyles.formGrid}>
-        <label style={budgetStyles.label}>
-          FIRST PERIOD
-          <select
-            value={firstPeriodId}
-            onChange={(event) => onFirstPeriodChange(event.currentTarget.value)}
-            style={budgetStyles.input}
-          >
-            <option value="">Select a period</option>
-            {periods.map((period) => (
-              <option key={period.id} value={period.id}>
-                {period.template_name} · {period.start_date}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label style={budgetStyles.label}>
-          SECOND PERIOD
-          <select
-            value={secondPeriodId}
-            onChange={(event) => onSecondPeriodChange(event.currentTarget.value)}
-            style={budgetStyles.input}
-          >
-            <option value="">Select a period</option>
-            {periods.map((period) => (
-              <option key={period.id} value={period.id}>
-                {period.template_name} · {period.start_date}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div style={budgetStyles.headingRow}>
+        <span>
+          <h3 style={budgetStyles.subheading}>Compare periods</h3>
+          <p style={budgetStyles.muted}>Compare spending across different periods.</p>
+        </span>
+        <button
+          type="button"
+          aria-expanded={isOpen}
+          onClick={() => setIsOpen((current) => !current)}
+          style={budgetStyles.secondaryButton}
+        >
+          {isOpen ? 'Close' : 'Open'}
+        </button>
       </div>
-      {firstPeriod && secondPeriod ? (
-        <p style={budgetStyles.muted}>
-          Actual spending changed by {money(secondPeriod.actual_amount - firstPeriod.actual_amount)}
-          {' '}from {firstPeriod.template_name} ({firstPeriod.start_date}) to
-          {' '}{secondPeriod.template_name} ({secondPeriod.start_date}).
-          Positive values mean higher spending in the second selection.
-        </p>
-      ) : null}
-      {periods.length ? (
-        <div style={budgetStyles.periodList}>
-          {periods.slice(0, 12).map((period) => (
-            <div key={period.id} style={budgetStyles.analysisRow}>
-              <span>{period.template_name} · {period.start_date}</span>
-              <span>{money(period.actual_amount)} actual / {money(period.allocated_amount)} allocated</span>
+      {isOpen ? (
+        <>
+          <div style={budgetStyles.formGrid}>
+            <label style={budgetStyles.label}>
+              FIRST PERIOD
+              <select
+                value={firstPeriodId}
+                onChange={(event) => onFirstPeriodChange(event.currentTarget.value)}
+                style={budgetStyles.input}
+              >
+                <option value="">Select a period</option>
+                {periods.map((period) => (
+                  <option key={period.id} value={period.id}>
+                    {period.template_name} · {period.start_date}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label style={budgetStyles.label}>
+              SECOND PERIOD
+              <select
+                value={secondPeriodId}
+                onChange={(event) => onSecondPeriodChange(event.currentTarget.value)}
+                style={budgetStyles.input}
+              >
+                <option value="">Select a period</option>
+                {periods.map((period) => (
+                  <option key={period.id} value={period.id}>
+                    {period.template_name} · {period.start_date}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {firstPeriod && secondPeriod ? (
+            <p style={budgetStyles.muted}>
+              Actual spending changed by {money(secondPeriod.actual_amount - firstPeriod.actual_amount)}
+              {' '}from {firstPeriod.template_name} ({firstPeriod.start_date}) to
+              {' '}{secondPeriod.template_name} ({secondPeriod.start_date}).
+              Positive values mean higher spending in the second selection.
+            </p>
+          ) : null}
+          {periods.length ? (
+            <div style={budgetStyles.periodList}>
+              {periods.slice(0, 12).map((period) => (
+                <div key={period.id} style={budgetStyles.analysisRow}>
+                  <span>{period.template_name} · {period.start_date}</span>
+                  <span>{money(period.actual_amount)} actual / {money(period.allocated_amount)} allocated</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          ) : null}
+        </>
       ) : null}
     </section>
   );
