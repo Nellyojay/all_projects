@@ -15,6 +15,7 @@ import {
 import type { Account, EventRecord, ListItem, ListRecord, RecordDraft } from '../../services/database';
 import '../shared/theme.css';
 import { AccountPicker } from '../finance/accounts/account';
+import { useRecordDetailsModal } from '../records/RecordDetailsModalContext';
 import { ItemizedItemsEditor } from './itemizedItems';
 import type { ItemizedItem } from './itemizedItemsModel';
 import './list.css';
@@ -207,8 +208,7 @@ function OrganizerListCard({
   list: ListRecord;
   onChanged: () => Promise<void>;
 }) {
-  const location = useLocation();
-  const navigate = useNavigate();
+  const { openRecordDetails } = useRecordDetailsModal();
   const database = useDatabase();
   const items = listItems(list);
 
@@ -226,7 +226,7 @@ function OrganizerListCard({
       <button
         type="button"
         className="list-organizer-button"
-        onClick={() => navigate(`/space/records/list/${list.id}`, { state: { from: location.pathname } })}
+        onClick={() => openRecordDetails('list', list.id)}
         onContextMenu={remove}
       >
         <span className="list-organizer-title">{list.title}</span>
@@ -273,14 +273,13 @@ export function FinanceBudgetLists({ lists, query }: { lists: ListRecord[]; quer
 }
 
 function FinanceBudgetCard({ list }: { list: ListRecord }) {
-  const location = useLocation();
-  const navigate = useNavigate();
+  const { openRecordDetails } = useRecordDetailsModal();
   const items = listItems(list);
 
   return (
     <button
       type="button"
-      onClick={() => navigate(`/space/records/list/${list.id}`, { state: { from: location.pathname } })}
+      onClick={() => openRecordDetails('list', list.id)}
       className="app-panel list-budget-card"
     >
       <div className="list-budget-heading">
@@ -530,8 +529,7 @@ export function EventBudgetPanel({
   formatAmount: (amount: number) => string;
 }) {
   const database = useDatabase();
-  const location = useLocation();
-  const navigate = useNavigate();
+  const { openRecordDetails } = useRecordDetailsModal();
   const [budgets, setBudgets] = useState<ListRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
@@ -569,9 +567,7 @@ export function EventBudgetPanel({
           <button
             key={budget.id}
             type="button"
-            onClick={() => navigate(`/space/records/list/${budget.id}`, {
-              state: { from: location.pathname },
-            })}
+            onClick={() => openRecordDetails('list', budget.id)}
             className="list-event-budget-card"
           >
             <div className="list-event-budget-heading">

@@ -33,6 +33,7 @@ import {
   type RelatedRecord,
 } from '../../services/database';
 import { NoteCard } from '../../components/notes/note';
+import { useRecordDetailsModal } from '../../components/records/RecordDetailsModalContext';
 import { loadLists, OrganizerLists } from '../../components/lists/list';
 import './organize.css';
 
@@ -60,6 +61,7 @@ function inboxTarget(result: UniversalSearchResult) {
 export default function OrganizeScreen() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { openRecordDetails } = useRecordDetailsModal();
   const [searchParams, setSearchParams] = useSearchParams();
   const database = useDatabase();
   const createBudgetList = searchParams.get('createBudgetList');
@@ -195,8 +197,8 @@ export default function OrganizeScreen() {
     const listId = pendingBudgetListId.current;
     if (!listId) return;
     pendingBudgetListId.current = null;
-    navigate(`/space/records/list/${listId}`, { state: { from: location.pathname } });
-  }, [location.pathname, navigate, openBudgetListId, setSearchParams]);
+    openRecordDetails('list', Number(listId));
+  }, [openBudgetListId, openRecordDetails, setSearchParams]);
 
   const filteredNotes = useMemo(() => notes.filter((note) =>
     `${note.title} ${note.category} ${note.notes}`.toLowerCase().includes(query.toLowerCase()),
@@ -274,7 +276,8 @@ export default function OrganizeScreen() {
       });
     } else if (item.destination_type !== 'inbox') {
       const recordType = item.destination_type === 'budget' ? 'list' : item.destination_type;
-      navigate(`/space/records/${recordType}/${item.destination_id}`, {
+      if (recordType === 'list') openRecordDetails('list', item.destination_id);
+      else navigate(`/space/records/${recordType}/${item.destination_id}`, {
         state: { from: location.pathname },
       });
     }
@@ -293,7 +296,8 @@ export default function OrganizeScreen() {
       });
     } else if (record.type !== 'inbox') {
       const recordType = record.type === 'budget' ? 'list' : record.type;
-      navigate(`/space/records/${recordType}/${record.id}`, {
+      if (recordType === 'list') openRecordDetails('list', record.id);
+      else navigate(`/space/records/${recordType}/${record.id}`, {
         state: { from: location.pathname },
       });
     }
@@ -367,7 +371,7 @@ export default function OrganizeScreen() {
         state: { from: location.pathname },
       });
     } else if (activity.module === 'lists') {
-      navigate(`/space/records/list/${activity.record_id}`, { state: { from: location.pathname } });
+      openRecordDetails('list', activity.record_id);
     } else if (activity.module === 'reminders') {
       navigate('/space/organize', { state: { section: 'Reminders', focusReminderId: activity.record_id } });
     } else if (activity.module === 'inbox') {

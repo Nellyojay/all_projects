@@ -8,6 +8,7 @@ import { SharedBudgetManager } from '../../components/finance/budgets/SharedBudg
 import { TransactionReceipt } from '../../components/finance/transactions/TransactionReceipt';
 import { RecordComposer } from '../../components/records/RecordComposer';
 import { ActionPopup } from '../../components/shared/ActionPopup';
+import { useModalBack } from '../../components/shared/ModalBackContext';
 import { ScreenHeader, SectionTitle } from '../../components/shared/ScreenHeader';
 import { colors } from '../../components/shared/theme';
 import '../../components/shared/theme.css';
@@ -62,6 +63,8 @@ export default function FinancesScreen() {
   const [showBalance, setShowBalance] = useState(false);
   const [editingRecord, setEditingRecord] = useState<{ kind: RecordKind; draft: RecordDraft } | null>(null);
   const [createBudgetRequested, setCreateBudgetRequested] = useState(false);
+  const closeSelectedTransaction = useCallback(() => setSelectedTransaction(null), []);
+  useModalBack(selectedTransaction !== null, closeSelectedTransaction);
 
   const refresh = useCallback(async () => {
     const month = localDateKey().slice(0, 7);
@@ -450,7 +453,7 @@ export default function FinancesScreen() {
       {selectedTransaction ? (
         <TransactionReceipt
           transaction={selectedTransaction}
-          onClose={() => setSelectedTransaction(null)}
+          onClose={closeSelectedTransaction}
           onChanged={refresh}
         />
       ) : null}

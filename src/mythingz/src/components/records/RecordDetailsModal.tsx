@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useDatabase } from '../../web/DatabaseProvider';
 import { RecordComposer } from './RecordComposer';
 import {
@@ -17,6 +17,7 @@ import type {
 } from '../../services/database';
 import '../shared/theme.css';
 import { EventDetails, EventHeading } from '../calendar/event';
+import { DetailsModal } from '../shared/DetailsModal';
 import { ListDetails } from '../lists/list';
 import { NoteDetails } from '../notes/note';
 import { RelatedRecords } from './RelatedRecords';
@@ -106,15 +107,6 @@ export function RecordDetailsModal({
     onClose();
   }, [onClose]);
 
-  useEffect(() => {
-    if (!selected) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') close();
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [close, selected]);
-
   const confirmDelete = () => {
     if (!selected) return;
     if (!window.confirm(`Delete ${recordLabels[selected.kind].toLowerCase()}?\n\n“${selected.record.title}” will be permanently removed.`)) return;
@@ -142,104 +134,91 @@ export function RecordDetailsModal({
   return (
     <>
       {selected ? (
-        <section
-          className="record-details-page"
-
-          aria-label={`${recordLabels[selected.kind]} details`}
+        <DetailsModal
+          label={`${recordLabels[selected.kind]} details`}
+          title={
+            selected.kind === 'event'
+              ? <EventHeading event={selected.record} />
+              : recordLabels[selected.kind]
+          }
+          onClose={close}
+          action={{ label: 'Delete', onClick: confirmDelete }}
         >
-          <div className="record-details-pageContent">
-            <div className="record-details-header">
-              <button onClick={close} type="button">
-                <span className="record-details-headerAction">Close</span>
+          {selected.kind === 'note' ? (
+            <NoteDetails note={selected.record} onChanged={onChanged} />
+          ) : (
+            <span className="record-details-title">{selected.record.title}</span>
+          )}
+
+          {selected.kind === 'task' ? (
+            <>
+              <div className="record-details-infoCard">
+                <span className="record-details-infoLabel">DUE DATE</span>
+                <span className="record-details-infoValue">{selected.record.date}</span>
+                <span className="record-details-infoLabel">PRIORITY</span>
+                <span className="record-details-infoValue">{selected.record.category}</span>
+                <span className="record-details-infoLabel">STATUS</span>
+                <span className="record-details-infoValue">
+                  {selected.record.completed ? 'Completed' : 'Pending'}
+                </span>
+              </div>
+              {selected.record.notes ? (
+                <span className="record-details-body">{selected.record.notes}</span>
+              ) : null}
+              <button onClick={() => void toggleTaskStatus()} className="record-details-secondaryAction">
+                <span className="record-details-secondaryActionText">
+                  Mark as {selected.record.completed ? 'pending' : 'complete'}
+                </span>
               </button>
-              <span className="record-details-headerTitle">
-                {selected.kind === 'event'
-                  ? <EventHeading event={selected.record} />
-                  : recordLabels[selected.kind]}
-              </span>
-              <button onClick={confirmDelete} type="button" className="record-details-headerDelete">
-                <span className="record-details-headerDeleteText">Delete</span>
-              </button>
-            </div>
+            </>
+          ) : null}
 
-            <div className="record-details-content">
-              {selected.kind === 'note' ? (
-                <NoteDetails note={selected.record} onChanged={onChanged} />
-              ) : (
-                <span className="record-details-title">{selected.record.title}</span>
-              )}
+          {selected.kind === 'event' ? (
+            <EventDetails
+              event={selected.record}
+              formatAmount={formatAmount}
+            />
+          ) : null}
 
-              {selected.kind === 'task' ? (
-                <>
-                  <div className="record-details-infoCard">
-                    <span className="record-details-infoLabel">DUE DATE</span>
-                    <span className="record-details-infoValue">{selected.record.date}</span>
-                    <span className="record-details-infoLabel">PRIORITY</span>
-                    <span className="record-details-infoValue">{selected.record.category}</span>
-                    <span className="record-details-infoLabel">STATUS</span>
-                    <span className="record-details-infoValue">
-                      {selected.record.completed ? 'Completed' : 'Pending'}
-                    </span>
-                  </div>
-                  {selected.record.notes ? (
-                    <span className="record-details-body">{selected.record.notes}</span>
-                  ) : null}
-                  <button onClick={() => void toggleTaskStatus()} className="record-details-secondaryAction">
-                    <span className="record-details-secondaryActionText">
-                      Mark as {selected.record.completed ? 'pending' : 'complete'}
-                    </span>
-                  </button>
-                </>
-              ) : null}
+          {selected.kind === 'list' ? (
+            <ListDetails
+              initialList={checkedList?.id === selected.record.id ? checkedList : selected.record}
+              formatAmount={formatAmount}
+              onChanged={onChanged}
+              onListChanged={setCheckedList}
+              onLoanDraft={setLoanDraft}
+            />
+          ) : null}
+          <RelatedRecords
+            record={{
+              type: selected.kind === 'list' && selected.record.budget_enabled
+                ? 'budget'
+                : selected.kind,
+              id: selected.record.id,
+            }}
+          />
 
-              {selected.kind === 'event' ? (
-                <EventDetails
-                  event={selected.record}
-                  formatAmount={formatAmount}
-                />
-              ) : null}
-
-              {selected.kind === 'list' ? (
-                <ListDetails
-                  initialList={checkedList?.id === selected.record.id ? checkedList : selected.record}
-                  formatAmount={formatAmount}
-                  onChanged={onChanged}
-                  onListChanged={setCheckedList}
-                  onLoanDraft={setLoanDraft}
-                />
-              ) : null}
-              <RelatedRecords
-                record={{
-                  type: selected.kind === 'list' && selected.record.budget_enabled
-                    ? 'budget'
-                    : selected.kind,
-                  id: selected.record.id,
+          {selected.kind !== 'note' && (selected.kind !== 'list' || !(checkedList?.id === selected.record.id
+            ? checkedList.finalized
+            : selected.record.finalized)) ? (
+            <div className="record-details-actions">
+              <button
+                onClick={() => {
+                  const recordForEdit = selected.kind === 'list' && checkedList?.id === selected.record.id
+                    ? { ...selected, record: checkedList }
+                    : selected;
+                  onEdit(selected.kind, toDraft(recordForEdit));
+                  if (closeOnEdit) close();
                 }}
-              />
-
-              {selected.kind !== 'note' && (selected.kind !== 'list' || !(checkedList?.id === selected.record.id
-                ? checkedList.finalized
-                : selected.record.finalized)) ? (
-                <div className="record-details-actions">
-                  <button
-                    onClick={() => {
-                      const recordForEdit = selected.kind === 'list' && checkedList?.id === selected.record.id
-                        ? { ...selected, record: checkedList }
-                        : selected;
-                      onEdit(selected.kind, toDraft(recordForEdit));
-                      if (closeOnEdit) close();
-                    }}
-                    type="button" className="app-button app-button--text-only"
-                  >
-                    <span className="app-button-text">
-                      Edit {recordLabels[selected.kind].toLowerCase()}
-                    </span>
-                  </button>
-                </div>
-              ) : null}
+                type="button" className="app-button app-button--text-only"
+              >
+                <span className="app-button-text">
+                  Edit {recordLabels[selected.kind].toLowerCase()}
+                </span>
+              </button>
             </div>
-          </div>
-        </section>
+          ) : null}
+        </DetailsModal>
       ) : null}
       <RecordComposer
         key={loanDraft ? `shortfall-loan-${loanDraft.amount}` : 'no-shortfall-loan'}

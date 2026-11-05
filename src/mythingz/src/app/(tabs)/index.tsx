@@ -4,7 +4,9 @@ import { useDatabase } from '../../web/DatabaseProvider';
 import { ExpenseComposer } from '../../components/finance/transactions/ExpenseComposer';
 import { TransactionReceipt } from '../../components/finance/transactions/TransactionReceipt';
 import { RecordComposer } from '../../components/records/RecordComposer';
+import { useRecordDetailsModal } from '../../components/records/RecordDetailsModalContext';
 import { ScreenHeader, SectionTitle } from '../../components/shared/ScreenHeader';
+import { useModalBack } from '../../components/shared/ModalBackContext';
 import '../../components/shared/theme.css';
 import {
   deleteRecord,
@@ -62,11 +64,14 @@ const greeting = () => {
 export default function HomeScreen() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { openRecordDetails } = useRecordDetailsModal();
   const database = useDatabase();
   const [composer, setComposer] = useState<RecordKind | null>(null);
   const [expenseComposerOpen, setExpenseComposerOpen] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [selectedTransaction, setSelectedTransaction] = useState<(Transaction | Transfer) | null>(null);
+  const closeSelectedTransaction = useCallback(() => setSelectedTransaction(null), []);
+  useModalBack(selectedTransaction !== null, closeSelectedTransaction);
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [notes, setNotes] = useState<NoteRecord[]>([]);
@@ -292,7 +297,7 @@ export default function HomeScreen() {
         state: { from: location.pathname },
       });
     } else if (activity.module === 'lists') {
-      navigate(`/space/records/list/${activity.record_id}`, { state: { from: location.pathname } });
+      openRecordDetails('list', activity.record_id);
     } else if (activity.module === 'reminders') {
       navigate('/space/organize', { state: { section: 'Reminders', focusReminderId: activity.record_id } });
     } else if (activity.module === 'inbox') {
@@ -370,7 +375,7 @@ export default function HomeScreen() {
                   <button
                     key={budget.id}
                     type="button"
-                    onClick={() => navigate(`/space/records/list/${budget.id}`, { state: { from: location.pathname } })}
+                    onClick={() => openRecordDetails('list', budget.id)}
                     className="home-budgetRow"
                   >
                     <span className="home-budgetName">{budget.title}</span>
@@ -463,7 +468,7 @@ export default function HomeScreen() {
             <button
               key={`budget-${budget.id}`}
               type="button"
-              onClick={() => navigate(`/space/records/list/${budget.id}`, { state: { from: location.pathname } })}
+              onClick={() => openRecordDetails('list', budget.id)}
               className="home-attentionButton"
             >
               Budget near limit: {budget.title} ({Math.round((budget.actual / budget.planned) * 100)}% used)
@@ -622,7 +627,7 @@ export default function HomeScreen() {
       {selectedTransaction ? (
         <TransactionReceipt
           transaction={selectedTransaction}
-          onClose={() => setSelectedTransaction(null)}
+          onClose={closeSelectedTransaction}
           onChanged={refresh}
         />
       ) : null}

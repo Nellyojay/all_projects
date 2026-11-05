@@ -1,0 +1,88 @@
+.record-details-page {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  width: 100%;
+  min-height: 100dvh;
+  overflow-y: auto;
+  background-color: #000;
+}
+
+.record-details-pageContent {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 960px;
+  min-height: 100dvh;
+  margin-inline: auto;
+  padding-top: env(safe-area-inset-top);
+  padding-inline: 12px;
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+  background-color: #000;
+}
+
+.record-details-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: 8px;
+  border-bottom: 1px solid #323232;
+  background-color: #000;
+}
+
+.record-details-headerAction {
+  color: #a3a3a3;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.record-details-headerTitle {
+  min-width: 0;
+  flex: 1;
+  margin-inline: 8px;
+  overflow: hidden;
+  color: #f5f5f5;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-details-header > button:first-child {
+  flex: 0 0 auto;
+  min-width: 48px;
+}
+
+.record-details-headerDelete {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 12px;
+  border: 1px solid #323232;
+  border-radius: 7px;
+  background-color: #202020d2;
+}
+
+.record-details-headerDeleteText {
+  color: #a3a3a3;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.record-details-headerSpacer {
+  width: 48px;
+  flex: 0 0 48px;
+}
+
+.record-details-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  margin-inline: auto;
+}

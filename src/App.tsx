@@ -5,11 +5,13 @@ import HomeScreen from './mythingz/src/app/(tabs)/index';
 import OrganizeScreen from './mythingz/src/app/(tabs)/organize';
 import SearchScreen from './mythingz/src/app/(tabs)/search';
 import RecordDetailsRoute from './mythingz/src/components/records/RecordDetailsRoute';
+import { RecordDetailsModalProvider } from './mythingz/src/components/records/RecordDetailsModalProvider';
 import { CreateAccountPage } from './mythingz/src/components/finance/accounts/account';
 import SettingsScreen from './mythingz/src/app/pages/settings';
 import RecurringBudgetsPage from './mythingz/src/app/pages/RecurringBudgetsPage';
 import { DatabaseProvider } from './mythingz/src/web/DatabaseProvider';
 import { TransactionReceiptProvider } from './mythingz/src/components/finance/transactions/TransactionReceiptProvider';
+import { ModalBackProvider } from './mythingz/src/components/shared/ModalBackProvider';
 import Intro from './components/intro';
 
 const sections = [
@@ -23,9 +25,13 @@ const sections = [
 function WorkspaceRoute() {
   return (
     <DatabaseProvider>
-      <TransactionReceiptProvider>
-        <WorkspaceLayout />
-      </TransactionReceiptProvider>
+      <ModalBackProvider>
+        <TransactionReceiptProvider>
+          <RecordDetailsModalProvider>
+            <WorkspaceLayout />
+          </RecordDetailsModalProvider>
+        </TransactionReceiptProvider>
+      </ModalBackProvider>
     </DatabaseProvider>
   );
 }

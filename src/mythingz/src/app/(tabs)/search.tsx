@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScreenHeader } from '../../components/shared/ScreenHeader';
+import { useRecordDetailsModal } from '../../components/records/RecordDetailsModalContext';
 import '../../components/shared/theme.css';
 import './search.css';
 import {
@@ -24,6 +25,7 @@ const filters: UniversalSearchFilter[] = [
 export default function SearchScreen() {
   const database = useDatabase();
   const navigate = useNavigate();
+  const { openRecordDetails } = useRecordDetailsModal();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<UniversalSearchFilter>('All');
   const [results, setResults] = useState<UniversalSearchResult[]>([]);
@@ -60,9 +62,7 @@ export default function SearchScreen() {
 
   const openResult = (result: UniversalSearchResult) => {
     if (result.kind === 'budget' || result.kind === 'list') {
-      navigate(`/space/records/list/${result.id}`, {
-        state: { from: '/space/search' },
-      });
+      openRecordDetails('list', result.id);
       return;
     }
     if (result.kind === 'reminder') {
@@ -90,6 +90,10 @@ export default function SearchScreen() {
       Lists: 'list',
     };
     const kind = routeKinds[result.module];
+    if (kind === 'list') {
+      openRecordDetails('list', result.id);
+      return;
+    }
     navigate(`/space/records/${kind}/${result.id}`, {
       state: { from: '/space/search' },
     });

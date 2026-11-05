@@ -4,6 +4,8 @@ import { localDateKey } from '../../../../services/database';
 import type { TemplateWithItems } from './RecurringBudgetModels';
 import { money } from './RecurringBudgetUtils';
 import { BudgetTemplatePeriods } from './BudgetTemplatePeriods';
+import { DetailsModal } from '../../../shared/DetailsModal';
+import { useModalBack } from '../../../shared/ModalBackContext';
 import './RecurringBudgetStyles.css';
 
 type Props = {
@@ -47,15 +49,25 @@ function TemplateCard({
   onSelectPeriod?: Props['onSelectPeriod'];
   renderPeriodAnalysis?: Props['renderPeriodAnalysis'];
 }) {
-  const [periodsExpanded, setPeriodsExpanded] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const closeDetails = () => setDetailsOpen(false);
+  useModalBack(detailsOpen, closeDetails);
+  const edit = () => {
+    closeDetails();
+    onEdit(template);
+  };
+  const remove = () => {
+    closeDetails();
+    onRemove(template);
+  };
 
   return (
     <article className="recurring-budget-card">
       <button
         type="button"
         className="budget-template-periods-toggle"
-        aria-expanded={periodsExpanded}
-        onClick={() => setPeriodsExpanded((current) => !current)}
+        aria-haspopup="dialog"
+        onClick={() => setDetailsOpen(true)}
       >
         <span className="recurring-budget-template-header">
           <span>
@@ -84,50 +96,89 @@ function TemplateCard({
             </span>
           ))}
         </div>
-        <div className="recurring-budget-form-actions">
-          <button type="button" onClick={() => onEdit(template)} className="recurring-budget-secondary-button">
-            Edit
-          </button>
-          {!archived ? (
-            <>
-              <button
-                type="button"
-                onClick={() => onChangeState(template, { active: !template.active })}
-                className="recurring-budget-secondary-button"
-              >
-                {template.active ? 'Pause' : 'Resume'}
-              </button>
-              <button
-                type="button"
-                onClick={() => onChangeState(template, { active: false, archived: true })}
-                className="recurring-budget-secondary-button"
-              >
-                Archive
-              </button>
-              <button type="button" onClick={() => onRemove(template)} className="recurring-budget-remove-button">
-                Delete
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={() => onChangeState(template, { active: false, archived: false })}
-              className="recurring-budget-primary-button"
-            >
-              Restore as paused
-            </button>
-          )}
-        </div>
       </button>
+      {detailsOpen ? (
+        <DetailsModal
+          label={`${template.name} recurring budget details`}
+          title={template.name}
+          onClose={closeDetails}
+        >
+          <h1 className="recurring-budget-details-title">{template.name}</h1>
+          <div className="recurring-budget-details-summary">
+            <span className="recurring-budget-details-label">SCHEDULE</span>
+            <span>{template.recurrence} · starts {template.start_date}{template.end_date ? ` · ends ${template.end_date}` : ''}</span>
+            <span className="recurring-budget-details-label">STATUS</span>
+            <span>{archived ? 'Archived' : template.active ? 'Active' : 'Paused'}</span>
+            {template.description ? <p className="recurring-budget-muted">{template.description}</p> : null}
+          </div>
 
-      {periodsExpanded ? (
-        <BudgetTemplatePeriods
-          templateId={template.id}
-          periods={periods}
-          selectedPeriodId={selectedPeriodId}
-          onSelectPeriod={onSelectPeriod}
-          renderPeriodAnalysis={renderPeriodAnalysis}
-        />
+          <section className="recurring-budget-details-items" aria-label="Recurring budget items and allocations">
+            <h2 className="recurring-budget-subheading">Budget items</h2>
+            {template.items.length ? template.items.map((item, index) => (
+              <div key={item.id ?? `template-item-${index}`} className="recurring-budget-details-item">
+                <span className="recurring-budget-details-item-name">
+                  {item.name || `Item ${index + 1}`}
+                  {!item.active ? ' · Paused' : ''}
+                </span>
+                <strong>{money(item.allocated_amount)}</strong>
+                <span className="recurring-budget-muted">
+                  {item.rollover === 'carry'
+                    ? 'Unused funds carry forward'
+                    : item.rollover === 'save' ? 'Unused funds are saved separately' : 'Unused funds reset'}
+                  {item.alert_thresholds.length
+                    ? ` · Alerts at ${item.alert_thresholds.join('%, ')}%`
+                    : ''}
+                </span>
+              </div>
+            )) : <p className="recurring-budget-muted">No items have been added to this template.</p>}
+          </section>
+
+          <section className="recurring-budget-details-periods" aria-label="Generated budget periods">
+            <h2 className="recurring-budget-subheading">Generated periods</h2>
+            <BudgetTemplatePeriods
+              templateId={template.id}
+              periods={periods}
+              selectedPeriodId={selectedPeriodId}
+              onSelectPeriod={onSelectPeriod}
+              renderPeriodAnalysis={renderPeriodAnalysis}
+            />
+          </section>
+
+          <div className="recurring-budget-form-actions recurring-budget-details-actions">
+            {!archived ? (
+              <>
+                <button type="button" onClick={edit} className="recurring-budget-secondary-button">
+                  Edit template
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onChangeState(template, { active: !template.active })}
+                  className="recurring-budget-secondary-button"
+                >
+                  {template.active ? 'Pause template' : 'Resume template'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onChangeState(template, { active: false, archived: true })}
+                  className="recurring-budget-secondary-button"
+                >
+                  Archive template
+                </button>
+                <button type="button" onClick={remove} className="recurring-budget-remove-button">
+                  Delete template
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onChangeState(template, { active: false, archived: false })}
+                className="recurring-budget-primary-button"
+              >
+                Restore as paused
+              </button>
+            )}
+          </div>
+        </DetailsModal>
       ) : null}
     </article>
   );

@@ -11,9 +11,11 @@ import {
 } from '../../../services/database';
 import type { SharedBudget, SharedBudgetItem, Transaction } from '../../../services/database';
 import { ItemizedItemsEditor } from '../../lists/itemizedItems';
+import { DetailsModal } from '../../shared/DetailsModal';
 import { BudgetCreationModal } from './BudgetCreationModal';
 import { BudgetGeneralFields } from './BudgetGeneralFields';
 import { UnallocatedExpenses } from './recurringBudgets/UnallocatedExpenses';
+import { useModalBack } from '../../shared/ModalBackContext';
 import './recurringBudgets/RecurringBudgetStyles.css';
 import './SharedBudgetManager.css';
 
@@ -66,11 +68,17 @@ export function SharedBudgetManager({
   const [endDate, setEndDate] = useState(dateAfterMonth());
   const [draftItems, setDraftItems] = useState<DraftItem[]>([emptyDraftItem()]);
   const [saving, setSaving] = useState(false);
-  const [expandedBudgetId, setExpandedBudgetId] = useState<number | null>(null);
-  const [expandedItems, setExpandedItems] = useState<{ budgetId: number; items: SharedBudgetItem[] } | null>(null);
+  const [selectedBudgetId, setSelectedBudgetId] = useState<number | null>(null);
+  const [selectedBudgetItems, setSelectedBudgetItems] = useState<{ budgetId: number; items: SharedBudgetItem[] } | null>(null);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
   const [allocationDrafts, setAllocationDrafts] = useState<Record<number, string>>({});
   const [pendingClose, setPendingClose] = useState<number | null>(null);
   const [showAllUnallocated, setShowAllUnallocated] = useState(false);
+  const closeBudgetDetails = useCallback(() => {
+    setSelectedBudgetId(null);
+    setPendingClose(null);
+  }, []);
+  useModalBack(selectedBudgetId !== null, closeBudgetDetails);
 
   const refresh = useCallback(async () => {
     try {
@@ -94,18 +102,22 @@ export function SharedBudgetManager({
   const createOpen = createRequested;
 
   useEffect(() => {
-    if (expandedBudgetId === null) return;
+    if (selectedBudgetId === null) return;
     let active = true;
-    void getSharedBudgetItems(database, expandedBudgetId).then((items) => {
+    void getSharedBudgetItems(database, selectedBudgetId).then((items) => {
       if (!active) return;
-      setExpandedItems({ budgetId: expandedBudgetId, items });
+      setSelectedBudgetItems({ budgetId: selectedBudgetId, items });
       setAllocationDrafts(Object.fromEntries(items.map((item) => [item.id, String(item.allocated_amount)])));
+      setDetailsError(null);
     }).catch((reason: unknown) => {
       console.error('Unable to load shared budget items', reason);
-      if (active) setError('Budget details could not be loaded.');
+      if (active) {
+        setDetailsError('Budget items could not be loaded. Close and reopen this budget to try again.');
+        setSelectedBudgetItems({ budgetId: selectedBudgetId, items: [] });
+      }
     });
     return () => { active = false; };
-  }, [database, expandedBudgetId]);
+  }, [database, selectedBudgetId]);
 
   const visibleBudgets = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -113,6 +125,12 @@ export function SharedBudgetManager({
       !normalized || `${budget.name} ${budget.description} ${budget.status}`.toLowerCase().includes(normalized),
     );
   }, [budgets, query]);
+  const selectedBudget = budgets.find((budget) => budget.id === selectedBudgetId) ?? null;
+  const selectedItems = selectedBudgetItems?.budgetId === selectedBudgetId
+    ? selectedBudgetItems.items
+    : [];
+  const loadingSelectedItems = selectedBudgetId !== null
+    && selectedBudgetItems?.budgetId !== selectedBudgetId;
   const unallocatedTotal = unallocated.reduce((sum, expense) => sum + expense.unallocated_amount, 0);
 
   const resetDraft = () => {
@@ -159,9 +177,9 @@ export function SharedBudgetManager({
       await adjustSharedBudgetItem(database, item.id, amount, 'Allocation updated');
       setError(null);
       await refresh();
-      if (expandedBudgetId !== null) {
-        const items = await getSharedBudgetItems(database, expandedBudgetId);
-        setExpandedItems({ budgetId: expandedBudgetId, items });
+      if (selectedBudgetId !== null) {
+        const items = await getSharedBudgetItems(database, selectedBudgetId);
+        setSelectedBudgetItems({ budgetId: selectedBudgetId, items });
       }
     } catch (reason) {
       if (reason instanceof Error && reason.message.includes('below current spending')
@@ -170,9 +188,9 @@ export function SharedBudgetManager({
           await adjustSharedBudgetItem(database, item.id, amount, 'Confirmed allocation reduction', true);
           setError(null);
           await refresh();
-          if (expandedBudgetId !== null) {
-            const items = await getSharedBudgetItems(database, expandedBudgetId);
-            setExpandedItems({ budgetId: expandedBudgetId, items });
+          if (selectedBudgetId !== null) {
+            const items = await getSharedBudgetItems(database, selectedBudgetId);
+            setSelectedBudgetItems({ budgetId: selectedBudgetId, items });
           }
           return;
         } catch (retryError) {
@@ -288,18 +306,18 @@ export function SharedBudgetManager({
       ) : null}
 
       {visibleBudgets.map((budget) => {
-        const expanded = expandedBudgetId === budget.id;
-        const items = expandedItems?.budgetId === budget.id ? expandedItems.items : [];
         return (
           <article key={budget.id} className="recurring-budget-card">
             <button
               type="button"
               className="budget-template-periods-toggle normal-budget-card-toggle"
               onClick={() => {
-                setExpandedBudgetId(expanded ? null : budget.id);
+                setSelectedBudgetId(budget.id);
                 setPendingClose(null);
+                setError(null);
+                setDetailsError(null);
               }}
-              aria-expanded={expanded}
+              aria-haspopup="dialog"
             >
               <span className="normal-budget-card-heading">
                 <strong className="recurring-budget-subheading">{budget.name}</strong>
@@ -311,7 +329,7 @@ export function SharedBudgetManager({
                 <span className="recurring-budget-status">
                   {statusLabel(budget.status)}
                 </span>
-                <span aria-hidden="true" style={{ color: '#A3A3A3' }}>{expanded ? '⌄' : '›'}</span>
+                <span aria-hidden="true" style={{ color: '#A3A3A3' }}>›</span>
               </span>
               <span className="budget-template-periods-label">Budget summary</span>
               <span className="recurring-budget-template-items">
@@ -320,71 +338,99 @@ export function SharedBudgetManager({
                 <span className="recurring-budget-item-summary">Remaining: {money(budget.remaining_amount)}</span>
               </span>
             </button>
-            {expanded ? (
-              <div style={{ marginTop: 4, borderTop: '1px solid #303030', paddingTop: 12 }}>
-                <div className="normal-budget-summary-grid">
-                  <span>Allocated <strong>{money(budget.total_allocated)}</strong></span>
-                  <span>Actual <strong>{money(budget.actual_amount)}</strong></span>
-                  <span>Remaining <strong>{money(budget.remaining_amount)}</strong></span>
-                </div>
-                {budget.description ? <p className="normal-budget-muted">{budget.description}</p> : null}
-                {items.map((item) => (
-                  <div key={item.id} className="normal-budget-item-row">
-                    <span style={{ minWidth: 0, flex: 1 }}>
-                      <strong style={{ display: 'block' }}>{item.name}</strong>
-                      <span className="normal-budget-muted">
-                        {money(item.actual_amount)} spent · {money(item.remaining_amount)} remaining
-                      </span>
-                    </span>
-                    {budget.status !== 'closed' ? (
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <input
-                          aria-label={`Allocation for ${item.name}`}
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={allocationDrafts[item.id] ?? String(item.allocated_amount)}
-                          onChange={(event) => setAllocationDrafts((drafts) => ({
-                            ...drafts,
-                            [item.id]: event.currentTarget.value,
-                          }))}
-                          className="normal-budget-input normal-budget-input--allocation"
-                        />
-                        <button type="button" onClick={() => void saveAllocation(item)} className="normal-budget-action">Save</button>
-                      </div>
-                    ) : <strong>{money(item.allocated_amount)}</strong>}
-                  </div>
-                ))}
-                {pendingClose === budget.id ? (
-                  <div className="normal-budget-card-panel normal-budget-close-review">
-                    <strong>Review before closing</strong>
-                    <p className="normal-budget-muted">
-                      Allocated {money(budget.total_allocated)} · actual spending {money(budget.actual_amount)} ·
-                      {' '}{money(budget.remaining_amount)} remaining. Review the unallocated expenses above
-                      ({unallocated.length} pending, {money(unallocatedTotal)}) before confirming.
-                    </p>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button type="button" onClick={() => void changeStatus(budget, true)} className="normal-budget-action">
-                        Confirm close
-                      </button>
-                      <button type="button" onClick={() => setPendingClose(null)} className="normal-budget-action">Cancel</button>
-                    </div>
-                  </div>
-                ) : null}
-                {budget.status === 'closed' ? (
-                  <button type="button" onClick={() => void changeStatus(budget, false)} className="normal-budget-action normal-budget-close-action">
-                    Reopen budget
-                  </button>
-                ) : (
-                  <button type="button" onClick={() => setPendingClose(budget.id)} className="normal-budget-action normal-budget-close-action">
-                    Review and close budget
-                  </button>
-                )}
-              </div>
-            ) : null}
           </article>
         );
       })}
+
+      {selectedBudget ? (
+        <DetailsModal
+          label={`${selectedBudget.name} budget details`}
+          title={selectedBudget.name}
+          onClose={closeBudgetDetails}
+        >
+          <h1 className="normal-budget-details-title">{selectedBudget.name}</h1>
+          {error ? <p role="alert" className="normal-budget-inline-error">{error}</p> : null}
+          {detailsError ? <p role="alert" className="normal-budget-inline-error">{detailsError}</p> : null}
+          <div className="record-details-infoCard normal-budget-details-summary">
+            <span className="record-details-infoLabel">PERIOD</span>
+            <span className="record-details-infoValue">
+              {selectedBudget.start_date ?? 'No start date'} – {selectedBudget.end_date ?? 'No end date'}
+            </span>
+            <span className="record-details-infoLabel">STATUS</span>
+            <span className="record-details-infoValue">{statusLabel(selectedBudget.status)}</span>
+            <div className="normal-budget-summary-grid">
+              <span>Allocated <strong>{money(selectedBudget.total_allocated)}</strong></span>
+              <span>Spent <strong>{money(selectedBudget.actual_amount)}</strong></span>
+              <span>Remaining <strong>{money(selectedBudget.remaining_amount)}</strong></span>
+            </div>
+          </div>
+          {selectedBudget.description ? (
+            <p className="normal-budget-muted normal-budget-details-description">{selectedBudget.description}</p>
+          ) : null}
+          <section className="normal-budget-details-items" aria-label="Budget items and allocations">
+            <h2 className="recurring-budget-subheading">Budget items</h2>
+            {loadingSelectedItems ? (
+              <p className="normal-budget-muted">Loading budget items…</p>
+            ) : selectedItems.length ? selectedItems.map((item) => (
+              <div key={item.id} className="normal-budget-item-row">
+                <span className="normal-budget-item-copy">
+                  <strong>{item.name}</strong>
+                  <span className="normal-budget-muted">
+                    {money(item.actual_amount)} spent · {money(item.remaining_amount)} remaining
+                  </span>
+                </span>
+                {selectedBudget.status !== 'closed' ? (
+                  <div className="normal-budget-allocation-control">
+                    <input
+                      aria-label={`Allocation for ${item.name}`}
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={allocationDrafts[item.id] ?? String(item.allocated_amount)}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        setAllocationDrafts((drafts) => ({
+                          ...drafts,
+                          [item.id]: value,
+                        }));
+                      }}
+                      className="normal-budget-input normal-budget-input--allocation"
+                    />
+                    <button type="button" onClick={() => void saveAllocation(item)} className="normal-budget-action">Save</button>
+                  </div>
+                ) : <strong>{money(item.allocated_amount)}</strong>}
+              </div>
+            )) : !loadingSelectedItems ? (
+              <p className="normal-budget-muted">No items have been added to this budget.</p>
+            ) : null}
+          </section>
+          {pendingClose === selectedBudget.id ? (
+            <div className="normal-budget-card-panel normal-budget-close-review">
+              <strong>Review before closing</strong>
+              <p className="normal-budget-muted">
+                Allocated {money(selectedBudget.total_allocated)} · actual spending {money(selectedBudget.actual_amount)} ·
+                {' '}{money(selectedBudget.remaining_amount)} remaining. Review the unallocated expenses above
+                ({unallocated.length} pending, {money(unallocatedTotal)}) before confirming.
+              </p>
+              <div className="normal-budget-review-actions">
+                <button type="button" onClick={() => void changeStatus(selectedBudget, true)} className="normal-budget-action">
+                  Confirm close
+                </button>
+                <button type="button" onClick={() => setPendingClose(null)} className="normal-budget-action">Cancel</button>
+              </div>
+            </div>
+          ) : null}
+          {selectedBudget.status === 'closed' ? (
+            <button type="button" onClick={() => void changeStatus(selectedBudget, false)} className="normal-budget-action normal-budget-close-action">
+              Reopen budget
+            </button>
+          ) : (
+            <button type="button" onClick={() => setPendingClose(selectedBudget.id)} className="normal-budget-action normal-budget-close-action">
+              Review and close budget
+            </button>
+          )}
+        </DetailsModal>
+      ) : null}
 
       <UnallocatedExpenses
         expenses={unallocated}

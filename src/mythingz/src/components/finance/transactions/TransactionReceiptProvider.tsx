@@ -3,6 +3,7 @@ import { getTransferById } from '../../../services/database';
 import type { Transaction } from '../../../services/database';
 import { useDatabase } from '../../../web/DatabaseProvider';
 import { TransactionReceipt } from './TransactionReceipt';
+import { useModalBack } from '../../shared/ModalBackContext';
 import {
   TransactionReceiptContext,
   type OpenReceipt,
@@ -16,6 +17,8 @@ export function TransactionReceiptProvider({ children }: { children: ReactNode }
     record: ReceiptRecord;
     onChanged?: ReceiptOnChanged;
   } | null>(null);
+  const closeReceipt = useCallback(() => setReceipt(null), []);
+  useModalBack(Boolean(receipt), closeReceipt);
 
   const openReceipt = useCallback<OpenReceipt>(async (target, onChanged) => {
     if (!Number.isSafeInteger(target.id) || target.id < 1) {
@@ -41,7 +44,7 @@ export function TransactionReceiptProvider({ children }: { children: ReactNode }
       {receipt ? (
         <TransactionReceipt
           transaction={receipt.record}
-          onClose={() => setReceipt(null)}
+          onClose={closeReceipt}
           onChanged={receipt.onChanged}
         />
       ) : null}

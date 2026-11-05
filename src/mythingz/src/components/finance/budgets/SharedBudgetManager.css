@@ -73,15 +73,75 @@
   justify-content: space-between;
 }
 
-.normal-budget-item-row {
+.normal-budget-details-title {
+  margin: 14px 0 8px;
+  color: #f5f5f5;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.normal-budget-details-summary {
+  display: grid;
+  gap: 5px;
+}
+
+.normal-budget-details-summary .normal-budget-summary-grid {
+  margin-top: 12px;
+}
+
+.normal-budget-details-description {
+  margin-block: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.normal-budget-details-items {
   display: flex;
   flex-direction: column;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.normal-budget-item-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.normal-budget-allocation-control,
+.normal-budget-review-actions {
+  display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 5px;
-  padding-block: 8px;
-  border-bottom: 1px solid #303030;
-  border-top: 1px solid #323232;
+  gap: 6px;
+}
+
+.normal-budget-item-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid #303030;
+  border-radius: 9px;
+  background: #191919;
   color: #f5f5f5;
+}
+
+.normal-budget-item-row .normal-budget-muted {
+  font-size: 10px;
+}
+
+.normal-budget-item-row .normal-budget-input--allocation {
+  width: 92px;
+  padding: 8px;
+}
+
+.normal-budget-review-actions {
+  flex-wrap: wrap;
 }
 
 .normal-budget-close-review {

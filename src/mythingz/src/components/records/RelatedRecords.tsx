@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
+import { useRecordDetailsModal } from './RecordDetailsModalContext';
 import {
   createRecordLink,
   deleteRecordLink,
@@ -38,6 +39,7 @@ export function RelatedRecords({
   const database = useDatabase();
   const location = useLocation();
   const navigate = useNavigate();
+  const { openRecordDetails } = useRecordDetailsModal();
   const [related, setRelated] = useState<RelatedRecordType[]>([]);
   const [targetType, setTargetType] = useState<Exclude<LinkedRecordType, 'inbox'>>('event');
   const [query, setQuery] = useState('');
@@ -128,6 +130,10 @@ export function RelatedRecords({
       return;
     }
     const kind = item.type === 'budget' || item.type === 'list' ? 'list' : item.type;
+    if (kind === 'list') {
+      openRecordDetails('list', item.id);
+      return;
+    }
     navigate(`/space/records/${kind}/${item.id}`, { state: { from: location.pathname } });
   };
 
