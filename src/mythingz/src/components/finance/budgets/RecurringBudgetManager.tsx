@@ -27,6 +27,7 @@ import { BudgetPeriodComparison } from './recurringBudgets/BudgetPeriodCompariso
 import { BudgetPeriodHistory } from './recurringBudgets/BudgetPeriodHistory';
 import { BudgetTemplateEditor } from './recurringBudgets/BudgetTemplateEditor';
 import { BudgetTemplateLibrary } from './recurringBudgets/BudgetTemplateLibrary';
+import { BudgetCreationModal } from './BudgetCreationModal';
 import { useTransactionReceipt } from '../transactions/useTransactionReceipt';
 import { blankTemplate, type TemplateDraft, type TemplateWithItems } from './recurringBudgets/RecurringBudgetModels';
 import { budgetStyles } from './recurringBudgets/RecurringBudgetStyles';
@@ -135,7 +136,7 @@ export function RecurringBudgetManager({ dashboard = false }: { dashboard?: bool
       weekStartDay: template.week_start_day ?? 0,
       active: Boolean(template.active),
       archived: Boolean(template.archived),
-      items: template.items.map((item) => ({ ...item })),
+      items: template.items.map((item) => ({ ...item, description: '' })),
     });
     setError(null);
   };
@@ -331,14 +332,20 @@ export function RecurringBudgetManager({ dashboard = false }: { dashboard?: bool
 
           {error ? <p role="alert" style={budgetStyles.error}>{error}</p> : null}
           {draft ? (
-            <BudgetTemplateEditor
-              draft={draft}
-              saving={saving}
-              onChange={setDraft}
-              onUpdateItem={updateItem}
-              onSave={() => void saveTemplate()}
-              onCancel={() => setDraft(null)}
-            />
+            <BudgetCreationModal
+              title={draft.id ? 'Edit budget template' : 'Create recurring budget'}
+              onClose={() => setDraft(null)}
+            >
+              {error ? <p role="alert" style={budgetStyles.error}>{error}</p> : null}
+              <BudgetTemplateEditor
+                draft={draft}
+                saving={saving}
+                onChange={setDraft}
+                onUpdateItem={updateItem}
+                onSave={() => void saveTemplate()}
+                onCancel={() => setDraft(null)}
+              />
+            </BudgetCreationModal>
           ) : null}
 
           <div id="budget-templates">
@@ -403,14 +410,20 @@ export function RecurringBudgetManager({ dashboard = false }: { dashboard?: bool
 
       {error ? <p role="alert" style={budgetStyles.error}>{error}</p> : null}
       {draft ? (
-        <BudgetTemplateEditor
-          draft={draft}
-          saving={saving}
-          onChange={setDraft}
-          onUpdateItem={updateItem}
-          onSave={() => void saveTemplate()}
-          onCancel={() => setDraft(null)}
-        />
+        <BudgetCreationModal
+          title={draft.id ? 'Edit budget template' : 'Create recurring budget'}
+          onClose={() => setDraft(null)}
+        >
+          {error ? <p role="alert" style={budgetStyles.error}>{error}</p> : null}
+          <BudgetTemplateEditor
+            draft={draft}
+            saving={saving}
+            onChange={setDraft}
+            onUpdateItem={updateItem}
+            onSave={() => void saveTemplate()}
+            onCancel={() => setDraft(null)}
+          />
+        </BudgetCreationModal>
       ) : null}
 
       <BudgetTemplateLibrary

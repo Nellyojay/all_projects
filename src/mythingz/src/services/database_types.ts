@@ -79,7 +79,7 @@ export type ExpenseDraft = {
   notes: string;
   accountId: number;
   items: ListItem[];
-  budgetAllocations?: { periodItemId: number; amount: number }[];
+  budgetAllocations?: { budgetItemId: number; amount: number }[];
 };
 
 export type BudgetRecurrence = 'daily' | 'weekly' | 'monthly';
@@ -102,7 +102,6 @@ export type BudgetTemplateItem = {
   name: string;
   description: string;
   allocated_amount: number;
-  category: string;
   rollover: BudgetRollover;
   alert_thresholds: number[];
   active: boolean;
@@ -128,7 +127,6 @@ export type BudgetPeriodItem = {
   template_item_id: number | null;
   name: string;
   description: string;
-  category: string;
   original_amount: number;
   rollover_amount: number;
   saved_amount: number;
@@ -142,6 +140,35 @@ export type BudgetSummary = BudgetPeriod & {
   allocated_amount: number;
   actual_amount: number;
   remaining_amount: number;
+};
+export type SharedBudget = {
+  id: number;
+  name: string;
+  type: 'normal' | 'recurring';
+  template_id: number | null;
+  start_date: string | null;
+  end_date: string | null;
+  total_allocated: number;
+  actual_amount: number;
+  remaining_amount: number;
+  status: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+};
+export type SharedBudgetItem = {
+  id: number;
+  budget_id: number;
+  template_item_id: number | null;
+  name: string;
+  allocated_amount: number;
+  actual_amount: number;
+  refunded_amount: number;
+  remaining_amount: number;
+  notes: string;
+  description: string;
+  position: number;
 };
 export type BudgetAlert = {
   id: number;

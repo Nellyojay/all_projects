@@ -82,8 +82,8 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
     void getAllocatableBudgetItems(database)
       .then((rows) => { if (active) setBudgetItems(rows); })
       .catch((error: unknown) => {
-        console.error('Unable to load recurring budget items', error);
-        if (active) window.alert('Could not load recurring budgets\n\nPlease try again.');
+        console.error('Unable to load budget items', error);
+        if (active) window.alert('Could not load budgets\n\nPlease try again.');
       });
     return () => { active = false; };
   }, [database]);
@@ -231,7 +231,7 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
             onItemsChange={setItems}
             itemsLabel="EXPENSE ITEMS"
           />
-          <section style={expenseStyles.budgetSection} aria-label="Optional recurring budget allocation">
+          <section style={expenseStyles.budgetSection} aria-label="Optional budget allocation">
             <span style={expenseStyles.label}>BUDGET ALLOCATION · OPTIONAL</span>
             {budgetItems.length ? (
               <>
@@ -246,7 +246,7 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
                         selectedItem ? String(selectedItem.actual_amount) : '',
                       );
                     }}
-                    aria-label="Choose a recurring budget item"
+                    aria-label="Choose a budget item"
                     style={expenseStyles.input}
                   >
                     <option value="">Choose a budget item</option>
@@ -271,15 +271,15 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
                     type="button"
                     disabled={!selectedBudgetItemId || !budgetAllocationAmount}
                     onClick={() => {
-                      const periodItemId = Number(selectedBudgetItemId);
+                      const budgetItemId = Number(selectedBudgetItemId);
                       const amount = Number(budgetAllocationAmount);
                       if (!Number.isSafeInteger(amount) || amount <= 0
-                        || budgetAllocations.some((allocation) => allocation.periodItemId === periodItemId)
+                        || budgetAllocations.some((allocation) => allocation.budgetItemId === budgetItemId)
                         || amount > allocationRemainder) {
                         window.alert('Check budget allocation\n\nChoose a new item and a whole amount within the unallocated balance.');
                         return;
                       }
-                      setBudgetAllocations((current) => [...current, { periodItemId, amount }]);
+                      setBudgetAllocations((current) => [...current, { budgetItemId, amount }]);
                       setSelectedBudgetItemId('');
                       setBudgetAllocationAmount('');
                     }}
@@ -289,9 +289,9 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
                   </button>
                 </div>
                 {budgetAllocations.map((allocation) => {
-                  const item = budgetItems.find((candidate) => candidate.id === allocation.periodItemId);
+                  const item = budgetItems.find((candidate) => candidate.id === allocation.budgetItemId);
                   return (
-                    <div key={allocation.periodItemId} style={expenseStyles.allocationRow}>
+                    <div key={allocation.budgetItemId} style={expenseStyles.allocationRow}>
                       <span style={expenseStyles.allocationName}>
                         {item ? `${item.template_name} · ${item.name}` : 'Budget item'}
                       </span>
@@ -300,7 +300,7 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
                         type="button"
                         aria-label={`Remove ${item?.name ?? 'budget item'} allocation`}
                         onClick={() => setBudgetAllocations((current) =>
-                          current.filter((entry) => entry.periodItemId !== allocation.periodItemId),
+                          current.filter((entry) => entry.budgetItemId !== allocation.budgetItemId),
                         )}
                         style={expenseStyles.removeAllocation}
                       >

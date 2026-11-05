@@ -3,6 +3,7 @@ import type { ListItem } from '../../services/database';
 export type ItemizedItem = Omit<ListItem, 'price' | 'quantity'> & {
   price: string;
   quantity: string;
+  editorKey?: string;
 };
 
 export const createEmptyItemizedItem = (): ItemizedItem => ({

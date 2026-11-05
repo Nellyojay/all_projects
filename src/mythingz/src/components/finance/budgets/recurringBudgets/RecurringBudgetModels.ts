@@ -6,6 +6,7 @@ import type {
 import { localDateKey } from '../../../../services/database';
 
 export type TemplateWithItems = BudgetTemplate & { items: BudgetTemplateItem[] };
+export type TemplateDraftItem = BudgetTemplateItem & { editorKey?: string };
 export type TemplateDraft = {
   id?: number;
   name: string;
@@ -16,7 +17,7 @@ export type TemplateDraft = {
   weekStartDay: number;
   active: boolean;
   archived: boolean;
-  items: BudgetTemplateItem[];
+  items: TemplateDraftItem[];
 };
 
 export function blankItem(): BudgetTemplateItem {
@@ -24,7 +25,6 @@ export function blankItem(): BudgetTemplateItem {
     name: '',
     description: '',
     allocated_amount: 0,
-    category: '',
     rollover: 'reset',
     alert_thresholds: [50, 75, 90, 100],
     active: true,

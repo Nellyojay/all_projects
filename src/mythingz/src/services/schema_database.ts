@@ -1,4 +1,9 @@
 import type { BrowserDatabase } from '../web/database';
+import {
+  backupBeforeSharedBudgetMigration,
+  migrateBudgetItemCategories,
+  migrateToSharedBudgets,
+} from './budget_migration';
 
 export async function ensureListNotesColumn(database: BrowserDatabase) {
   const columns = await database.getAllAsync<{ name: string }>('PRAGMA table_info(lists)');
@@ -155,6 +160,7 @@ async function installActivityTriggers(database: BrowserDatabase) {
 }
 
 export async function initializeDatabase(database: BrowserDatabase) {
+  await backupBeforeSharedBudgetMigration(database);
   await database.execAsync(`
     PRAGMA journal_mode = WAL;
     CREATE TABLE IF NOT EXISTS transactions (
@@ -297,7 +303,6 @@ export async function initializeDatabase(database: BrowserDatabase) {
       name TEXT NOT NULL,
       description TEXT NOT NULL DEFAULT '',
       allocated_amount INTEGER NOT NULL CHECK (allocated_amount >= 0),
-      category TEXT NOT NULL DEFAULT '',
       rollover TEXT NOT NULL DEFAULT 'reset'
         CHECK (rollover IN ('reset', 'carry', 'save')),
       alert_thresholds TEXT NOT NULL DEFAULT '[50,75,90,100]',
@@ -321,7 +326,6 @@ export async function initializeDatabase(database: BrowserDatabase) {
       template_item_id INTEGER,
       name TEXT NOT NULL,
       description TEXT NOT NULL DEFAULT '',
-      category TEXT NOT NULL DEFAULT '',
       original_amount INTEGER NOT NULL CHECK (original_amount >= 0),
       rollover_amount INTEGER NOT NULL DEFAULT 0 CHECK (rollover_amount >= 0),
       saved_amount INTEGER NOT NULL DEFAULT 0 CHECK (saved_amount >= 0),
@@ -442,6 +446,8 @@ export async function initializeDatabase(database: BrowserDatabase) {
   if (transactionColumns.some((column) => column.name === 'receipt_data')) {
     await database.execAsync('ALTER TABLE transactions DROP COLUMN receipt_data');
   }
+  await migrateToSharedBudgets(database);
+  await migrateBudgetItemCategories(database);
   await database.execAsync('DROP TABLE IF EXISTS recurring_income');
   await database.withTransactionAsync(async () => {
     let defaultAccount = await database.getFirstAsync<{ id: number }>(
@@ -468,16 +474,5 @@ export async function initializeDatabase(database: BrowserDatabase) {
   await database.execAsync('CREATE INDEX IF NOT EXISTS transactions_account_id_idx ON transactions(account_id)');
   await database.execAsync('CREATE INDEX IF NOT EXISTS transfers_from_account_id_idx ON transfers(from_account_id)');
   await database.execAsync('CREATE INDEX IF NOT EXISTS transfers_to_account_id_idx ON transfers(to_account_id)');
-  await database.withTransactionAsync(async () => {
-    const legacyBudgets = await database.getFirstAsync<{ count: number }>(
-      'SELECT COUNT(*) AS count FROM budgets',
-    );
-    if ((legacyBudgets?.count ?? 0) > 0) {
-      await database.runAsync(
-        "INSERT INTO lists (title, items, budget_enabled) SELECT title, '[]', 1 FROM budgets",
-      );
-      await database.runAsync('DELETE FROM budgets');
-    }
-  });
   await installActivityTriggers(database);
 }

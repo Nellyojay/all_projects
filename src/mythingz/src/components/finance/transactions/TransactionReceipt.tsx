@@ -14,6 +14,9 @@ import { colors, styles } from '../../shared/theme';
 type ReceiptRecord = Transaction | Transfer;
 type ReceiptItem = { name: string; quantity: number; unitPrice: number };
 type BudgetAllocationOption = BudgetPeriodItem & {
+  budget_id: number;
+  period_item_id: number | null;
+  budget_type: 'normal' | 'recurring';
   template_name: string;
   start_date: string;
   end_date: string;
@@ -234,7 +237,7 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
         setBudgetOptions(options);
         setSavedAllocations(allocations);
         setAllocationAmounts(Object.fromEntries(
-          allocations.map((allocation) => [allocation.period_item_id, String(allocation.amount)]),
+          allocations.map((allocation) => [allocation.budget_item_id, String(allocation.amount)]),
         ));
         setAllocationsLoaded(true);
         setAllocationError(null);
@@ -255,7 +258,7 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
     event.preventDefault();
     const allocations = budgetOptions.flatMap((item) => {
       const amount = Number(allocationAmounts[item.id] ?? 0);
-      return amount > 0 ? [{ periodItemId: item.id, amount }] : [];
+      return amount > 0 ? [{ budgetItemId: item.id, amount }] : [];
     });
     const allocatedAmount = allocations.reduce((sum, allocation) => sum + allocation.amount, 0);
     if (allocatedAmount > transaction.amount) {
@@ -274,13 +277,16 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
       setAllocationSaving(false);
     }
     setSavedAllocations(allocations.flatMap((allocation) => {
-      const option = budgetOptions.find((item) => item.id === allocation.periodItemId);
+      const option = budgetOptions.find((item) => item.id === allocation.budgetItemId);
       return option ? [{
-        period_item_id: option.id,
+        period_item_id: option.period_item_id,
+        budget_item_id: option.id,
+        budget_id: option.budget_id,
         amount: allocation.amount,
         item_name: option.name,
         template_name: option.template_name,
         period_status: option.period_status,
+        budget_type: option.budget_type,
       }] : [];
     }));
     setShowAllocationForm(false);
@@ -469,7 +475,7 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
               ) : (
                 <>
                   {savedAllocations.length ? savedAllocations.map((allocation) => (
-                    <span key={allocation.period_item_id} style={receiptStyles.refundHint}>
+                    <span key={allocation.budget_item_id} style={receiptStyles.refundHint}>
                       {allocation.template_name} · {allocation.item_name}: {money(allocation.amount)}
                     </span>
                   )) : (

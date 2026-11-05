@@ -4,11 +4,13 @@ import { useDatabase } from '../../web/DatabaseProvider';
 import { ExpenseComposer } from '../../components/finance/transactions/ExpenseComposer';
 import { FinanceBalanceCard } from '../../components/finance/FinanceBalanceCard';
 import { RecurringBudgetManager } from '../../components/finance/budgets/RecurringBudgetManager';
+import { SharedBudgetManager } from '../../components/finance/budgets/SharedBudgetManager';
 import { TransactionReceipt } from '../../components/finance/transactions/TransactionReceipt';
 import { RecordComposer } from '../../components/records/RecordComposer';
 import { ActionPopup } from '../../components/shared/ActionPopup';
 import { ScreenHeader, SectionTitle } from '../../components/shared/ScreenHeader';
 import { colors, styles } from '../../components/shared/theme';
+import '../pages/RecurringBudgetsPage.css';
 import {
   localDateKey,
   getAccounts,
@@ -18,14 +20,12 @@ import {
   saveRecord,
   type Account,
   type ExpenseDraft,
-  type ListRecord,
   type Loan,
   type RecordDraft,
   type RecordKind,
   type Transfer,
   type Transaction,
 } from '../../services/database';
-import { FinanceBudgetLists, loadLists } from '../../components/lists/list';
 
 type FinanceSection = 'accounts' | 'transfers' | 'budgets' | 'loans' | 'transactions';
 
@@ -53,19 +53,18 @@ export default function FinancesScreen() {
   const [selectedTransaction, setSelectedTransaction] = useState<(Transaction | Transfer) | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transfers, setTransfers] = useState<Transfer[]>([]);
-  const [budgetLists, setBudgetLists] = useState<ListRecord[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [income, setIncome] = useState(0);
   const [expenses, setExpenses] = useState(0);
   const [availableBalance, setAvailableBalance] = useState(0);
   const [showBalance, setShowBalance] = useState(false);
   const [editingRecord, setEditingRecord] = useState<{ kind: RecordKind; draft: RecordDraft } | null>(null);
+  const [createBudgetRequested, setCreateBudgetRequested] = useState(false);
 
   const refresh = useCallback(async () => {
     const month = localDateKey().slice(0, 7);
     const [
       transactionRows,
-      listRows,
       loanRows,
       incomeTotal,
       expenseTotal,
@@ -77,7 +76,6 @@ export default function FinancesScreen() {
          FROM transactions LEFT JOIN accounts ON accounts.id = transactions.account_id
          ORDER BY transactions.date DESC, transactions.id DESC LIMIT 20`,
       ),
-      loadLists(database, { budgetOnly: true }),
       database.getAllAsync<Loan>(
         `SELECT loans.*,
           COALESCE(SUM(CASE WHEN transactions.kind = 'expense' THEN transactions.amount ELSE 0 END), 0) AS repaid
@@ -102,7 +100,6 @@ export default function FinancesScreen() {
     setTransactions(transactionRows);
     setAccounts(accountRows);
     setTransfers(transferRows);
-    setBudgetLists(listRows);
     setLoans(loanRows);
     setIncome(incomeTotal?.total ?? 0);
     setExpenses(expenseTotal?.total ?? 0);
@@ -164,17 +161,20 @@ export default function FinancesScreen() {
   const addAccount = () => {
     navigate('/space/finances/accounts/new');
   };
-  const addBudgetList = () => {
-    setEditingRecord({
-      kind: 'list',
-      draft: {
-        title: '',
-        category: 'Personal',
-        budgetEnabled: true,
-        listItems: [],
-      },
-    });
-    setComposer('list');
+  const openBudgetExpense = async (transactionId: number) => {
+    try {
+      const transaction = await database.getFirstAsync<Transaction>(
+        `SELECT transactions.*, accounts.name AS account_name
+         FROM transactions LEFT JOIN accounts ON accounts.id = transactions.account_id
+         WHERE transactions.id = ?`,
+        transactionId,
+      );
+      if (!transaction) throw new Error('This expense could not be found.');
+      setSelectedTransaction(transaction);
+    } catch (error) {
+      console.error('Unable to open unallocated budget expense', error);
+      window.alert(error instanceof Error ? error.message : 'The expense could not be opened.');
+    }
   };
   const addLoan = () => {
     setEditingRecord({
@@ -230,7 +230,7 @@ export default function FinancesScreen() {
         <div style={localStyles.segmented}>
           {([
             ['transactions', 'Transactions'],
-            ['budgets', 'Budgets', ` (${budgetLists.length})`],
+            ['budgets', 'Budgets', ''],
             ['loans', 'Loans', ` (${loans.length})`],
             ['transfers', 'Transfers', ` (${transfers.length})`],
           ] as const).map(([id, label, count]) => (
@@ -247,7 +247,7 @@ export default function FinancesScreen() {
           ))}
         </div><div style={localStyles.toolbar}>
           <span style={localStyles.sectionHeading}>
-            YOUR {section === 'budgets' ? 'BUDGET LISTS' : section.toUpperCase()}
+            YOUR {section === 'budgets' ? 'BUDGETS' : section.toUpperCase()}
           </span>
           {section === 'transactions' ? (
             <div style={localStyles.toolbarActions}>
@@ -263,7 +263,7 @@ export default function FinancesScreen() {
               triggerLabel="+ Create Budget"
               menuLabel="Choose budget type"
               actions={[
-                { label: 'Create normal budget', onSelect: addBudgetList },
+                { label: 'Create normal budget', onSelect: () => setCreateBudgetRequested(true) },
                 {
                   label: 'Create recurring budget',
                   onSelect: () => navigate('/space/finances/recurring-budgets'),
@@ -285,8 +285,8 @@ export default function FinancesScreen() {
         <input
           value={query}
           onChange={(event) => setQuery(event.currentTarget.value)}
-          placeholder={`Search ${section === 'budgets' ? 'budget lists' : section}…`}
-          aria-label={`Search ${section === 'budgets' ? 'budget lists' : section}`}
+          placeholder={`Search ${section === 'budgets' ? 'budgets' : section}…`}
+          aria-label={`Search ${section === 'budgets' ? 'budgets' : section}`}
           style={localStyles.search}
         />
         {section === 'transfers' ? (
@@ -328,8 +328,13 @@ export default function FinancesScreen() {
                 Manage reusable plans, periods, and expense allocations →
               </span>
             </button>
-            <SectionTitle title="ONE-TIME BUDGET LISTS" />
-            <FinanceBudgetLists lists={budgetLists} query={query} />
+            <SectionTitle title="NORMAL BUDGETS" />
+            <SharedBudgetManager
+              query={query}
+              createRequested={createBudgetRequested}
+              onCreateHandled={() => setCreateBudgetRequested(false)}
+              onOpenExpense={(transactionId) => void openBudgetExpense(transactionId)}
+            />
           </>
         ) : null}
         {section === 'loans' ? (

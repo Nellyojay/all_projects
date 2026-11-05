@@ -14,6 +14,7 @@ export type BrowserDatabase = {
   getAllAsync: <T>(sql: string, ...params: SqlParameter[]) => Promise<T[]>;
   getFirstAsync: <T>(sql: string, ...params: SqlParameter[]) => Promise<T | null>;
   withTransactionAsync: (task: () => Promise<void>) => Promise<void>;
+  createBackupAsync: (backupKey: string) => Promise<void>;
 };
 
 const storageName = 'mine-sqlite';
@@ -75,6 +76,53 @@ function wrapDatabase(database: SqlJsDatabase): BrowserDatabase {
   };
 
   const wrapper: BrowserDatabase = {
+    async createBackupAsync(backupKey: string) {
+      if (!backupKey || backupKey === storageKey) {
+        throw new Error('Choose a distinct name for the database backup.');
+      }
+      const bytes = database.export();
+      const storage = await openStorage();
+      try {
+        let created = false;
+        await new Promise<void>((resolve, reject) => {
+          const transaction = storage.transaction(storageObjectStoreName, 'readwrite');
+          const store = transaction.objectStore(storageObjectStoreName);
+          const request = store.get(backupKey);
+          request.onsuccess = () => {
+            if (request.result === undefined) {
+              store.put(bytes, backupKey);
+              created = true;
+            }
+          };
+          request.onerror = () => reject(request.error ?? new Error('Could not inspect the database backup.'));
+          transaction.oncomplete = () => resolve();
+          transaction.onerror = () => reject(transaction.error ?? new Error('Could not save the database backup.'));
+          transaction.onabort = () => reject(transaction.error ?? new Error('Saving the database backup was aborted.'));
+        });
+        const verified = await new Promise<Uint8Array>((resolve, reject) => {
+          const transaction = storage.transaction(storageObjectStoreName, 'readonly');
+          const request = transaction.objectStore(storageObjectStoreName).get(backupKey);
+          request.onsuccess = () => {
+            const value = request.result as ArrayBuffer | Uint8Array | undefined;
+            if (!value) {
+              reject(new Error('The database backup could not be verified.'));
+              return;
+            }
+            resolve(value instanceof Uint8Array ? value : new Uint8Array(value));
+          };
+          request.onerror = () => reject(request.error ?? new Error('Could not verify the database backup.'));
+        });
+        if (verified.length === 0) {
+          throw new Error('The saved database backup is empty and cannot be verified.');
+        }
+        if (created && (verified.length !== bytes.length
+          || verified.some((byte, index) => byte !== bytes[index]))) {
+          throw new Error('The saved database backup does not match the current database.');
+        }
+      } finally {
+        storage.close();
+      }
+    },
     async execAsync(sql: string) {
       database.exec(sql);
       await persistIfReady();

@@ -6,6 +6,8 @@ export function ItemizedItemsEditor({
   items,
   onItemsChange,
   showPricing = true,
+  showQuantity = true,
+  monochrome = false,
   showTotal = true,
   itemsLabel = 'LIST ITEMS',
   totalLabel = 'Total',
@@ -13,6 +15,8 @@ export function ItemizedItemsEditor({
   items: ItemizedItem[];
   onItemsChange: Dispatch<SetStateAction<ItemizedItem[]>>;
   showPricing?: boolean;
+  showQuantity?: boolean;
+  monochrome?: boolean;
   showTotal?: boolean;
   itemsLabel?: string;
   totalLabel?: string;
@@ -32,13 +36,17 @@ export function ItemizedItemsEditor({
       {showPricing ? (
         <div style={itemEditorStyles.itemColumnLabels}>
           <span style={Object.assign({}, itemEditorStyles.itemColumnLabel, itemEditorStyles.itemNameColumn)}>ITEM</span>
-          <span style={Object.assign({}, itemEditorStyles.itemColumnLabel, itemEditorStyles.itemQuantity)}>QTY</span>
-          <span style={Object.assign({}, itemEditorStyles.itemColumnLabel, itemEditorStyles.itemPrice)}>UNIT PRICE · UGX</span>
+          {showQuantity ? (
+            <span style={Object.assign({}, itemEditorStyles.itemColumnLabel, itemEditorStyles.itemQuantity)}>QTY</span>
+          ) : null}
+          <span style={Object.assign({}, itemEditorStyles.itemColumnLabel, itemEditorStyles.itemPrice)}>
+            {showQuantity ? 'UNIT PRICE · UGX' : 'AMOUNT · UGX'}
+          </span>
           <div style={itemEditorStyles.removeSpacer} />
         </div>
       ) : null}
       {items.map((item, index) => (
-        <div key={`itemized-item-${index}`} style={itemEditorStyles.itemRow}>
+        <div key={item.editorKey ?? `itemized-item-${index}`} style={itemEditorStyles.itemRow}>
           <input
             value={item.text}
             onChange={(event) => {
@@ -52,27 +60,32 @@ export function ItemizedItemsEditor({
           />
           {showPricing ? (
             <>
-              <input
-                value={item.quantity}
-                onChange={(event) => {
-                  const quantity = event.currentTarget.value;
-                  onItemsChange((current) => current.map((entry, entryIndex) =>
-                    entryIndex === index ? { ...entry, quantity } : entry,
-                  ));
-                }}
-                aria-label={`Quantity for item ${index + 1}`}
-                placeholder="1" inputMode="numeric"
-                style={Object.assign({}, itemEditorStyles.input, itemEditorStyles.itemQuantity)}
-              />
+              {showQuantity ? (
+                <input
+                  value={item.quantity}
+                  onChange={(event) => {
+                    const quantity = event.currentTarget.value;
+                    onItemsChange((current) => current.map((entry, entryIndex) =>
+                      entryIndex === index ? { ...entry, quantity } : entry,
+                    ));
+                  }}
+                  aria-label={`Quantity for item ${index + 1}`}
+                  placeholder="1" inputMode="numeric"
+                  style={Object.assign({}, itemEditorStyles.input, itemEditorStyles.itemQuantity)}
+                />
+              ) : null}
               <input
                 value={item.price}
+                type={showQuantity ? 'text' : 'number'}
+                min={showQuantity ? undefined : '0'}
+                step={showQuantity ? undefined : '1'}
                 onChange={(event) => {
                   const price = event.currentTarget.value;
                   onItemsChange((current) => current.map((entry, entryIndex) =>
                     entryIndex === index ? { ...entry, price } : entry,
                   ));
                 }}
-                aria-label={`Unit price for item ${index + 1}`}
+                aria-label={`${showQuantity ? 'Unit price' : 'Allocation'} for item ${index + 1}`}
                 placeholder="0" inputMode="decimal"
                 style={Object.assign({}, itemEditorStyles.input, itemEditorStyles.itemPrice)}
               />
@@ -92,9 +105,11 @@ export function ItemizedItemsEditor({
       <button
         type="button"
         onClick={() => onItemsChange((current) => [...current, createEmptyItemizedItem()])}
-        style={itemEditorStyles.addItem}
+        style={Object.assign({}, itemEditorStyles.addItem, monochrome && itemEditorStyles.monochromeAddItem)}
       >
-        <span style={itemEditorStyles.addItemText}>＋  Add item</span>
+        <span style={Object.assign({}, itemEditorStyles.addItemText, monochrome && itemEditorStyles.monochromeAddItemText)}>
+          ＋  Add item
+        </span>
       </button>
       {showTotal ? (
         <span style={itemEditorStyles.listTotal}>
@@ -158,6 +173,8 @@ const itemEditorStyles = {
     marginTop: 2,
   },
   addItemText: { color: colors.ink, fontSize: 10, fontWeight: '700' },
+  monochromeAddItem: { backgroundColor: '#222222', border: '1px solid #303030' },
+  monochromeAddItemText: { color: colors.ink },
   listTotal: {
     display: 'block',
     color: colors.ink,

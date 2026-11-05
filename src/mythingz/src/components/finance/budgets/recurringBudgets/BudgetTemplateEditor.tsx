@@ -1,4 +1,8 @@
+import type { SetStateAction } from 'react';
 import type { BudgetRecurrence, BudgetRollover } from '../../../../services/database';
+import { ItemizedItemsEditor } from '../../../lists/itemizedItems';
+import type { ItemizedItem } from '../../../lists/itemizedItemsModel';
+import { BudgetGeneralFields } from '../BudgetGeneralFields';
 import { blankItem, type TemplateDraft } from './RecurringBudgetModels';
 import { budgetStyles } from './RecurringBudgetStyles';
 
@@ -11,6 +15,8 @@ type Props = {
   onCancel: () => void;
 };
 
+let nextTemplateItemKey = 0;
+
 export function BudgetTemplateEditor({
   draft,
   saving,
@@ -19,27 +25,45 @@ export function BudgetTemplateEditor({
   onSave,
   onCancel,
 }: Props) {
+  const itemizedItems = draft.items.map((item, index) => ({
+    editorKey: item.editorKey ?? (item.id === undefined ? `new-${index}` : `saved-${item.id}`),
+    text: item.name,
+    done: false,
+    price: item.allocated_amount ? String(item.allocated_amount) : '',
+    quantity: '1',
+  }));
+  const updateItems = (action: SetStateAction<ItemizedItem[]>) => {
+    const next = typeof action === 'function' ? action(itemizedItems) : action;
+    const currentByKey = new Map(draft.items.map((item, index) => [
+      item.editorKey ?? (item.id === undefined ? `new-${index}` : `saved-${item.id}`),
+      item,
+    ]));
+    onChange({
+      ...draft,
+      items: next.map((item) => {
+        const key = item.editorKey ?? `template-${++nextTemplateItemKey}`;
+        const previous = currentByKey.get(key);
+        return {
+          ...(previous ?? blankItem()),
+          editorKey: key,
+          name: item.text,
+          allocated_amount: item.price.trim() ? Number(item.price.replace(/,/g, '')) : 0,
+        };
+      }),
+    });
+  };
+
   return (
     <div style={budgetStyles.card}>
-      <h3 style={budgetStyles.subheading}>{draft.id ? 'Edit budget template' : 'New budget template'}</h3>
-      <label style={budgetStyles.label}>NAME</label>
-      <input
-        value={draft.name}
-        maxLength={80}
-        onChange={(event) => onChange({ ...draft, name: event.currentTarget.value })}
-        placeholder="Daily personal budget"
-        style={budgetStyles.input}
-      />
-      <label style={budgetStyles.label}>DESCRIPTION · OPTIONAL</label>
-      <textarea
-        value={draft.description}
-        onChange={(event) => onChange({ ...draft, description: event.currentTarget.value })}
-        rows={2}
-        style={budgetStyles.input}
+      <BudgetGeneralFields
+        name={draft.name}
+        description={draft.description}
+        onNameChange={(name) => onChange({ ...draft, name })}
+        onDescriptionChange={(description) => onChange({ ...draft, description })}
       />
       <div style={budgetStyles.formGrid}>
         <label style={budgetStyles.label}>
-          RECURRENCE
+          Recurrence
           <select
             value={draft.recurrence}
             onChange={(event) => onChange({
@@ -54,7 +78,7 @@ export function BudgetTemplateEditor({
           </select>
         </label>
         <label style={budgetStyles.label}>
-          START DATE
+          Start date
           <input
             type="date"
             value={draft.startDate}
@@ -63,7 +87,7 @@ export function BudgetTemplateEditor({
           />
         </label>
         <label style={budgetStyles.label}>
-          END DATE · OPTIONAL
+          End date · optional
           <input
             type="date"
             value={draft.endDate}
@@ -73,7 +97,7 @@ export function BudgetTemplateEditor({
         </label>
         {draft.recurrence === 'weekly' ? (
           <label style={budgetStyles.label}>
-            WEEK STARTS
+            Week starts
             <select
               value={draft.weekStartDay}
               onChange={(event) => onChange({ ...draft, weekStartDay: Number(event.currentTarget.value) })}
@@ -85,79 +109,52 @@ export function BudgetTemplateEditor({
           </label>
         ) : null}
       </div>
-      <div style={budgetStyles.itemHeading}>
-        <h4 style={budgetStyles.subheading}>Budget items</h4>
-        <button
-          type="button"
-          onClick={() => onChange({ ...draft, items: [...draft.items, blankItem()] })}
-          style={budgetStyles.secondaryButton}
-        >
-          Add item
-        </button>
-      </div>
+      <ItemizedItemsEditor
+        items={itemizedItems}
+        onItemsChange={updateItems}
+        showQuantity={false}
+        monochrome
+        itemsLabel="BUDGET ITEMS"
+        totalLabel="Budget total"
+      />
       {draft.items.map((item, index) => (
-        <div key={item.id ?? `new-${index}`} style={budgetStyles.itemEditor}>
-          <input
-            value={item.name}
-            placeholder="Item name"
-            aria-label={`Budget item ${index + 1} name`}
-            onChange={(event) => onUpdateItem(index, { name: event.currentTarget.value })}
-            style={budgetStyles.input}
-          />
-          <input
-            type="number"
-            value={item.allocated_amount || ''}
-            placeholder="Allocate amount"
-            aria-label={`Budget allocation for ${item.name || `item ${index + 1}`}`}
-            onChange={(event) => onUpdateItem(index, {
-              allocated_amount: Number(event.currentTarget.value),
-            })}
-            style={budgetStyles.input}
-          />
-          <input
-            value={item.category}
-            placeholder="Category · optional"
-            aria-label={`Category for ${item.name || `item ${index + 1}`}`}
-            onChange={(event) => onUpdateItem(index, { category: event.currentTarget.value })}
-            style={budgetStyles.input}
-          />
-          <select
-            value={item.rollover}
-            aria-label={`Rollover preference for ${item.name || `item ${index + 1}`}`}
-            onChange={(event) => onUpdateItem(index, {
-              rollover: event.currentTarget.value as BudgetRollover,
-            })}
-            style={budgetStyles.input}
-          >
-            <option value="reset">Reset</option>
-            <option value="carry">Carry forward</option>
-            <option value="save">Save separately</option>
-          </select>
-          <input
-            value={item.alert_thresholds.join(',')}
-            aria-label={`Alert percentages for ${item.name || `item ${index + 1}`}`}
-            placeholder="50,75,90,100"
-            onChange={(event) => onUpdateItem(index, {
-              alert_thresholds: event.currentTarget.value
-                .split(',')
-                .map((threshold) => Number(threshold.trim()))
-                .filter(Number.isFinite),
-            })}
-            style={budgetStyles.input}
-          />
-          <button
-            type="button"
-            disabled={draft.items.length === 1}
-            aria-label={`Remove ${item.name || `item ${index + 1}`}`}
-            onClick={() => onChange({
-              ...draft,
-              items: draft.items.filter((_, itemIndex) => itemIndex !== index),
-            })}
-            style={budgetStyles.removeButton}
-          >
-            Remove
-          </button>
-        </div>
+        <details key={item.editorKey ?? item.id ?? `new-${index}`} style={budgetStyles.itemSettings}>
+          <summary style={budgetStyles.itemSettingsSummary}>
+            Item settings · {item.name || `Item ${index + 1}`}
+          </summary>
+          <div style={budgetStyles.itemSettingsFields}>
+            <label style={budgetStyles.label}>
+              Rollover
+              <select
+                value={item.rollover}
+                aria-label={`Rollover preference for ${item.name || `item ${index + 1}`}`}
+                onChange={(event) => onUpdateItem(index, {
+                  rollover: event.currentTarget.value as BudgetRollover,
+                })}
+                style={budgetStyles.input}
+              >
+                <option value="reset">Reset</option>
+                <option value="carry">Carry forward</option>
+                <option value="save">Save separately</option>
+              </select>
+            </label>
+            <label style={budgetStyles.label}>
+              Alert percentages
+              <input
+                value={item.alert_thresholds.join(',')}
+                aria-label={`Alert percentages for ${item.name || `item ${index + 1}`}`}
+                placeholder="50,75,90,100"
+                onChange={(event) => onUpdateItem(index, {
+                  alert_thresholds: event.currentTarget.value
+                    .split(',')
+                    .map((threshold) => Number(threshold.trim()))
+                    .filter(Number.isFinite),
+                })}
+                style={budgetStyles.input}
+              />
+            </label>
+          </div>
+        </details>
       ))}
       <div style={budgetStyles.formActions}>
         <button type="button" onClick={onCancel} style={budgetStyles.secondaryButton}>Cancel</button>
