@@ -3,7 +3,7 @@ import CalendarScreen from './mythingz/src/app/(tabs)/calendar';
 import FinancesScreen from './mythingz/src/app/(tabs)/finances';
 import HomeScreen from './mythingz/src/app/(tabs)/index';
 import OrganizeScreen from './mythingz/src/app/(tabs)/organize';
-import SearchScreen from './mythingz/src/app/pages/search';
+import SearchScreen from './mythingz/src/app/(tabs)/search';
 import RecordDetailsRoute from './mythingz/src/components/records/RecordDetailsRoute';
 import { CreateAccountPage } from './mythingz/src/components/finance/accounts/account';
 import SettingsScreen from './mythingz/src/app/pages/settings';
