@@ -1,0 +1,335 @@
+.organize-workspaceCard {
+  display: flex;
+  flex: 1;
+  min-width: 100px;
+  max-width: 120px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 8px;
+  border-radius: 12px;
+  background-color: #202020d2;
+  border: 1px solid #323232;
+  border-width: 1px;
+}
+
+.organize-comingCard {
+  opacity: 0.5;
+  background-color: #171717;
+}
+
+.organize-workspaceIcon {
+  color: #E5E5E5;
+  font-size: 17px;
+  margin-bottom: 7px;
+}
+
+.organize-workspaceTitle {
+  color: #F5F5F5;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.organize-workspaceCount {
+  color: #A3A3A3;
+  font-size: 9px;
+  margin-top: 3px;
+}
+
+.organize-toolbar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  margin-bottom: 10px;
+}
+
+.organize-sectionHeading {
+  color: #F5F5F5;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+}
+
+.organize-addButton {
+  background-color: #E5E5E5;
+  padding-block: 8px;
+  padding-inline: 12px;
+  border-radius: 7px;
+}
+
+.organize-addText {
+  color: #000000;
+  font-weight: 800;
+  font-size: 10px;
+}
+
+.organize-search {
+  height: 45px;
+  border-radius: 10px;
+  background-color: #202020d2;
+  padding-inline: 14px;
+  color: #F5F5F5;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.organize-segmented {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background-color: #202020d2;
+  border: 1px solid #323232;
+}
+
+.organize-segment {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  padding-block: 9px;
+  border-radius: 7px;
+}
+
+.organize-segmentActive {
+  background-color: #000000;
+}
+
+.organize-segmentText {
+  color: #A3A3A3;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.organize-segmentTextActive {
+  color: #F5F5F5;
+}
+
+.organize-recordTitle {
+  color: #F5F5F5;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.organize-categoryTag {
+  color: #E5E5E5;
+  font-size: 8px;
+  font-weight: 800;
+  background-color: #303030;
+  padding-inline: 9px;
+  padding-block: 5px;
+  border-radius: 7px;
+}
+
+.organize-bodyText {
+  color: #A3A3A3;
+  font-size: 10px;
+  line-height: 18px;
+  margin-top: 7px;
+  white-space: pre-wrap;
+}
+
+.organize-hint {
+  color: #A3A3A3;
+  font-size: 6px;
+  margin-top: auto;
+  padding-top: 9px;
+  font-weight: 700;
+}
+
+.organize-taskCard {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 9px;
+}
+
+.organize-checkButton {
+  display: flex;
+  width: 25px;
+  height: 25px;
+  align-items: center;
+  justify-content: center;
+}
+
+.organize-check {
+  width: 21px;
+  height: 21px;
+  border-width: 1.5px;
+  border-color: #E5E5E5;
+  border-radius: 5px;
+  color: #202020d2;
+  text-align: center;
+  font-size: 12px;
+  overflow: hidden;
+}
+
+.organize-checked {
+  background-color: #E5E5E5;
+  border-color: #E5E5E5;
+}
+
+.organize-strike {
+  text-decoration-line: line-through;
+  color: #A3A3A3;
+}
+
+.organize-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-block: 22px;
+}
+
+.organize-emptyTitle {
+  color: #F5F5F5;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.organize-recentLine {
+  padding-block: 8px;
+  color: #F5F5F5;
+  font-size: 11px;
+}
+
+.organize-formPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-bottom: 12px;
+}
+
+.organize-formLabel {
+  color: #A3A3A3;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+}
+
+.organize-textarea {
+  width: 100%;
+  min-height: 76px;
+  resize: vertical;
+  border-radius: 8px;
+  border: 1px solid #323232;
+  background-color: #000000;
+  color: #F5F5F5;
+  padding: 11px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.organize-formInput {
+  width: 100%;
+  min-height: 42px;
+  border-radius: 8px;
+  border: 1px solid #323232;
+  background-color: #000000;
+  color: #F5F5F5;
+  padding-inline: 11px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.organize-select {
+  min-height: 36px;
+  border-radius: 8px;
+  border: 1px solid #323232;
+  background-color: #000000;
+  color: #F5F5F5;
+  padding-inline: 10px;
+  font-size: 11px;
+}
+
+.organize-formRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.organize-inboxCard {
+  margin-bottom: 10px;
+}
+
+.organize-inboxMeta {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #A3A3A3;
+  font-size: 9px;
+  text-transform: capitalize;
+}
+
+.organize-captureContent {
+  margin: 10px 0;
+  color: #F5F5F5;
+  font-size: 12px;
+  line-height: 19px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.organize-actionRow {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.organize-smallAction {
+  border: 1px solid #323232;
+  border-radius: 7px;
+  background-color: #202020d2;
+  color: #F5F5F5;
+  padding: 7px 9px;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.organize-linkCandidates {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #323232;
+}
+
+.organize-candidateButton {
+  padding: 7px 0;
+  color: #E5E5E5;
+  font-size: 10px;
+  text-align: left;
+}
+
+.organize-reminderCard {
+  margin-bottom: 9px;
+}
+
+.organize-focusedReminder {
+  border-color: #E5E5E5;
+  box-shadow: 0 0 0 1px #E5E5E5;
+}
+
+.organize-activityCard {
+  margin-bottom: 8px;
+}
+
+.organize-activityButton {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  width: 100%;
+  text-align: left;
+}

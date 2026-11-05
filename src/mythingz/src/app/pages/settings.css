@@ -1,0 +1,96 @@
+.settings-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-block: 10px;
+}
+
+.settings-avatar {
+  display: flex;
+  width: 68px;
+  height: 68px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 17px;
+  background: #303030;
+}
+
+.settings-avatar-text {
+  color: #f5f5f5;
+  font-size: 23px;
+  font-weight: 800;
+}
+
+.settings-name {
+  margin-top: 12px;
+  color: #f5f5f5;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.settings-detail {
+  margin-top: 4px;
+  color: #a3a3a3;
+  font-size: 10px;
+  line-height: 18px;
+}
+
+.settings-row {
+  display: flex;
+  min-height: 68px;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #323232;
+}
+
+.settings-icon-box {
+  display: flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #303030;
+}
+
+.settings-icon {
+  color: #e5e5e5;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.settings-title {
+  display: block;
+  color: #f5f5f5;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.settings-chevron {
+  color: #a3a3a3;
+  font-size: 19px;
+}
+
+.settings-privacy {
+  display: block;
+  margin-block: 18px;
+  color: #a3a3a3;
+  font-size: 9px;
+  line-height: 17px;
+  text-align: center;
+}
+
+.settings-done {
+  display: flex;
+  min-height: 50px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #e5e5e5;
+}
+
+.settings-done-text {
+  color: #f5f5f5;
+  font-weight: 800;
+}

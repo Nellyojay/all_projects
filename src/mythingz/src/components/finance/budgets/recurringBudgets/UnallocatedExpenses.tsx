@@ -1,6 +1,6 @@
 import type { Transaction } from '../../../../services/database';
 import { money } from './RecurringBudgetUtils';
-import { budgetStyles } from './RecurringBudgetStyles';
+import './RecurringBudgetStyles.css';
 
 type UnallocatedExpense = Transaction & { unallocated_amount: number };
 
@@ -74,20 +74,20 @@ export function UnallocatedExpenses({
   }
 
   return (
-    <section style={budgetStyles.card}>
-      <h3 style={budgetStyles.subheading}>Unallocated expenses</h3>
+    <section className="recurring-budget-card">
+      <h3 className="recurring-budget-subheading">Unallocated expenses</h3>
       {expenses.length ? expenses.slice(0, 20).map((expense) => (
         <button
           key={expense.id}
           type="button"
           onClick={() => onOpenExpense(expense.id)}
-          style={budgetStyles.expenseButton}
+          className="recurring-budget-expense-button"
         >
           <span>{expense.title} · {expense.date} · {expense.category}</span>
           <strong>{money(expense.unallocated_amount)} unallocated</strong>
         </button>
       )) : (
-        <p style={budgetStyles.muted}>
+        <p className="recurring-budget-muted">
           Every eligible expense is fully allocated, or no expenses have been recorded.
         </p>
       )}

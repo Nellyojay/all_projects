@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import './BudgetGeneralFields.css';
 
 export function BudgetGeneralFields({
   name,
@@ -13,7 +13,7 @@ export function BudgetGeneralFields({
 }) {
   return (
     <>
-      <label style={fieldStyle}>
+      <label className="budget-general-field">
         Budget name
         <input
           required
@@ -21,38 +21,19 @@ export function BudgetGeneralFields({
           maxLength={80}
           onChange={(event) => onNameChange(event.currentTarget.value)}
           placeholder="Give your budget a name"
-          style={inputStyle}
+          className="budget-general-input"
         />
       </label>
-      <label style={fieldStyle}>
+      <label className="budget-general-field">
         Description · optional
         <textarea
           value={description}
           onChange={(event) => onDescriptionChange(event.currentTarget.value)}
           placeholder="Add a note about this budget"
           rows={2}
-          style={{ ...inputStyle, resize: 'vertical' }}
+          className="budget-general-input budget-general-textarea"
         />
       </label>
     </>
   );
 }
-
-const fieldStyle: CSSProperties = {
-  display: 'grid',
-  gap: 6,
-  color: '#A0A0A0',
-  fontSize: 13,
-};
-
-const inputStyle: CSSProperties = {
-  width: '100%',
-  boxSizing: 'border-box',
-  minHeight: 42,
-  padding: '10px 12px',
-  background: '#111',
-  border: '1px solid #303030',
-  borderRadius: 8,
-  color: '#FFF',
-  font: 'inherit',
-};

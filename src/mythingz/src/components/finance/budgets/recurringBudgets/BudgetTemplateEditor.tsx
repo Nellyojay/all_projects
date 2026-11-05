@@ -4,7 +4,7 @@ import { ItemizedItemsEditor } from '../../../lists/itemizedItems';
 import type { ItemizedItem } from '../../../lists/itemizedItemsModel';
 import { BudgetGeneralFields } from '../BudgetGeneralFields';
 import { blankItem, type TemplateDraft } from './RecurringBudgetModels';
-import { budgetStyles } from './RecurringBudgetStyles';
+import './RecurringBudgetStyles.css';
 
 type Props = {
   draft: TemplateDraft;
@@ -54,15 +54,15 @@ export function BudgetTemplateEditor({
   };
 
   return (
-    <div style={budgetStyles.card}>
+    <div className="recurring-budget-card">
       <BudgetGeneralFields
         name={draft.name}
         description={draft.description}
         onNameChange={(name) => onChange({ ...draft, name })}
         onDescriptionChange={(description) => onChange({ ...draft, description })}
       />
-      <div style={budgetStyles.formGrid}>
-        <label style={budgetStyles.label}>
+      <div className="recurring-budget-form-grid">
+        <label className="recurring-budget-label">
           Recurrence
           <select
             value={draft.recurrence}
@@ -70,38 +70,38 @@ export function BudgetTemplateEditor({
               ...draft,
               recurrence: event.currentTarget.value as BudgetRecurrence,
             })}
-            style={budgetStyles.input}
+            className="recurring-budget-input"
           >
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>
           </select>
         </label>
-        <label style={budgetStyles.label}>
+        <label className="recurring-budget-label">
           Start date
           <input
             type="date"
             value={draft.startDate}
             onChange={(event) => onChange({ ...draft, startDate: event.currentTarget.value })}
-            style={budgetStyles.input}
+            className="recurring-budget-input"
           />
         </label>
-        <label style={budgetStyles.label}>
+        <label className="recurring-budget-label">
           End date · optional
           <input
             type="date"
             value={draft.endDate}
             onChange={(event) => onChange({ ...draft, endDate: event.currentTarget.value })}
-            style={budgetStyles.input}
+            className="recurring-budget-input"
           />
         </label>
         {draft.recurrence === 'weekly' ? (
-          <label style={budgetStyles.label}>
+          <label className="recurring-budget-label">
             Week starts
             <select
               value={draft.weekStartDay}
               onChange={(event) => onChange({ ...draft, weekStartDay: Number(event.currentTarget.value) })}
-              style={budgetStyles.input}
+              className="recurring-budget-input"
             >
               {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
                 .map((day, index) => <option key={day} value={index}>{day}</option>)}
@@ -118,12 +118,12 @@ export function BudgetTemplateEditor({
         totalLabel="Budget total"
       />
       {draft.items.map((item, index) => (
-        <details key={item.editorKey ?? item.id ?? `new-${index}`} style={budgetStyles.itemSettings}>
-          <summary style={budgetStyles.itemSettingsSummary}>
+        <details key={item.editorKey ?? item.id ?? `new-${index}`} className="recurring-budget-item-settings">
+          <summary className="recurring-budget-item-settings-summary">
             Item settings · {item.name || `Item ${index + 1}`}
           </summary>
-          <div style={budgetStyles.itemSettingsFields}>
-            <label style={budgetStyles.label}>
+          <div className="recurring-budget-item-settings-fields">
+            <label className="recurring-budget-label">
               Rollover
               <select
                 value={item.rollover}
@@ -131,14 +131,14 @@ export function BudgetTemplateEditor({
                 onChange={(event) => onUpdateItem(index, {
                   rollover: event.currentTarget.value as BudgetRollover,
                 })}
-                style={budgetStyles.input}
+                className="recurring-budget-input"
               >
                 <option value="reset">Reset</option>
                 <option value="carry">Carry forward</option>
                 <option value="save">Save separately</option>
               </select>
             </label>
-            <label style={budgetStyles.label}>
+            <label className="recurring-budget-label">
               Alert percentages
               <input
                 value={item.alert_thresholds.join(',')}
@@ -150,19 +150,19 @@ export function BudgetTemplateEditor({
                     .map((threshold) => Number(threshold.trim()))
                     .filter(Number.isFinite),
                 })}
-                style={budgetStyles.input}
+                className="recurring-budget-input"
               />
             </label>
           </div>
         </details>
       ))}
-      <div style={budgetStyles.formActions}>
-        <button type="button" onClick={onCancel} style={budgetStyles.secondaryButton}>Cancel</button>
+      <div className="recurring-budget-form-actions">
+        <button type="button" onClick={onCancel} className="recurring-budget-secondary-button">Cancel</button>
         <button
           type="button"
           disabled={saving}
           onClick={onSave}
-          style={budgetStyles.primaryButton}
+          className="recurring-budget-primary-button"
         >
           {saving ? 'Saving…' : 'Save template'}
         </button>

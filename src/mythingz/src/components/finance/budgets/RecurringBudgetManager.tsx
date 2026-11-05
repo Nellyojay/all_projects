@@ -30,7 +30,7 @@ import { BudgetTemplateLibrary } from './recurringBudgets/BudgetTemplateLibrary'
 import { BudgetCreationModal } from './BudgetCreationModal';
 import { useTransactionReceipt } from '../transactions/useTransactionReceipt';
 import { blankTemplate, type TemplateDraft, type TemplateWithItems } from './recurringBudgets/RecurringBudgetModels';
-import { budgetStyles } from './recurringBudgets/RecurringBudgetStyles';
+import './recurringBudgets/RecurringBudgetStyles.css';
 import { UnallocatedExpenses } from './recurringBudgets/UnallocatedExpenses';
 
 type UnallocatedExpense = Transaction & { unallocated_amount: number };
@@ -330,13 +330,13 @@ export function RecurringBudgetManager({ dashboard = false }: { dashboard?: bool
             </button>
           </nav>
 
-          {error ? <p role="alert" style={budgetStyles.error}>{error}</p> : null}
+          {error ? <p role="alert" className="recurring-budget-error">{error}</p> : null}
           {draft ? (
             <BudgetCreationModal
               title={draft.id ? 'Edit budget template' : 'Create recurring budget'}
               onClose={() => setDraft(null)}
             >
-              {error ? <p role="alert" style={budgetStyles.error}>{error}</p> : null}
+              {error ? <p role="alert" className="recurring-budget-error">{error}</p> : null}
               <BudgetTemplateEditor
                 draft={draft}
                 saving={saving}
@@ -397,24 +397,24 @@ export function RecurringBudgetManager({ dashboard = false }: { dashboard?: bool
   }
 
   return (
-    <section style={budgetStyles.section} aria-label="Recurring budgets">
-      <div style={budgetStyles.headingRow}>
+    <section className="recurring-budget-section" aria-label="Recurring budgets">
+      <div className="recurring-budget-heading-row">
         <button
           type="button"
           onClick={createTemplate}
-          style={budgetStyles.primaryButton}
+          className="recurring-budget-primary-button"
         >
           + Create recurring budget
         </button>
       </div>
 
-      {error ? <p role="alert" style={budgetStyles.error}>{error}</p> : null}
+      {error ? <p role="alert" className="recurring-budget-error">{error}</p> : null}
       {draft ? (
         <BudgetCreationModal
           title={draft.id ? 'Edit budget template' : 'Create recurring budget'}
           onClose={() => setDraft(null)}
         >
-          {error ? <p role="alert" style={budgetStyles.error}>{error}</p> : null}
+          {error ? <p role="alert" className="recurring-budget-error">{error}</p> : null}
           <BudgetTemplateEditor
             draft={draft}
             saving={saving}
@@ -440,7 +440,7 @@ export function RecurringBudgetManager({ dashboard = false }: { dashboard?: bool
         renderPeriodAnalysis={renderPeriodAnalysis}
       />
 
-      <div style={budgetStyles.analysisGrid}>
+      <div className="recurring-budget-analysis-grid">
         <BudgetPeriodHistory
           periods={periods}
           currentPeriods={currentPeriods}

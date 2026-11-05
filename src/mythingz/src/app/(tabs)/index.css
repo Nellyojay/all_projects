@@ -1,0 +1,255 @@
+.home-eyebrow {
+  color: #A3A3A3;
+  font-size: 9px;
+  letter-spacing: 1.3px;
+  font-weight: 800;
+  margin-top: 8px;
+  margin-bottom: 12px;
+}
+
+.home-quickGrid {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.home-quickAction {
+  display: flex;
+  width: 48%;
+  min-height: 50px;
+  border-radius: 11px;
+  background-color: #202020d2;
+  border: 1px solid #323232;
+  justify-content: center;
+  border-width: 1px;
+  flex-direction: row;
+  align-items: center;
+  padding-inline: 8px;
+  gap: 10px;
+}
+
+.home-quickIcon {
+  font-size: 16px;
+  color: #E5E5E5;
+  font-weight: 800;
+}
+
+.home-quickLabel {
+  color: #F5F5F5;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.home-financeCard {
+  background-color: #202020d2;
+  border-color: #323232;
+  padding: 20px;
+}
+
+.home-metricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.home-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.home-metricValue {
+  color: #F5F5F5;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.home-budgetList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #323232;
+}
+
+.home-budgetRow {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-block: 5px;
+  text-align: left;
+}
+
+.home-budgetName {
+  color: #F5F5F5;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.home-attentionGroup {
+  display: flex;
+  flex-direction: column;
+  margin-top: 11px;
+  padding-top: 9px;
+  border-top: 1px solid #323232;
+}
+
+.home-attentionLabel {
+  color: #B8B8B8;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+}
+
+.home-attentionButton {
+  width: 100%;
+  padding-block: 8px;
+  color: #F5F5F5;
+  font-size: 11px;
+  text-align: left;
+}
+
+.home-scheduleRow {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.8fr) minmax(0, 2fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding-block: 10px;
+  text-align: left;
+  border-bottom: 1px solid #323232;
+}
+
+.home-scheduleDate {
+  color: #A3A3A3;
+  font-size: 9px;
+}
+
+.home-scheduleKind {
+  color: #E5E5E5;
+  font-size: 9px;
+  text-transform: capitalize;
+}
+
+.home-activityRow {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-block: 9px;
+  border-bottom: 1px solid #323232;
+}
+
+.home-activityButton {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  text-align: left;
+}
+
+.home-financeHeader {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.home-cardKicker {
+  color: #B8B8B8;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.home-spent {
+  color: #F5F5F5;
+  font-size: 22px;
+  font-weight: 800;
+  margin-top: 8px;
+}
+
+.home-budgetLine {
+  color: #B8B8B8;
+  font-size: 10px;
+  margin-top: 3px;
+}
+
+.home-financeMark {
+  color: #F5F5F5;
+  font-size: 23px;
+  font-weight: 700;
+}
+
+.home-listLine {
+  color: #F5F5F5;
+  font-size: 12px;
+  padding-block: 8px;
+}
+
+.home-muted {
+  color: #A3A3A3;
+  font-size: 11px;
+  line-height: 19px;
+}
+
+.home-previewRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding-block: 8px;
+  gap: 12px;
+}
+
+.home-previewText {
+  flex: 1;
+}
+
+.home-eventIcon {
+  color: #B8B8B8;
+  font-size: 18px;
+  width: 26px;
+  text-align: center;
+}
+
+.home-noteIcon {
+  color: #E5E5E5;
+  font-size: 18px;
+  width: 26px;
+  text-align: center;
+}
+
+.home-recordTitle {
+  color: #F5F5F5;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.home-transactionRow {
+  display: flex;
+  width: 100%;
+  flex-direction: row;
+  align-items: center;
+  gap: 11px;
+  padding-block: 8px;
+  text-align: left;
+  color: #F5F5F5;
+  background-color: transparent;
+  border: 0px;
+  cursor: pointer;
+}
+
+.home-transactionIcon {
+  display: flex;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background-color: #303030;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-income {
+  color: #E5E5E5;
+}

@@ -4,7 +4,8 @@ import { useDatabase } from '../../web/DatabaseProvider';
 import { UpcomingEventRow } from '../../components/calendar/UpcomingEventRow';
 import { RecordComposer } from '../../components/records/RecordComposer';
 import { ScreenHeader, SectionTitle } from '../../components/shared/ScreenHeader';
-import { colors, styles } from '../../components/shared/theme';
+import '../../components/shared/theme.css';
+import './calendar.css';
 import {
   deleteRecord,
   saveRecord,
@@ -80,33 +81,33 @@ export default function CalendarScreen() {
     });
   };
   return (
-    <div style={styles.screen}>
-      <div style={styles.scrollContent}>
+    <div className="app-screen">
+      <div className="app-scroll-content">
         <ScreenHeader
           title="Calendar"
           subtitle="The moments and plans that make up your days"
           action={{ label: '+', onPress: () => setComposer('event') }}
         />
-        <div style={Object.assign({}, styles.panel, localStyles.calendarPanel)}>
-          <div style={localStyles.monthHeader}>
-            <span style={localStyles.monthTitle}>
+        <div className="app-panel calendar-panel">
+          <div className="calendar-month-header">
+            <span className="calendar-month-title">
               {shownMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
             </span>
-            <div style={localStyles.monthActions}>
-              <button onClick={() => changeMonth(-1)} style={localStyles.monthButton}>
-                <span style={localStyles.monthButtonText}>‹</span>
+            <div className="calendar-month-actions">
+              <button onClick={() => changeMonth(-1)} className="calendar-month-button">
+                <span className="calendar-month-button-text">‹</span>
               </button>
-              <button onClick={() => changeMonth(1)} style={localStyles.monthButton}>
-                <span style={localStyles.monthButtonText}>›</span>
+              <button onClick={() => changeMonth(1)} className="calendar-month-button">
+                <span className="calendar-month-button-text">›</span>
               </button>
             </div>
           </div>
-          <div style={localStyles.grid}>
+          <div className="calendar-grid">
             {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
-              <span key={`${day}-${index}`} style={localStyles.weekday}>{day}</span>
+              <span key={`${day}-${index}`} className="calendar-weekday">{day}</span>
             ))}
             {days.map((day, index) => {
-              if (day === null) return <div key={`blank-${index}`} style={localStyles.dayCell} />;
+              if (day === null) return <div key={`blank-${index}`} className="calendar-day-cell" />;
               const date = new Date(shownMonth.getFullYear(), shownMonth.getMonth(), day);
               const key = dateKey(date);
               const hasEvent = events.some((event) => event.date === key);
@@ -117,10 +118,10 @@ export default function CalendarScreen() {
                   key={key}
                   onClick={() => setSelectedDate(key)}
                   type="button" aria-label={`${date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}${hasEvent ? ', event' : ''}`}
-                  style={Object.assign({}, localStyles.dayCell, isSelected && localStyles.selectedDay, isToday && !isSelected && localStyles.today)}
+                  className={`calendar-day-cell${isSelected ? ' calendar-day-cell--selected' : ''}${isToday && !isSelected ? ' calendar-day-cell--today' : ''}`}
                 >
-                  <span style={Object.assign({}, localStyles.dayText, isSelected && localStyles.selectedDayText)}>{day}</span>
-                  {hasEvent ? <div style={Object.assign({}, localStyles.eventDot, isSelected && localStyles.selectedDot)} /> : null}
+                  <span className={`calendar-day-text${isSelected ? ' calendar-day-text--selected' : ''}`}>{day}</span>
+                  {hasEvent ? <div className={`calendar-event-dot${isSelected ? ' calendar-event-dot--selected' : ''}`} /> : null}
                 </button>
               );
             })}
@@ -139,28 +140,28 @@ export default function CalendarScreen() {
               pointerEvent.preventDefault();
               remove(event);
             }}
-            style={Object.assign({}, styles.panel, localStyles.eventCard)}
+            className="app-panel calendar-event-card"
           >
-            <div style={localStyles.eventAccent} />
-            <div style={localStyles.eventContent}>
-              <span style={localStyles.eventCategory}>{event.category.toUpperCase()}</span>
-              <span style={localStyles.eventTitle}>{event.title}</span>
-              {event.notes ? <span style={localStyles.eventNotes}>{event.notes}</span> : null}
-              <span style={localStyles.eventHint}>Hold to delete</span>
+            <div className="calendar-event-accent" />
+            <div className="calendar-event-content">
+              <span className="calendar-event-category">{event.category.toUpperCase()}</span>
+              <span className="calendar-event-title">{event.title}</span>
+              {event.notes ? <span className="calendar-event-notes">{event.notes}</span> : null}
+              <span className="calendar-event-hint">Hold to delete</span>
             </div>
           </button>
         )) : (
-          <div style={Object.assign({}, styles.panel, localStyles.empty)}>
-            <span style={localStyles.emptyIcon}>◷</span>
-            <span style={localStyles.eventTitle}>A little room in the day</span>
-            <span style={localStyles.eventNotes}>No events on this date. Add an appointment, birthday, or reminder.</span>
-            <button onClick={() => setComposer('event')} style={localStyles.addButton}>
-              <span style={localStyles.addButtonText}>＋  Create event</span>
+          <div className="app-panel calendar-empty">
+            <span className="calendar-empty-icon">◷</span>
+            <span className="calendar-event-title">A little room in the day</span>
+            <span className="calendar-event-notes">No events on this date. Add an appointment, birthday, or reminder.</span>
+            <button onClick={() => setComposer('event')} className="calendar-add-button">
+              <span className="calendar-add-button-text">＋  Create event</span>
             </button>
           </div>
         )}
         <SectionTitle title="COMING UP" />
-        <div style={styles.panel}>
+        <div className="app-panel">
           {upcomingEvents.length ? (
             upcomingEvents.map((event) => (
               <UpcomingEventRow
@@ -169,7 +170,7 @@ export default function CalendarScreen() {
                 onClick={() => navigate(`/space/records/event/${event.id}`, { state: { from: location.pathname } })}
               />
             ))
-          ) : <span style={localStyles.eventNotes}>Your upcoming events will appear here.</span>}
+          ) : <span className="calendar-event-notes">Your upcoming events will appear here.</span>}
         </div>
       </div>
       <RecordComposer
@@ -186,148 +187,3 @@ export default function CalendarScreen() {
     </div>
   );
 }
-
-const localStyles = {
-  calendarPanel: {
-    padding: 17,
-  },
-  monthHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  monthTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.ink,
-  },
-  monthActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  monthButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  monthButtonText: {
-    color: colors.ink,
-    fontSize: 21,
-    lineHeight: '26px',
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  weekday: {
-    width: `${100 / 7}%`,
-    height: 30,
-    textAlign: 'center',
-    color: colors.muted,
-    fontSize: 9,
-    fontWeight: '800',
-  },
-  dayCell: {
-    position: 'relative',
-    width: `${100 / 7}%`,
-    height: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 10,
-  },
-  dayText: {
-    color: colors.ink,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  selectedDay: {
-    backgroundColor: colors.green,
-  },
-  selectedDayText: {
-    color: colors.surface,
-    fontWeight: '800',
-  },
-  today: {
-    borderStyle: 'solid',
-    borderWidth: 2,
-    borderColor: colors.line,
-  },
-  eventDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 5,
-    backgroundColor: colors.orange,
-    position: 'absolute',
-    bottom: 4,
-    left: '50%',
-    transform: 'translateX(-50%)',
-  },
-  selectedDot: {
-    backgroundColor: colors.yellow,
-  },
-  eventCard: {
-    flexDirection: 'row',
-    gap: 13,
-    marginBottom: 10,
-    overflow: 'hidden',
-  },
-  eventAccent: {
-    width: 4,
-    borderRadius: 5,
-    backgroundColor: colors.orange,
-  },
-  eventContent: {
-    flex: 1,
-  },
-  eventCategory: {
-    fontSize: 9,
-    color: colors.orange,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-  },
-  eventTitle: {
-    fontSize: 13,
-    color: colors.ink,
-    fontWeight: '800',
-    marginTop: 4,
-  },
-  eventNotes: {
-    color: colors.muted,
-    fontSize: 10,
-    lineHeight: '18px',
-    marginTop: 4,
-  },
-  eventHint: {
-    color: colors.muted,
-    fontSize: 9,
-    marginTop: 8,
-  },
-  eventSymbol: {
-    color: colors.yellow,
-    fontSize: 19,
-  },
-  empty: {
-    alignItems: 'center',
-    paddingBlock: 12,
-  },
-  emptyIcon: {
-    color: colors.green,
-    fontSize: 28,
-  },
-  addButton: {
-    backgroundColor: colors.greenSoft,
-    paddingInline: 15,
-    paddingBlock: 10,
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  addButtonText: {
-    color: colors.green,
-    fontSize: 11,
-    fontWeight: '800',
-  },
-} as const

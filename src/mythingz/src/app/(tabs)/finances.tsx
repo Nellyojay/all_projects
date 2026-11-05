@@ -9,7 +9,9 @@ import { TransactionReceipt } from '../../components/finance/transactions/Transa
 import { RecordComposer } from '../../components/records/RecordComposer';
 import { ActionPopup } from '../../components/shared/ActionPopup';
 import { ScreenHeader, SectionTitle } from '../../components/shared/ScreenHeader';
-import { colors, styles } from '../../components/shared/theme';
+import { colors } from '../../components/shared/theme';
+import '../../components/shared/theme.css';
+import './finances.css';
 import '../pages/RecurringBudgetsPage.css';
 import {
   localDateKey,
@@ -210,8 +212,8 @@ export default function FinancesScreen() {
       .toLowerCase().includes(query.toLowerCase()),
   ), [transfers, query]);
   return (
-    <div style={styles.screen}>
-      <div style={styles.scrollContent}>
+    <div className="app-screen">
+      <div className="app-scroll-content">
         <ScreenHeader
           title="Finances"
           subtitle={new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
@@ -227,7 +229,7 @@ export default function FinancesScreen() {
         />
 
         <SectionTitle title="YOUR FINANCE TOOLS" />
-        <div style={localStyles.segmented}>
+        <div className="finance-segmented">
           {([
             ['transactions', 'Transactions'],
             ['budgets', 'Budgets', ''],
@@ -238,24 +240,24 @@ export default function FinancesScreen() {
               key={id}
               type="button"
               onClick={() => { setSection(id); setQuery(''); }}
-              style={Object.assign({}, localStyles.segment, section === id && localStyles.segmentActive)}
+              className={`finance-segment${section === id ? ' finance-segment--active' : ''}`}
             >
-              <span style={Object.assign({}, localStyles.segmentText, section === id && localStyles.segmentTextActive)}>
+              <span className={`finance-segment-text${section === id ? ' finance-segment-text--active' : ''}`}>
                 {label}{count ?? ''}
               </span>
             </button>
           ))}
-        </div><div style={localStyles.toolbar}>
-          <span style={localStyles.sectionHeading}>
+        </div><div className="finance-toolbar">
+          <span className="finance-section-heading">
             YOUR {section === 'budgets' ? 'BUDGETS' : section.toUpperCase()}
           </span>
           {section === 'transactions' ? (
-            <div style={localStyles.toolbarActions}>
-              <button type="button" onClick={() => setComposer('income')} style={localStyles.addButton}>
-                <span style={localStyles.addText}>+ Add Income</span>
+            <div className="finance-toolbar-actions">
+              <button type="button" onClick={() => setComposer('income')} className="finance-add-button">
+                <span className="finance-add-text">+ Add Income</span>
               </button>
-              <button type="button" onClick={() => setExpenseComposerOpen(true)} style={localStyles.addButton}>
-                <span style={localStyles.addText}>+ Add Expense</span>
+              <button type="button" onClick={() => setExpenseComposerOpen(true)} className="finance-add-button">
+                <span className="finance-add-text">+ Add Expense</span>
               </button>
             </div>
           ) : section === 'budgets' ? (
@@ -274,9 +276,9 @@ export default function FinancesScreen() {
             <button
               type="button"
               onClick={section === 'loans' ? addLoan : () => setComposer('transfer')}
-              style={localStyles.addButton}
+              className="finance-add-button"
             >
-              <span style={localStyles.addText}>
+              <span className="finance-add-text">
                 + {section === 'loans' ? 'Add loan' : 'Transfer'}
               </span>
             </button>
@@ -287,30 +289,30 @@ export default function FinancesScreen() {
           onChange={(event) => setQuery(event.currentTarget.value)}
           placeholder={`Search ${section === 'budgets' ? 'budgets' : section}…`}
           aria-label={`Search ${section === 'budgets' ? 'budgets' : section}`}
-          style={localStyles.search}
+          className="finance-search"
         />
         {section === 'transfers' ? (
-          <div style={styles.panel}>
+          <div className="app-panel">
             {filteredTransfers.length ? filteredTransfers.map((transfer) => (
               <button
                 key={transfer.id}
                 type="button"
                 onClick={() => setSelectedTransaction(transfer)}
-                style={Object.assign({}, localStyles.transaction, localStyles.transactionButton)}
+                className="finance-transaction finance-transaction--button"
               >
-                <div style={localStyles.transactionIcon}>
+                <div className="finance-transaction-icon finance-transaction-icon--transfer">
                   <span style={{ color: colors.green }}>↔</span>
                 </div>
-                <div style={localStyles.transactionInfo}>
-                  <span style={localStyles.title}>
+                <div className="finance-transaction-info">
+                  <span className="finance-title">
                     {transfer.from_account_name} → {transfer.to_account_name}
                   </span>
-                  <span style={localStyles.secondary}>{transfer.date}</span>
+                  <span className="finance-secondary">{transfer.date}</span>
                 </div>
-                <span style={localStyles.amount}>{money(transfer.amount)}</span>
+                <span className="finance-amount">{money(transfer.amount)}</span>
               </button>
             )) : (
-              <span style={localStyles.secondary}>
+              <span className="finance-secondary">
                 Transfers between your accounts move money without changing your total balance.
               </span>
             )}
@@ -321,10 +323,10 @@ export default function FinancesScreen() {
             <button
               type="button"
               onClick={() => navigate('/space/finances/recurring-budgets')}
-              style={localStyles.recurringBudgetLink}
+              className="finance-recurring-budget-link"
             >
-              <span style={localStyles.recurringBudgetTitle}>Recurring budgets</span>
-              <span style={localStyles.secondary}>
+              <span className="finance-recurring-budget-title">Recurring budgets</span>
+              <span className="finance-secondary">
                 Manage reusable plans, periods, and expense allocations →
               </span>
             </button>
@@ -342,36 +344,36 @@ export default function FinancesScreen() {
             {filteredLoans.length ? filteredLoans.map((loan) => {
               const outstanding = Math.max(0, loan.principal + loan.fees - loan.repaid);
               return (
-                <div key={loan.id} style={Object.assign({}, styles.panel, localStyles.loanCard)}>
-                  <div style={localStyles.loanHeading}>
-                    <div style={localStyles.transactionInfo}>
-                      <span style={localStyles.title}>{loan.lender}</span>
-                      <span style={localStyles.secondary}>
+                <div key={loan.id} className="app-panel finance-loan-card">
+                  <div className="finance-loan-heading">
+                    <div className="finance-transaction-info">
+                      <span className="finance-title">{loan.lender}</span>
+                      <span className="finance-secondary">
                         Principal {money(loan.principal)} · fees {money(loan.fees)}
                       </span>
                       {loan.due_date ? (
-                        <span style={localStyles.secondary}>Due {loan.due_date}</span>
+                        <span className="finance-secondary">Due {loan.due_date}</span>
                       ) : null}
                     </div>
-                    <span style={localStyles.amount}>{money(outstanding)} due</span>
+                    <span className="finance-amount">{money(outstanding)} due</span>
                   </div>
-                  {loan.notes ? <span style={localStyles.secondary}>{loan.notes}</span> : null}
+                  {loan.notes ? <span className="finance-secondary">{loan.notes}</span> : null}
                   {outstanding > 0 ? (
                     <button
                       type="button" onClick={() => repayLoan(loan)}
-                      style={localStyles.repayButton}
+                      className="finance-repay-button"
                     >
-                      <span style={localStyles.repayButtonText}>Record repayment</span>
+                      <span className="finance-repay-button-text">Record repayment</span>
                     </button>
                   ) : (
-                    <span style={localStyles.secondary}>Paid in full</span>
+                    <span className="finance-secondary">Paid in full</span>
                   )}
                 </div>
               );
             }) : (
-              <div style={Object.assign({}, styles.panel, localStyles.emptyLoanCard)}>
-                <span style={localStyles.emptyTitle}>No loans recorded</span>
-                <span style={localStyles.secondary}>
+              <div className="app-panel finance-empty-loan-card">
+                <span className="finance-empty-title">No loans recorded</span>
+                <span className="finance-secondary">
                   Add a loan to include its unspent proceeds in your available balance.
                 </span>
               </div>
@@ -380,18 +382,15 @@ export default function FinancesScreen() {
         ) : null}
         {section === 'transactions' ? (
           <>
-            <div style={styles.panel}>
+            <div className="app-panel">
               {filteredTransactions.length ? filteredTransactions.map((transaction) => (
                 <button
                   key={transaction.id}
                   type="button"
                   onClick={() => setSelectedTransaction(transaction)}
-                  style={Object.assign({}, localStyles.transaction, localStyles.transactionButton)}
+                  className="finance-transaction finance-transaction--button"
                 >
-                  <div style={Object.assign({},
-                    localStyles.transactionIcon,
-                    transaction.kind === 'income' && transaction.loan_id === null && localStyles.incomeIcon,
-                  )}>
+                  <div className={`finance-transaction-icon${transaction.kind === 'income' && transaction.loan_id === null ? ' finance-transaction-icon--income' : ''}`}>
                     <span style={{
                       color: transaction.kind === 'income' && transaction.loan_id === null
                         ? colors.green
@@ -400,23 +399,20 @@ export default function FinancesScreen() {
                       {transaction.kind === 'expense' ? '↙' : transaction.loan_id !== null ? '↔' : '↗'}
                     </span>
                   </div>
-                  <div style={localStyles.transactionInfo}>
-                    <span style={localStyles.title}>{transaction.title}</span>
-                    <span style={localStyles.secondary}>
+                  <div className="finance-transaction-info">
+                    <span className="finance-title">{transaction.title}</span>
+                    <span className="finance-secondary">
                       {transaction.loan_id !== null ? 'Loan proceeds' : transaction.category}
                       {transaction.account_name ? ` · ${transaction.account_name}` : ''}
                       {' · '}{transaction.date}
                     </span>
                   </div>
-                  <span style={Object.assign({},
-                    localStyles.amount,
-                    transaction.kind === 'income' && transaction.loan_id === null && localStyles.income,
-                  )}>
+                  <span className={`finance-amount${transaction.kind === 'income' && transaction.loan_id === null ? ' finance-income' : ''}`}>
                     {transaction.kind === 'income' ? '+' : '−'}{money(transaction.amount)}
                   </span>
                 </button>
               )) : (
-                <span style={localStyles.secondary}>
+                <span className="finance-secondary">
                   Add an expense or income, or finalize a budget list to see transactions here.
                 </span>
               )}
@@ -424,16 +420,16 @@ export default function FinancesScreen() {
           </>
         ) : null}
         <SectionTitle title="MORE FINANCE TOOLS" />
-        <div style={localStyles.moduleGrid}>
+        <div className="finance-module-grid">
           {[
             ['◉', 'Savings goals', 'Coming soon'],
             ['▣', 'Bills', 'Coming soon'],
             ['⌁', 'Reports', 'Coming soon'],
           ].map(([icon, name, detail]) => (
-            <div key={name} style={localStyles.module}>
-              <span style={localStyles.moduleIcon}>{icon}</span>
-              <span style={localStyles.title}>{name}</span>
-              <span style={localStyles.secondary}>{detail}</span>
+            <div key={name} className="finance-module">
+              <span className="finance-module-icon">{icon}</span>
+              <span className="finance-title">{name}</span>
+              <span className="finance-secondary">{detail}</span>
             </div>
           ))}
         </div>
@@ -466,218 +462,3 @@ export default function FinancesScreen() {
     </div>
   );
 }
-
-const localStyles = {
-  workspaceCard: {
-    flex: 1,
-    minWidth: 100,
-    maxWidth: 120,
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 8,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
-    border: `1px solid ${colors.line}`,
-    borderWidth: 1,
-  },
-  workspaceIcon: {
-    color: colors.green,
-    fontSize: 17,
-    marginBottom: 7,
-  },
-  workspaceTitle: {
-    color: colors.ink,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  workspaceCount: {
-    color: colors.muted,
-    fontSize: 9,
-    marginTop: 3,
-  },
-  toolbar: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginTop: 8,
-    marginBottom: 10,
-  },
-  toolbarActions: {
-    display: 'flex',
-    flexDirection: 'row',
-    gap: 6,
-  },
-  sectionHeading: {
-    color: colors.ink,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.7,
-  },
-  addButton: {
-    backgroundColor: colors.green,
-    paddingBlock: 10,
-    paddingInline: 12,
-    borderRadius: 7,
-  },
-  addText: {
-    color: colors.background,
-    fontWeight: '800',
-    fontSize: 10,
-  },
-  search: {
-    height: 45,
-    borderRadius: 10,
-    backgroundColor: colors.surface,
-    paddingInline: 14,
-    color: colors.ink,
-    fontSize: 12,
-    marginBottom: 10,
-  },
-  segmented: {
-    display: 'flex',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    padding: 4,
-    borderRadius: 10,
-    backgroundColor: colors.surface,
-  },
-  segment: {
-    minWidth: 75,
-    alignItems: 'center',
-    paddingBlock: 6,
-    borderRadius: 7,
-    border: `1px solid ${colors.line}`,
-  },
-  segmentActive: {
-    backgroundColor: colors.background,
-  },
-  segmentText: {
-    color: colors.muted,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  segmentTextActive: {
-    color: colors.ink,
-  },
-  loanCard: {
-    marginBottom: 10,
-  },
-  loanHeading: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  title: {
-    color: colors.ink,
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  secondary: {
-    color: colors.muted,
-    fontSize: 10,
-    marginTop: 4,
-    lineHeight: '17px',
-  },
-  amount: {
-    color: colors.ink,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  repayButton: {
-    alignSelf: 'flex-start',
-    minHeight: 38,
-    justifyContent: 'center',
-    borderRadius: 7,
-    paddingInline: 13,
-    marginTop: 12,
-    backgroundColor: colors.greenSoft,
-  },
-  repayButtonText: {
-    color: colors.ink,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  emptyLoanCard: {
-    backgroundColor: colors.yellowSoft,
-    borderColor: colors.yellowSoft,
-  },
-  emptyTitle: {
-    color: colors.ink,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  recurringBudgetLink: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    width: '100%',
-    padding: 14,
-    marginBlock: 4,
-    borderRadius: 10,
-    border: `1px solid ${colors.line}`,
-    backgroundColor: colors.surface,
-    textAlign: 'left',
-    cursor: 'pointer',
-  },
-  recurringBudgetTitle: {
-    color: colors.ink,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  transaction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingBlock: 8,
-  },
-  transactionButton: {
-    display: 'flex',
-    width: '100%',
-    textAlign: 'left',
-    color: colors.ink,
-    backgroundColor: 'transparent',
-    border: 0,
-    cursor: 'pointer',
-  },
-  transactionIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: colors.orangeSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  incomeIcon: {
-    backgroundColor: colors.greenSoft,
-  },
-  transactionInfo: {
-    flex: 1,
-  },
-  income: {
-    color: colors.green,
-  },
-  moduleGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  module: {
-    width: '48%',
-    minHeight: 105,
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
-    borderColor: colors.line,
-    borderWidth: 1,
-  },
-  moduleIcon: {
-    color: colors.green,
-    fontSize: 17,
-    marginBottom: 7,
-  },
-} as const

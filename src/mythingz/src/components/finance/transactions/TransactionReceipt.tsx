@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { CSSProperties, FormEvent } from 'react';
+import type { FormEvent } from 'react';
 import { useDatabase } from '../../../web/DatabaseProvider';
 import {
   getBudgetItemsForExpenseDate,
@@ -9,7 +9,8 @@ import {
   saveTransactionBudgetAllocations,
 } from '../../../services/database';
 import type { BudgetPeriodItem, Transaction, Transfer } from '../../../services/database';
-import { colors, styles } from '../../shared/theme';
+import '../../shared/theme.css';
+import './TransactionReceipt.css';
 
 type ReceiptRecord = Transaction | Transfer;
 type ReceiptItem = { name: string; quantity: number; unitPrice: number };
@@ -331,40 +332,40 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
   };
 
   return (
-    <div style={receiptStyles.backdrop} className="receipt-modal" onClick={onClose}>
+    <div  className="receipt-modal transaction-receipt-backdrop" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="transaction-receipt-title"
-        style={receiptStyles.modalContent}
+        className="transaction-receipt-modalContent"
         onClick={(event) => event.stopPropagation()}
       >
-        <section id="mythings-transaction-receipt" style={receiptStyles.receipt}>
+        <section id="mythings-transaction-receipt" className="transaction-receipt-receipt">
           <button
             type="button"
             onClick={onClose}
             aria-label="Close transaction receipt"
-            className="receipt-close"
-            style={receiptStyles.closeButton}
+            className="receipt-close transaction-receipt-closeButton"
+
           >
             ×
           </button>
-          <header style={receiptStyles.header}>
-            <strong style={receiptStyles.brandName}>myThings</strong>
-            <span id="transaction-receipt-title" style={receiptStyles.receiptTitle}>
+          <header className="transaction-receipt-header">
+            <strong className="transaction-receipt-brandName">myThings</strong>
+            <span id="transaction-receipt-title" className="transaction-receipt-receiptTitle">
               Transaction Receipt
             </span>
           </header>
-          <div style={receiptStyles.divider} className="receipt-divider" />
-          <div style={receiptStyles.hero} className="receipt-hero">
-            <span style={receiptStyles.type}>{type.toUpperCase()}</span>
-            <h1 style={receiptStyles.amount}>
+          <div  className="receipt-divider transaction-receipt-divider" />
+          <div  className="receipt-hero transaction-receipt-hero">
+            <span className="transaction-receipt-type">{type.toUpperCase()}</span>
+            <h1 className="transaction-receipt-amount">
               UGX {Math.abs(transaction.amount).toLocaleString('en-UG')}
             </h1>
           </div>
-          <div style={receiptStyles.divider} className="receipt-divider" />
+          <div  className="receipt-divider transaction-receipt-divider" />
 
-          <div style={receiptStyles.details}>
+          <div className="transaction-receipt-details">
             <ReceiptRow
               label="Title:"
               value={isTransfer
@@ -385,7 +386,7 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
           </div>
 
           {!isTransfer && transaction.loan_id !== null ? (
-            <div style={receiptStyles.loanDetails} className="receipt-fees">
+            <div  className="receipt-fees transaction-receipt-loanDetails">
               {loanDetails ? (
                 <>
                   <ReceiptRow label="Loan principal:" value={money(loanDetails.principal)} />
@@ -402,7 +403,7 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
             </div>
           ) : null}
           {isTransfer && transaction.charges.length ? (
-            <div style={receiptStyles.loanDetails} className="receipt-fees">
+            <div  className="receipt-fees transaction-receipt-loanDetails">
               <strong>Transfer charges:</strong>
               {transaction.charges.map((charge, index) => (
                 <ReceiptRow
@@ -418,86 +419,86 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
             </div>
           ) : null}
 
-          <div style={receiptStyles.divider} className="receipt-divider" />
+          <div  className="receipt-divider transaction-receipt-divider" />
           {expenseNotes?.items.length ? (
-            <div style={receiptStyles.itemList} className="receipt-item-list">
+            <div  className="receipt-item-list transaction-receipt-itemList">
               <strong>Items:</strong>
-              <div style={receiptStyles.itemTable}>
-                <div style={receiptStyles.itemHeader} className="receipt-item-header">
+              <div className="transaction-receipt-itemTable">
+                <div  className="receipt-item-header transaction-receipt-itemHeader">
                   <span>Item</span>
-                  <span style={receiptStyles.itemNumeric}>Qty</span>
-                  <span style={receiptStyles.itemNumeric}>Unit price</span>
-                  <span style={receiptStyles.itemNumeric}>Total</span>
+                  <span className="transaction-receipt-itemNumeric">Qty</span>
+                  <span className="transaction-receipt-itemNumeric">Unit price</span>
+                  <span className="transaction-receipt-itemNumeric">Total</span>
                 </div>
                 {expenseNotes.items.map((item, index) => (
-                  <div key={`${item.name}-${index}`} style={receiptStyles.itemRow} className="receipt-item-row">
-                    <span style={receiptStyles.itemName}>{item.name}</span>
-                    <span style={receiptStyles.itemNumeric}>{item.quantity}</span>
-                    <span style={receiptStyles.itemNumeric}>{money(item.unitPrice)}</span>
-                    <span style={receiptStyles.itemNumeric}>{money(item.quantity * item.unitPrice)}</span>
+                  <div key={`${item.name}-${index}`}  className="receipt-item-row transaction-receipt-itemRow">
+                    <span className="transaction-receipt-itemName">{item.name}</span>
+                    <span className="transaction-receipt-itemNumeric">{item.quantity}</span>
+                    <span className="transaction-receipt-itemNumeric">{money(item.unitPrice)}</span>
+                    <span className="transaction-receipt-itemNumeric">{money(item.quantity * item.unitPrice)}</span>
                   </div>
                 ))}
               </div>
             </div>
           ) : null}
           {(expenseNotes?.description || (!isExpense && transaction.notes.trim())) ? (
-            <div style={receiptStyles.description} className="receipt-description">
+            <div  className="receipt-description transaction-receipt-description">
               <strong>Description:</strong>
               <span style={{ whiteSpace: 'pre-line' }}>
                 {expenseNotes?.description || transaction.notes}
               </span>
             </div>
           ) : null}
-          <div style={receiptStyles.divider} className="receipt-divider" />
-          <div style={receiptStyles.reference}>
+          <div  className="receipt-divider transaction-receipt-divider" />
+          <div className="transaction-receipt-reference">
             <strong>Transaction Reference:</strong>
             <strong>{reference}</strong>
           </div>
-          <div style={receiptStyles.divider} className="receipt-divider" />
+          <div  className="receipt-divider transaction-receipt-divider" />
 
-          <div style={receiptStyles.divider} className="receipt-divider" />
-          <footer style={receiptStyles.footer}>Thank you for using myThings!</footer>
-          <p style={receiptStyles.disclaimer} className="receipt-secondary">
+          <div  className="receipt-divider transaction-receipt-divider" />
+          <footer className="transaction-receipt-footer">Thank you for using myThings!</footer>
+          <p  className="receipt-secondary transaction-receipt-disclaimer">
             Personal transaction record; not verified by a bank or mobile-money provider.
           </p>
           <button
             type="button"
             onClick={printReceipt}
-            style={Object.assign({}, styles.button, styles.buttonTextOnly)}
+            className="app-button app-button--text-only"
           >
             Download Receipt
           </button>
           {isExpense ? (
-            <div style={receiptStyles.refundSection}>
+            <div className="transaction-receipt-refundSection">
               <strong>Budget allocation</strong>
               {allocationLoading ? (
-                <span style={receiptStyles.refundHint}>Loading budget items…</span>
+                <span className="transaction-receipt-refundHint">Loading budget items…</span>
               ) : (
                 <>
                   {savedAllocations.length ? savedAllocations.map((allocation) => (
-                    <span key={allocation.budget_item_id} style={receiptStyles.refundHint}>
+                    <span key={allocation.budget_item_id} className="transaction-receipt-refundHint">
                       {allocation.template_name} · {allocation.item_name}: {money(allocation.amount)}
                     </span>
                   )) : (
-                    <span style={receiptStyles.refundHint}>
+                    <span className="transaction-receipt-refundHint">
                       No budget allocation yet · {money(transaction.amount)} unallocated
                     </span>
                   )}
                   {savedAllocations.length ? (
-                    <span style={receiptStyles.refundHint}>
+                    <span className="transaction-receipt-refundHint">
                       {money(Math.max(0, transaction.amount - savedAllocations
                         .reduce((sum, allocation) => sum + allocation.amount, 0)))} remains unallocated.
                     </span>
                   ) : null}
                   {allocationsLocked ? (
-                    <span style={receiptStyles.refundError}>
+                    <span className="transaction-receipt-refundError">
                       Reopen the closed period or restore the budget period before changing these allocations.
                     </span>
                   ) : showAllocationForm ? (
-                    <form onSubmit={(event) => void submitBudgetAllocations(event)} style={receiptStyles.refundForm}>
+                    <form onSubmit={(event) => void submitBudgetAllocations(event)} className="transaction-receipt-refundForm">
                       <strong>Split this expense across budget items</strong>
                       {budgetOptions.length ? budgetOptions.map((item) => (
-                        <label key={item.id} style={receiptStyles.allocationRow}>
+                        <label key={item.id} className="transaction-receipt-allocationRow">
                           <span>{item.template_name} · {item.name}</span>
                           <input
                             type="number"
@@ -509,33 +510,33 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
                               [item.id]: event.currentTarget.value,
                             })}
                             aria-label={`Amount allocated to ${item.template_name} · ${item.name}`}
-                            style={receiptStyles.refundInput}
+                            className="transaction-receipt-refundInput"
                           />
                         </label>
                       )) : (
-                        <span style={receiptStyles.refundHint}>
+                        <span className="transaction-receipt-refundHint">
                           No open budget period covers this expense date.
                         </span>
                       )}
-                      <span style={receiptStyles.refundHint}>
+                      <span className="transaction-receipt-refundHint">
                         Allocated {money(budgetAllocatedTotal)} of {money(transaction.amount)}.
                         {' '}{money(Math.max(0, transaction.amount - budgetAllocatedTotal))} will remain unallocated.
                       </span>
                       {allocationError ? (
-                        <span role="alert" style={receiptStyles.refundError}>{allocationError}</span>
+                        <span role="alert" className="transaction-receipt-refundError">{allocationError}</span>
                       ) : null}
-                      <div style={receiptStyles.refundActions}>
+                      <div className="transaction-receipt-refundActions">
                         <button
                           type="button"
                           onClick={() => { setShowAllocationForm(false); setAllocationError(null); }}
-                          style={receiptStyles.refundCancel}
+                          className="transaction-receipt-refundCancel"
                         >
                           Cancel
                         </button>
                         <button
                           type="submit"
                           disabled={allocationSaving || !allocationsLoaded}
-                          style={receiptStyles.refundSave}
+                          className="transaction-receipt-refundSave"
                         >
                           {allocationSaving ? 'Saving…' : budgetAllocatedTotal === 0 ? 'Leave unallocated' : 'Save allocation'}
                         </button>
@@ -546,7 +547,7 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
                       type="button"
                       onClick={() => { setShowAllocationForm(true); setAllocationError(null); }}
                       disabled={!allocationsLoaded}
-                      style={receiptStyles.refundOpen}
+                      className="transaction-receipt-refundOpen"
                     >
                       {savedAllocations.length ? 'Edit budget allocation' : 'Allocate to a budget'}
                     </button>
@@ -554,16 +555,16 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
                 </>
               )}
               {allocationError && !showAllocationForm ? (
-                <span role="alert" style={receiptStyles.refundError}>{allocationError}</span>
+                <span role="alert" className="transaction-receipt-refundError">{allocationError}</span>
               ) : null}
             </div>
           ) : null}
           {isExpense && refundRemaining > 0 ? (
-            <div style={receiptStyles.refundSection}>
+            <div className="transaction-receipt-refundSection">
               {showRefundForm ? (
-                <form onSubmit={(event) => void submitRefund(event)} style={receiptStyles.refundForm}>
+                <form onSubmit={(event) => void submitRefund(event)} className="transaction-receipt-refundForm">
                   <strong>Record a refund</strong>
-                  <span style={receiptStyles.refundHint}>
+                  <span className="transaction-receipt-refundHint">
                     Up to {money(refundRemaining)} can be returned to {transaction.account_name || 'the original account'}.
                     Budget item allocations will be reversed proportionally.
                   </span>
@@ -576,14 +577,14 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
                     onChange={(event) => setRefundAmount(event.currentTarget.value)}
                     placeholder="Refund amount in UGX"
                     aria-label="Refund amount in UGX"
-                    style={receiptStyles.refundInput}
+                    className="transaction-receipt-refundInput"
                   />
-                  {refundError ? <span role="alert" style={receiptStyles.refundError}>{refundError}</span> : null}
-                  <div style={receiptStyles.refundActions}>
-                    <button type="button" onClick={() => setShowRefundForm(false)} style={receiptStyles.refundCancel}>
+                  {refundError ? <span role="alert" className="transaction-receipt-refundError">{refundError}</span> : null}
+                  <div className="transaction-receipt-refundActions">
+                    <button type="button" onClick={() => setShowRefundForm(false)} className="transaction-receipt-refundCancel">
                       Cancel
                     </button>
-                    <button type="submit" disabled={refundSaving || !refundAmount} style={receiptStyles.refundSave}>
+                    <button type="submit" disabled={refundSaving || !refundAmount} className="transaction-receipt-refundSave">
                       {refundSaving ? 'Saving…' : 'Save refund'}
                     </button>
                   </div>
@@ -592,14 +593,14 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
                 <button
                   type="button"
                   onClick={() => { setShowRefundForm(true); setRefundError(null); }}
-                  style={receiptStyles.refundOpen}
+                  className="transaction-receipt-refundOpen"
                 >
                   Record refund · {money(refundRemaining)} remaining
                 </button>
               )}
             </div>
           ) : isExpense && refundError ? (
-            <span role="alert" style={receiptStyles.refundError}>{refundError}</span>
+            <span role="alert" className="transaction-receipt-refundError">{refundError}</span>
           ) : null}
         </section>
       </div>
@@ -609,130 +610,9 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
 
 function ReceiptRow({ label, value }: { label: string; value: string }) {
   return (
-    <div style={receiptStyles.row} className="receipt-row">
-      <span style={receiptStyles.rowLabel}>{label}</span>
-      <span style={receiptStyles.rowValue}>{value}</span>
+    <div  className="receipt-row transaction-receipt-row">
+      <span className="transaction-receipt-rowLabel">{label}</span>
+      <span className="transaction-receipt-rowValue">{value}</span>
     </div>
   );
 }
-
-const receiptStyles = {
-  backdrop: {
-    position: 'fixed',
-    inset: 0,
-    zIndex: 1100,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflowY: 'auto',
-    paddingInline: 12,
-    backgroundColor: '#0009',
-    backdropFilter: 'blur(4px)',
-  },
-  modalContent: { width: '100%', maxWidth: 480 },
-  receipt: {
-    position: 'relative',
-    width: '100%',
-    maxHeight: 'calc(100dvh - 32px)',
-    overflowY: 'auto',
-    paddingInline: 18,
-    paddingBlock: 22,
-    color: colors.ink,
-    background: '#111',
-    border: `1px solid ${colors.line}`,
-    borderRadius: 12,
-    boxShadow: '0 20px 70px #0008',
-  },
-  header: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, marginBottom: 10 },
-  brandName: { fontSize: 18, fontWeight: '800', letterSpacing: -0.6 },
-  receiptTitle: { fontSize: 12, fontWeight: '700', letterSpacing: 0.3 },
-  closeButton: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    display: 'flex',
-    width: 30,
-    height: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 0,
-    color: colors.ink,
-    backgroundColor: '#202020',
-    border: `1px solid ${colors.line}`,
-    borderRadius: 8,
-    fontSize: 20,
-  },
-  divider: { borderTop: `1px solid ${colors.line}` },
-  hero: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, paddingBlock: 4 },
-  type: { fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  amount: { margin: 0, fontSize: 20, fontWeight: '800', letterSpacing: -0.6, textAlign: 'center' },
-  details: { display: 'flex', flexDirection: 'column', gap: 11, paddingBlock: 18 },
-  loanDetails: { display: 'flex', flexDirection: 'column', gap: 9, paddingBottom: 15 },
-  row: { display: 'flex', flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 },
-  rowLabel: { flex: '0 0 42%', color: colors.muted, fontSize: 11 },
-  rowValue: { maxWidth: '58%', textAlign: 'right', fontSize: 11, fontWeight: '700', overflowWrap: 'anywhere' },
-  itemList: { display: 'flex', flexDirection: 'column', gap: 10, paddingBlock: 15, fontSize: 11 },
-  itemTable: { display: 'flex', flexDirection: 'column', gap: 9 },
-  itemHeader: {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr) 38px 86px 86px',
-    gap: 8,
-    alignItems: 'end',
-    paddingBottom: 7,
-    borderBottom: `1px solid ${colors.line}`,
-    color: colors.muted,
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  itemRow: {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr) 38px 86px 86px',
-    gap: 8,
-    alignItems: 'start',
-    fontSize: 10,
-  },
-  itemName: { textAlign: 'left', overflowWrap: 'anywhere' },
-  itemNumeric: { textAlign: 'right', whiteSpace: 'nowrap' },
-  description: { display: 'flex', flexDirection: 'column', gap: 8, paddingBlock: 15, fontSize: 11, lineHeight: '17px', overflowWrap: 'anywhere' },
-  reference: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingBlock: 15,
-    fontSize: 11,
-    overflowWrap: 'anywhere',
-  },
-  totalRow: { display: 'flex', justifyContent: 'space-between', gap: 12, paddingTop: 5, fontSize: 13, fontWeight: '800' },
-  disclaimer: {
-    margin: '12px 0 0',
-    color: colors.muted,
-    textAlign: 'center',
-    fontSize: 9,
-    lineHeight: '14px',
-  },
-  footer: { paddingTop: 14, textAlign: 'center', fontSize: 11, fontWeight: '700' },
-  actionMessage: { display: 'block', marginTop: 9, color: colors.muted, textAlign: 'center', fontSize: 9 },
-  refundSection: { marginTop: 14 },
-  refundForm: { display: 'flex', flexDirection: 'column', gap: 8, padding: 12, border: `1px solid ${colors.line}`, borderRadius: 8, color: colors.ink, fontSize: 11 },
-  refundHint: { color: colors.muted, fontSize: 9, lineHeight: '15px' },
-  refundInput: { minHeight: 40, paddingInline: 10, border: `1px solid ${colors.line}`, borderRadius: 7, backgroundColor: colors.background, color: colors.ink, fontSize: 11 },
-  allocationRow: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(110px, 0.6fr)', alignItems: 'center', gap: 8, color: colors.ink, fontSize: 10 },
-  refundActions: { display: 'flex', flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
-  refundCancel: { minHeight: 34, paddingInline: 10, border: `1px solid ${colors.line}`, borderRadius: 6, backgroundColor: colors.surface, color: colors.muted, fontSize: 9 },
-  refundSave: { minHeight: 34, paddingInline: 10, border: 0, borderRadius: 6, backgroundColor: colors.green, color: colors.background, fontSize: 9, fontWeight: '700' },
-  refundOpen: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 38,
-    width: '100%',
-    marginTop: 12,
-    border: `1px solid ${colors.line}`,
-    borderRadius: 7,
-    backgroundColor: colors.surface,
-    color: colors.ink,
-    fontSize: 10,
-    fontWeight: '700'
-  },
-  refundError: { color: colors.orange, fontSize: 9 },
-} satisfies Record<string, CSSProperties>;

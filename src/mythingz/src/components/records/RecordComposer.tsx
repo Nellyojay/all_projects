@@ -11,10 +11,11 @@ import {
   type RecordDraft,
   type RecordKind,
 } from '../../services/database';
-import { colors, styles } from '../shared/theme';
+import '../shared/theme.css';
 import { AccountPicker } from '../finance/accounts/account';
 import { ListComposer } from '../lists/list';
 import { parseItemizedItems, type ItemizedItem } from '../lists/itemizedItemsModel';
+import './RecordComposer.css';
 
 export const MAX_TITLE_LENGTH = 32;
 
@@ -291,15 +292,15 @@ export function RecordComposer({
   if (!kind) return null;
 
   return (
-    <section className="record-composer-page" style={layoutStyles.backdrop} aria-label={titles[kind]}>
-      <div style={layoutStyles.sheet}>
-        <div style={layoutStyles.header}>
-          <h1 style={layoutStyles.heading}>{titles[kind]}</h1>
-          <button onClick={close} type="button" style={layoutStyles.closeButton}>
+    <section className="record-composer-page record-composer-backdrop"  aria-label={titles[kind]}>
+      <div className="record-composer-sheet">
+        <div className="record-composer-header">
+          <h1 className="record-composer-heading">{titles[kind]}</h1>
+          <button onClick={close} type="button" className="record-composer-closeButton">
             Cancel
           </button>
         </div>
-        <div style={layoutStyles.form}>
+        <div className="record-composer-form">
           {kind === 'note' ? (
             <>
               {editingNoteTitle ? (
@@ -310,14 +311,14 @@ export function RecordComposer({
                   onChange={(event) => setTitle(event.currentTarget.value)}
                   aria-label="Note title"
                   placeholder="Note title"
-                  style={layoutStyles.noteTitleInput}
+                  className="record-composer-noteTitleInput"
                 />
               ) : (
                 <button
                   type="button"
                   onClick={() => setEditingNoteTitle(true)}
                   aria-label="Edit note title"
-                  style={layoutStyles.noteTitlePreview}
+                  className="record-composer-noteTitlePreview"
                 >
                   {title || 'Add a title'}
                 </button>
@@ -327,12 +328,12 @@ export function RecordComposer({
                 onChange={(event) => setCategory(event.currentTarget.value)}
                 aria-label="Note category"
                 placeholder="Add a category (optional)"
-                style={layoutStyles.noteCategory}
+                className="record-composer-noteCategory"
               />
             </>
           ) : kind === 'transfer' ? null : (
             <>
-              <span style={layoutStyles.label}>
+              <span className="record-composer-label">
                 {kind === 'loan' ? 'LENDER / SOURCE' : kind === 'loan-repayment' ? 'PAYMENT' : 'TITLE'}
               </span>
               <input
@@ -341,13 +342,13 @@ export function RecordComposer({
                 value={title}
                 onChange={(event) => setTitle(event.currentTarget.value)}
                 placeholder={kind === 'loan' ? 'Bank, person, or source' : 'Give it a name'}
-                style={layoutStyles.input}
+                className="record-composer-input"
               />
             </>
           )}
           {kind === 'income' || kind === 'loan' || kind === 'loan-repayment' || kind === 'transfer' ? (
             <>
-              <span style={layoutStyles.label}>
+              <span className="record-composer-label">
                 {kind === 'loan'
                   ? 'PRINCIPAL · UGX'
                   : kind === 'loan-repayment' ? 'REPAYMENT · UGX' : 'AMOUNT · UGX'}
@@ -356,7 +357,7 @@ export function RecordComposer({
                 value={amount}
                 onChange={(event) => setAmount(event.currentTarget.value)}
                 placeholder="0" inputMode="decimal" readOnly={amountLocked}
-                style={layoutStyles.input}
+                className="record-composer-input"
               />
             </>
           ) : null}
@@ -388,7 +389,7 @@ export function RecordComposer({
                 label="TO ACCOUNT"
               />
               {transferCharges.length ? (
-                <div style={layoutStyles.transferCharges}>
+                <div className="record-composer-transferCharges">
                   <strong>Automatic transfer charges</strong>
                   {transferCharges.map((charge) => (
                     <span key={charge.label}>
@@ -406,34 +407,28 @@ export function RecordComposer({
           ) : null}
           {kind === 'loan' ? (
             <>
-              <span style={layoutStyles.label}>INTEREST / FEES · UGX</span>
+              <span className="record-composer-label">INTEREST / FEES · UGX</span>
               <input
                 value={fees}
                 onChange={(event) => setFees(event.currentTarget.value)}
                 placeholder="0" inputMode="decimal"
-                style={layoutStyles.input}
+                className="record-composer-input"
               />
             </>
           ) : null}
           {kind === 'income' ? (
             <>
-              <span style={layoutStyles.label}>CATEGORY</span>
-              <div style={styles.panelGrid}>
+              <span className="record-composer-label">CATEGORY</span>
+              <div className="app-panel-grid">
                 {INCOME_CATEGORIES.map((incomeCategory) => (
                   <button
                     key={incomeCategory}
                     type="button" aria-selected={category === incomeCategory}
                     onClick={() => setCategory(incomeCategory)}
-                    style={Object.assign({},
-                      layoutStyles.categoryOption,
-                      category === incomeCategory && layoutStyles.categoryOptionSelected,
-                    )}
+                    className={`record-composer-categoryOption${category === incomeCategory ? ' record-composer-categoryOptionSelected' : ''}`}
                   >
                     <span
-                      style={Object.assign({},
-                        layoutStyles.categoryOptionText,
-                        category === incomeCategory && layoutStyles.categoryOptionTextSelected,
-                      )}
+                      className={`record-composer-categoryOptionText${category === incomeCategory ? ' record-composer-categoryOptionTextSelected' : ''}`}
                     >
                       {incomeCategory}
                     </span>
@@ -444,36 +439,36 @@ export function RecordComposer({
           ) : kind !== 'list' && kind !== 'loan' && kind !== 'loan-repayment' &&
             kind !== 'transfer' && kind !== 'note' ? (
             <>
-              <span style={layoutStyles.label}>
+              <span className="record-composer-label">
                 {kind === 'task' ? 'PRIORITY' : kind === 'event' ? 'EVENT TYPE' : 'CATEGORY'}
               </span>
               <input
                 value={category}
                 onChange={(event) => setCategory(event.currentTarget.value)}
                 placeholder={kind ? categoryHints[kind] : ''}
-                style={layoutStyles.input}
+                className="record-composer-input"
               />
             </>
           ) : null}
           {kind === 'event' || kind === 'task' ? (
             <>
-              <span style={layoutStyles.label}>DATE · YYYY-MM-DD</span>
+              <span className="record-composer-label">DATE · YYYY-MM-DD</span>
               <input
                 value={date}
                 onChange={(event) => setDate(event.currentTarget.value)}
                 placeholder="YYYY-MM-DD"
-                style={layoutStyles.input} autoCapitalize="off"
+                className="record-composer-input" autoCapitalize="off"
               />
             </>
           ) : null}
           {kind === 'loan' ? (
             <>
-              <span style={layoutStyles.label}>DUE DATE · OPTIONAL · YYYY-MM-DD</span>
+              <span className="record-composer-label">DUE DATE · OPTIONAL · YYYY-MM-DD</span>
               <input
                 value={dueDate}
                 onChange={(event) => setDueDate(event.currentTarget.value)}
                 placeholder="YYYY-MM-DD"
-                style={layoutStyles.input} autoCapitalize="off"
+                className="record-composer-input" autoCapitalize="off"
               />
             </>
           ) : null}
@@ -496,7 +491,7 @@ export function RecordComposer({
                 onChange={(event) => setNotes(event.currentTarget.value)}
                 aria-label="Note body"
                 placeholder="Write your note here"
-                style={layoutStyles.noteBodyInput}
+                className="record-composer-noteBodyInput"
                 rows={6}
               />
             ) : (
@@ -504,19 +499,19 @@ export function RecordComposer({
                 type="button"
                 onClick={() => setEditingNoteBody(true)}
                 aria-label="Edit note body"
-                style={layoutStyles.noteBodyPreview}
+                className="record-composer-noteBodyPreview"
               >
                 {notes || 'Tap to write your note'}
               </button>
             )
           ) : (
             <>
-              <span style={layoutStyles.label}>DETAILS</span>
+              <span className="record-composer-label">DETAILS</span>
               <textarea
                 value={notes}
                 onChange={(event) => setNotes(event.currentTarget.value)}
                 placeholder="Add a note (optional)"
-                style={Object.assign({}, layoutStyles.input, layoutStyles.multiline)}
+                className="record-composer-input record-composer-multiline"
                 rows={4}
               />
             </>
@@ -524,221 +519,12 @@ export function RecordComposer({
           <button
             disabled={saving}
             onClick={submit}
-            type="button" style={Object.assign({}, layoutStyles.save, saving && layoutStyles.disabled)}
+            type="button" className={`record-composer-save${saving ? ' record-composer-disabled' : ''}`}
           >
-            <span style={layoutStyles.saveText}>{saving ? 'Saving…' : 'Save'}</span>
+            <span className="record-composer-saveText">{saving ? 'Saving…' : 'Save'}</span>
           </button>
         </div>
       </div>
     </section>
   );
 }
-
-const layoutStyles = {
-  backdrop: {
-    position: 'fixed',
-    inset: 0,
-    zIndex: 1000,
-    display: 'flex',
-    width: '100%',
-    minHeight: '100dvh',
-    overflowY: 'auto',
-    backgroundColor: colors.background,
-  },
-  sheet: {
-    width: '100%',
-    maxWidth: 960,
-    minHeight: '100dvh',
-    marginInline: 'auto',
-    backgroundColor: colors.background,
-    paddingInline: 12,
-    paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingBlock: 20,
-    marginBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.line,
-  },
-  heading: {
-    margin: 0,
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.ink,
-  },
-  closeButton: {
-    minHeight: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingInline: 14,
-    border: `1px solid ${colors.line}`,
-    borderRadius: 7,
-    backgroundColor: colors.surface,
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  form: {
-    width: '100%',
-    maxWidth: 760,
-    minHeight: 0,
-    marginInline: 'auto',
-    paddingBottom: 12,
-    paddingInline: 8,
-    overflowY: 'auto',
-  },
-  label: {
-    color: colors.muted,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1,
-    marginTop: 12,
-    marginBottom: 7,
-  },
-  advancedOptions: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 5,
-    marginTop: 16,
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: colors.surface,
-    border: `1px solid ${colors.line}`,
-  },
-  advancedSummary: {
-    color: colors.ink,
-    fontSize: 11,
-    fontWeight: '800',
-    paddingBlock: 5,
-  },
-  removeReceipt: {
-    alignSelf: 'flex-start',
-    color: colors.orange,
-    fontSize: 10,
-    fontWeight: '700',
-    paddingBlock: 6,
-  },
-  receiptError: {
-    color: colors.orange,
-    fontSize: 10,
-    marginTop: 3,
-  },
-  input: {
-    minHeight: 48,
-    borderRadius: 10,
-    borderColor: colors.line,
-    borderWidth: 1,
-    backgroundColor: colors.surface,
-    color: colors.ink,
-    paddingInline: 14,
-    fontSize: 13,
-  },
-  noteTitlePreview: {
-    display: 'block',
-    width: '100%',
-    border: 0,
-    padding: 0,
-    backgroundColor: 'transparent',
-    color: colors.ink,
-    fontSize: 18,
-    lineHeight: '32px',
-    fontWeight: '800',
-    textAlign: 'left',
-    fontFamily: 'inherit',
-  },
-  noteTitleInput: {
-    outline: 'none',
-    lineHeight: '32px',
-    fontWeight: '800',
-  },
-  noteCategory: {
-    display: 'block',
-    width: '100%',
-    outline: 'none',
-    border: 0,
-    padding: 0,
-    marginTop: 4,
-    backgroundColor: 'transparent',
-    color: colors.muted,
-    fontSize: 11,
-    fontFamily: 'inherit',
-  },
-  noteBodyPreview: {
-    display: 'block',
-    width: '100%',
-    minHeight: 120,
-    border: 0,
-    padding: 0,
-    marginTop: 14,
-    backgroundColor: 'transparent',
-    color: colors.ink,
-    fontSize: 13,
-    lineHeight: '23px',
-    textAlign: 'left',
-    whiteSpace: 'pre-wrap',
-    fontFamily: 'inherit',
-  },
-  noteBodyInput: {
-    width: '100%',
-    outline: 'none',
-    minHeight: 140,
-    marginTop: 40,
-    fontSize: 13,
-  },
-  transferCharges: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 6,
-    marginTop: 10,
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: colors.surface,
-    color: colors.ink,
-    fontSize: 11,
-  },
-  categoryOption: {
-    minHeight: 36,
-    minWidth: '30%',
-    flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    borderWidth: 1,
-    backgroundColor: colors.surface,
-  },
-  categoryOptionSelected: {
-    borderColor: colors.green,
-    backgroundColor: colors.greenSoft,
-  },
-  categoryOptionText: {
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  categoryOptionTextSelected: {
-    color: colors.green,
-  },
-  multiline: {
-    minHeight: 100,
-    paddingTop: 12,
-  },
-  save: {
-    minHeight: 52,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.green,
-    borderRadius: 11,
-    marginTop: 20,
-  },
-  saveText: {
-    color: colors.surface,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  disabled: {
-    opacity: 0.6,
-  },
-} as const;

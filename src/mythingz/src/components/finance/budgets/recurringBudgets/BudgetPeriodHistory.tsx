@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { localDateKey, type BudgetSummary } from '../../../../services/database';
 import { money, periodStatus } from './RecurringBudgetUtils';
-import { budgetStyles } from './RecurringBudgetStyles';
+import './RecurringBudgetStyles.css';
 
 type Props = {
   periods: BudgetSummary[];
@@ -47,11 +47,7 @@ export function BudgetPeriodHistory({
       type="button"
       aria-pressed={selectedPeriodId === period.id}
       onClick={() => onSelectPeriod(period.id)}
-      style={Object.assign(
-        {},
-        budgetStyles.periodButton,
-        selectedPeriodId === period.id && budgetStyles.periodSelected,
-      )}
+      className={`recurring-budget-period-button${selectedPeriodId === period.id ? ' recurring-budget-period-button--selected' : ''}`}
     >
       {past ? (
         <>
@@ -144,15 +140,15 @@ export function BudgetPeriodHistory({
   }
 
   return (
-    <section style={budgetStyles.card}>
-      <h3 style={budgetStyles.subheading}>Budget period history</h3>
+    <section className="recurring-budget-card">
+      <h3 className="recurring-budget-subheading">Budget period history</h3>
       {upcomingPeriods.length ? (
-        <div style={budgetStyles.periodList}>
+        <div className="recurring-budget-period-list">
           {upcomingPeriods.map((period) => periodButton(period))}
         </div>
-      ) : <p style={budgetStyles.muted}>No periods have been generated.</p>}
-      <h4 style={budgetStyles.subheading}>Past periods</h4>
-      <div style={budgetStyles.periodList}>
+      ) : <p className="recurring-budget-muted">No periods have been generated.</p>}
+      <h4 className="recurring-budget-subheading">Past periods</h4>
+      <div className="recurring-budget-period-list">
         {pastPeriods.map((period) => periodButton(period, true))}
       </div>
     </section>

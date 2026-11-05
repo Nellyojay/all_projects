@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
 import { RecordComposer } from '../../components/records/RecordComposer';
 import { ScreenHeader, SectionTitle } from '../../components/shared/ScreenHeader';
-import { colors, styles } from '../../components/shared/theme';
+import '../../components/shared/theme.css';
 import {
   convertInboxItem,
   createInboxItem,
@@ -34,6 +34,7 @@ import {
 } from '../../services/database';
 import { NoteCard } from '../../components/notes/note';
 import { loadLists, OrganizerLists } from '../../components/lists/list';
+import './organize.css';
 
 export type Section = 'Notes' | 'Tasks' | 'Lists' | 'Inbox' | 'Reminders' | 'Activity';
 const sectionKinds: Partial<Record<Section, RecordKind>> = {
@@ -383,10 +384,10 @@ export default function OrganizeScreen() {
     ? location.state.focusReminderId
     : null;
   return (
-    <div style={styles.screen}>
-      <div style={styles.scrollContent}>
+    <div className="app-screen">
+      <div className="app-scroll-content">
         <ScreenHeader title="Organize" subtitle="Your personal workspace" />
-        <div style={styles.panelGrid}>
+        <div className="app-panel-grid">
           {[
             { icon: '✎', title: 'Notes', count: `${notes.length} notes`, section: 'Notes' },
             { icon: '✓', title: 'Tasks', count: `${tasks.filter((task) => !task.completed).length} pending`, section: 'Tasks' },
@@ -398,56 +399,56 @@ export default function OrganizeScreen() {
             <button
               key={title}
               onClick={() => setSection(targetSection as Section)}
-              style={localStyles.workspaceCard}
+              className="organize-workspaceCard"
             >
-              <span style={localStyles.workspaceIcon}>{icon}</span>
-              <span style={localStyles.workspaceTitle}>{title}</span>
-              <span style={localStyles.workspaceCount}>{count}</span>
+              <span className="organize-workspaceIcon">{icon}</span>
+              <span className="organize-workspaceTitle">{title}</span>
+              <span className="organize-workspaceCount">{count}</span>
             </button>
           ))}
-          <div style={Object.assign({}, localStyles.workspaceCard, localStyles.comingCard)}>
-            <span style={localStyles.workspaceIcon}>▣</span>
-            <span style={localStyles.workspaceTitle}>Storage</span>
-            <span style={localStyles.workspaceCount}>Coming soon</span>
+          <div className="organize-workspaceCard organize-comingCard">
+            <span className="organize-workspaceIcon">▣</span>
+            <span className="organize-workspaceTitle">Storage</span>
+            <span className="organize-workspaceCount">Coming soon</span>
           </div>
-          <div style={Object.assign({}, localStyles.workspaceCard, localStyles.comingCard)}>
-            <span style={localStyles.workspaceIcon}>◉</span>
-            <span style={localStyles.workspaceTitle}>Goals</span>
-            <span style={localStyles.workspaceCount}>Coming soon</span>
+          <div className="organize-workspaceCard organize-comingCard">
+            <span className="organize-workspaceIcon">◉</span>
+            <span className="organize-workspaceTitle">Goals</span>
+            <span className="organize-workspaceCount">Coming soon</span>
           </div>
-          <div style={Object.assign({}, localStyles.workspaceCard, localStyles.comingCard)}>
-            <span style={localStyles.workspaceIcon}>▤</span>
-            <span style={localStyles.workspaceTitle}>Journal</span>
-            <span style={localStyles.workspaceCount}>Coming soon</span>
+          <div className="organize-workspaceCard organize-comingCard">
+            <span className="organize-workspaceIcon">▤</span>
+            <span className="organize-workspaceTitle">Journal</span>
+            <span className="organize-workspaceCount">Coming soon</span>
           </div>
         </div>
         <SectionTitle title="YOUR ORGANIZE TOOLS" />
-        <div style={localStyles.segmented}>
+        <div className="organize-segmented">
           {organizeSections.map((option) => (
             <button
               key={option}
               onClick={() => { setSection(option); setQuery(''); }}
-              style={Object.assign({}, localStyles.segment, section === option && localStyles.segmentActive)}
+              className={`organize-segment${section === option ? ' organize-segmentActive' : ''}`}
             >
-              <span style={Object.assign({}, localStyles.segmentText, section === option && localStyles.segmentTextActive)}>
+              <span className={`organize-segmentText${section === option ? ' organize-segmentTextActive' : ''}`}>
                 {option}
               </span>
             </button>
           ))}
         </div>
-        <div style={localStyles.toolbar}>
-          <span style={localStyles.sectionHeading}>YOUR {section.toUpperCase()}</span>
+        <div className="organize-toolbar">
+          <span className="organize-sectionHeading">YOUR {section.toUpperCase()}</span>
           {composerKind ? (
-            <button type="button" onClick={() => setComposer(composerKind)} style={localStyles.addButton}>
-              <span style={localStyles.addText}>＋ {section === 'Notes' ? 'Add' : 'Create'} {section}</span>
+            <button type="button" onClick={() => setComposer(composerKind)} className="organize-addButton">
+              <span className="organize-addText">＋ {section === 'Notes' ? 'Add' : 'Create'} {section}</span>
             </button>
           ) : section === 'Reminders' ? (
             <button
               type="button"
               onClick={() => setShowReminderForm((visible) => !visible)}
-              style={localStyles.addButton}
+              className="organize-addButton"
             >
-              <span style={localStyles.addText}>＋ Create reminder</span>
+              <span className="organize-addText">＋ Create reminder</span>
             </button>
           ) : null}
         </div>
@@ -458,10 +459,10 @@ export default function OrganizeScreen() {
               onChange={(event) => setQuery(event.currentTarget.value)}
               placeholder={`Search ${section.toLowerCase()}…`}
               aria-label={`Search ${section.toLowerCase()}`}
-              style={localStyles.search}
+              className="organize-search"
             />
           )}
-        <div style={styles.panelGrid}>
+        <div className="app-panel-grid">
           {section === 'Notes' ? (
             filteredNotes.length ? filteredNotes.map((note) => (
               <NoteCard key={note.id} note={note} remove={remove} />
@@ -470,9 +471,9 @@ export default function OrganizeScreen() {
         </div>
         {section === 'Tasks' ? (
           filteredTasks.length ? filteredTasks.map((task) => (
-            <div key={task.id} style={Object.assign({}, styles.panel, localStyles.taskCard)}>
-              <button onClick={() => void toggleDone(task)} style={localStyles.checkButton}>
-                <span style={Object.assign({}, localStyles.check, Boolean(task.completed) && localStyles.checked)}>
+            <div key={task.id} className="app-panel organize-taskCard" >
+              <button onClick={() => void toggleDone(task)} className="organize-checkButton">
+                <span className={`organize-check${Boolean(task.completed) ? ' organize-checked' : ''}`}>
                   {task.completed ? '✓' : ''}
                 </span>
               </button>
@@ -484,10 +485,10 @@ export default function OrganizeScreen() {
                   remove('tasks', task.id, task.title);
                 }}
               >
-                <span style={Object.assign({}, localStyles.recordTitle, Boolean(task.completed) && localStyles.strike)}>
+                <span className={`organize-recordTitle${Boolean(task.completed) ? ' organize-strike' : ''}`}>
                   {task.title}
                 </span>
-                <span style={localStyles.bodyText}>{task.date} · {task.category}</span>
+                <span className="organize-bodyText">{task.date} · {task.category}</span>
               </button>
             </div>
           )) : <EmptyPanel title="Nothing on your list" detail="Add a task to give your next step a place." />
@@ -497,24 +498,24 @@ export default function OrganizeScreen() {
         ) : null}
         {section === 'Inbox' ? (
           <>
-            <div style={Object.assign({}, styles.panel, localStyles.formPanel)}>
-              <label htmlFor="quick-capture-content" style={localStyles.formLabel}>QUICK CAPTURE</label>
+            <div className="app-panel organize-formPanel" >
+              <label htmlFor="quick-capture-content" className="organize-formLabel">QUICK CAPTURE</label>
               <textarea
                 id="quick-capture-content"
                 value={capture}
                 onChange={(event) => setCapture(event.currentTarget.value)}
                 placeholder="Save an idea, task, note, event, or list item…"
                 rows={3}
-                style={localStyles.textarea}
+                className="organize-textarea"
               />
-              <div style={localStyles.formRow}>
+              <div className="organize-formRow">
                 <select
                   aria-label="Suggested capture type"
                   value={captureType ?? 'idea'}
                   onChange={(event) => setCaptureType(
                     event.currentTarget.value as InboxItem['suggested_type'],
                   )}
-                  style={localStyles.select}
+                  className="organize-select"
                 >
                   {['idea', 'note', 'task', 'event', 'reminder', 'list'].map((type) => (
                     <option key={type} value={type}>{type[0].toUpperCase() + type.slice(1)}</option>
@@ -524,9 +525,9 @@ export default function OrganizeScreen() {
                   type="button"
                   disabled={!capture.trim()}
                   onClick={() => void saveCapture()}
-                  style={localStyles.addButton}
+                  className="organize-addButton"
                 >
-                  <span style={localStyles.addText}>Save to inbox</span>
+                  <span className="organize-addText">Save to inbox</span>
                 </button>
               </div>
             </div>
@@ -535,11 +536,11 @@ export default function OrganizeScreen() {
               onChange={(event) => setInboxSearch(event.currentTarget.value)}
               placeholder="Find an existing record to link…"
               aria-label="Find an existing record to link to an inbox item"
-              style={localStyles.search}
+              className="organize-search"
             />
             {filteredInboxItems.length ? filteredInboxItems.map((item) => (
-              <article key={item.id} style={Object.assign({}, styles.panel, localStyles.inboxCard)}>
-                <div style={localStyles.inboxMeta}>
+              <article key={item.id} className="app-panel organize-inboxCard" >
+                <div className="organize-inboxMeta">
                   <span>
                     {item.suggested_type ?? 'Unclassified'} · {item.status === 'inbox'
                       ? 'Needs organizing'
@@ -547,14 +548,14 @@ export default function OrganizeScreen() {
                   </span>
                   <time dateTime={item.captured_at}>{new Date(item.captured_at).toLocaleString()}</time>
                 </div>
-                <p style={localStyles.captureContent}>{item.content}</p>
-                <div style={localStyles.actionRow}>
+                <p className="organize-captureContent">{item.content}</p>
+                <div className="organize-actionRow">
                   {(['note', 'task', 'event', 'list'] as const).map((destination) => (
                     <button
                       type="button"
                       key={destination}
                       onClick={() => void organizeCapture(item, destination)}
-                      style={localStyles.smallAction}
+                      className="organize-smallAction"
                     >
                       {item.status === 'inbox' ? 'Make' : 'Also make'} {destination}
                     </button>
@@ -565,54 +566,54 @@ export default function OrganizeScreen() {
                       setCaptureReminderId(captureReminderId === item.id ? null : item.id);
                       setCaptureReminderDueAt('');
                     }}
-                    style={localStyles.smallAction}
+                    className="organize-smallAction"
                   >
                     {item.status === 'inbox' ? 'Make reminder' : 'Also make reminder'}
                   </button>
                   <button
                     type="button"
                     onClick={() => void removeCapture(item, true)}
-                    style={localStyles.smallAction}
+                    className="organize-smallAction"
                   >
                     Done
                   </button>
                   <button
                     type="button"
                     onClick={() => void removeCapture(item, false)}
-                    style={localStyles.smallAction}
+                    className="organize-smallAction"
                   >
                     Delete
                   </button>
                 </div>
                 {inboxRelatedRecords[item.id]?.length ? (
-                  <div style={localStyles.linkCandidates}>
-                    <span style={localStyles.formLabel}>CREATED OR LINKED RECORDS</span>
+                  <div className="organize-linkCandidates">
+                    <span className="organize-formLabel">CREATED OR LINKED RECORDS</span>
                     {inboxRelatedRecords[item.id].map((record) => (
                       <button
                         type="button"
                         key={`${record.type}-${record.id}`}
                         onClick={() => openCaptureRecord(record)}
-                        style={localStyles.candidateButton}
+                        className="organize-candidateButton"
                       >
                         Open {record.type}: {record.title}
                       </button>
                     ))}
                   </div>
                 ) : item.destination_id !== null ? (
-                  <div style={localStyles.linkCandidates}>
-                    <span style={localStyles.formLabel}>CREATED RECORD</span>
+                  <div className="organize-linkCandidates">
+                    <span className="organize-formLabel">CREATED RECORD</span>
                     <button
                       type="button"
                       onClick={() => openCaptureDestination(item)}
-                      style={localStyles.candidateButton}
+                      className="organize-candidateButton"
                     >
                       Open created record
                     </button>
                   </div>
                 ) : null}
                 {captureReminderId === item.id && (
-                  <div style={localStyles.formRow}>
-                    <label htmlFor={`capture-reminder-${item.id}`} style={localStyles.formLabel}>
+                  <div className="organize-formRow">
+                    <label htmlFor={`capture-reminder-${item.id}`} className="organize-formLabel">
                       REMINDER DATE AND TIME
                     </label>
                     <input
@@ -620,15 +621,15 @@ export default function OrganizeScreen() {
                       type="datetime-local"
                       value={captureReminderDueAt}
                       onChange={(event) => setCaptureReminderDueAt(event.currentTarget.value)}
-                      style={localStyles.formInput}
+                      className="organize-formInput"
                     />
                     <button
                       type="button"
                       disabled={!captureReminderDueAt}
                       onClick={() => void organizeCapture(item, 'reminder', captureReminderDueAt)}
-                      style={localStyles.addButton}
+                      className="organize-addButton"
                     >
-                      <span style={localStyles.addText}>Create reminder</span>
+                      <span className="organize-addText">Create reminder</span>
                     </button>
                   </div>
                 )}
@@ -637,8 +638,8 @@ export default function OrganizeScreen() {
                     record.type === result.kind && record.id === result.id,
                   ),
                 ).length > 0 && (
-                    <div style={localStyles.linkCandidates}>
-                      <span style={localStyles.formLabel}>LINK THIS CAPTURE TO</span>
+                    <div className="organize-linkCandidates">
+                      <span className="organize-formLabel">LINK THIS CAPTURE TO</span>
                       {inboxCandidates.filter((result) =>
                         !inboxRelatedRecords[item.id]?.some((record) =>
                           record.type === result.kind && record.id === result.id,
@@ -648,7 +649,7 @@ export default function OrganizeScreen() {
                           type="button"
                           key={`${result.kind}-${result.id}`}
                           onClick={() => void linkCapture(item, result)}
-                          style={localStyles.candidateButton}
+                          className="organize-candidateButton"
                         >
                           {result.module}: {result.title}
                         </button>
@@ -664,41 +665,41 @@ export default function OrganizeScreen() {
         {section === 'Reminders' ? (
           <>
             {showReminderForm && (
-              <div style={Object.assign({}, styles.panel, localStyles.formPanel)}>
-                <label htmlFor="reminder-title" style={localStyles.formLabel}>REMINDER TITLE</label>
+              <div className="app-panel organize-formPanel" >
+                <label htmlFor="reminder-title" className="organize-formLabel">REMINDER TITLE</label>
                 <input
                   id="reminder-title"
                   value={reminderTitle}
                   onChange={(event) => setReminderTitle(event.currentTarget.value)}
                   placeholder="What should you remember?"
-                  style={localStyles.formInput}
+                  className="organize-formInput"
                 />
-                <label htmlFor="reminder-description" style={localStyles.formLabel}>DETAILS (OPTIONAL)</label>
+                <label htmlFor="reminder-description" className="organize-formLabel">DETAILS (OPTIONAL)</label>
                 <textarea
                   id="reminder-description"
                   value={reminderDescription}
                   onChange={(event) => setReminderDescription(event.currentTarget.value)}
                   rows={2}
-                  style={localStyles.textarea}
+                  className="organize-textarea"
                 />
-                <label htmlFor="reminder-due-at" style={localStyles.formLabel}>DATE AND TIME</label>
+                <label htmlFor="reminder-due-at" className="organize-formLabel">DATE AND TIME</label>
                 <input
                   id="reminder-due-at"
                   type="datetime-local"
                   value={reminderDueAt}
                   onChange={(event) => setReminderDueAt(event.currentTarget.value)}
-                  style={localStyles.formInput}
+                  className="organize-formInput"
                 />
-                <div style={localStyles.formRow}>
+                <div className="organize-formRow">
                   <button
                     type="button"
                     disabled={!reminderTitle.trim() || !reminderDueAt}
                     onClick={() => void saveNewReminder()}
-                    style={localStyles.addButton}
+                    className="organize-addButton"
                   >
-                    <span style={localStyles.addText}>Save reminder</span>
+                    <span className="organize-addText">Save reminder</span>
                   </button>
-                  <button type="button" onClick={() => setShowReminderForm(false)} style={localStyles.smallAction}>
+                  <button type="button" onClick={() => setShowReminderForm(false)} className="organize-smallAction">
                     Cancel
                   </button>
                 </div>
@@ -708,41 +709,37 @@ export default function OrganizeScreen() {
               <article
                 key={reminder.id}
                 id={`reminder-${reminder.id}`}
-                style={Object.assign(
-                  {},
-                  styles.panel,
-                  localStyles.reminderCard,
-                  reminder.id === focusReminderId && localStyles.focusedReminder,
-                )}
+                className={`app-panel organize-reminderCard${reminder.id === focusReminderId ? ' organize-focusedReminder' : ''}`}
+
               >
-                <div style={localStyles.inboxMeta}>
-                  <strong style={localStyles.recordTitle}>{reminder.title}</strong>
+                <div className="organize-inboxMeta">
+                  <strong className="organize-recordTitle">{reminder.title}</strong>
                   <span>{reminder.status}</span>
                 </div>
-                <time dateTime={reminder.due_at} style={localStyles.bodyText}>
+                <time dateTime={reminder.due_at} className="organize-bodyText">
                   Due {new Date(reminder.due_at).toLocaleString()}
                 </time>
-                {reminder.description && <p style={localStyles.captureContent}>{reminder.description}</p>}
+                {reminder.description && <p className="organize-captureContent">{reminder.description}</p>}
                 {reminder.status === 'pending' && (
-                  <div style={localStyles.actionRow}>
+                  <div className="organize-actionRow">
                     <button
                       type="button"
                       onClick={() => void updateReminder(reminder, 'completed')}
-                      style={localStyles.smallAction}
+                      className="organize-smallAction"
                     >
                       Complete
                     </button>
                     <button
                       type="button"
                       onClick={() => void updateReminder(reminder, 'dismissed')}
-                      style={localStyles.smallAction}
+                      className="organize-smallAction"
                     >
                       Dismiss
                     </button>
                     <button
                       type="button"
                       onClick={() => void removeReminder(reminder)}
-                      style={localStyles.smallAction}
+                      className="organize-smallAction"
                     >
                       Delete
                     </button>
@@ -756,22 +753,22 @@ export default function OrganizeScreen() {
         ) : null}
         {section === 'Activity' ? (
           activities.length ? activities.map((activity) => (
-            <article key={activity.id} style={Object.assign({}, styles.panel, localStyles.activityCard)}>
+            <article key={activity.id} className="app-panel organize-activityCard" >
               {activity.action !== 'deleted' && activity.module !== 'links' && activity.record_id !== null ? (
                 <button
                   type="button"
                   onClick={() => openActivity(activity)}
-                  style={localStyles.activityButton}
+                  className="organize-activityButton"
                 >
-                  <span style={localStyles.recordTitle}>{activity.description}</span>
-                  <span style={localStyles.bodyText}>
+                  <span className="organize-recordTitle">{activity.description}</span>
+                  <span className="organize-bodyText">
                     {activity.module} · {new Date(activity.occurred_at).toLocaleString()}
                   </span>
                 </button>
               ) : (
                 <>
-                  <span style={localStyles.recordTitle}>{activity.description}</span>
-                  <span style={localStyles.bodyText}>
+                  <span className="organize-recordTitle">{activity.description}</span>
+                  <span className="organize-bodyText">
                     {activity.module} · {new Date(activity.occurred_at).toLocaleString()}
                   </span>
                 </>
@@ -796,296 +793,9 @@ export default function OrganizeScreen() {
 
 function EmptyPanel({ title, detail }: { title: string; detail: string }) {
   return (
-    <div style={Object.assign({}, styles.panel, localStyles.empty)}>
-      <span style={localStyles.emptyTitle}>{title}</span>
-      <span style={localStyles.bodyText}>{detail}</span>
+    <div className="app-panel organize-empty" >
+      <span className="organize-emptyTitle">{title}</span>
+      <span className="organize-bodyText">{detail}</span>
     </div>
   );
 }
-
-const localStyles = {
-  workspaceGrid: {
-
-  },
-  workspaceCard: {
-    flex: 1,
-    minWidth: 100,
-    maxWidth: 120,
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 8,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
-    border: `1px solid ${colors.line}`,
-    borderWidth: 1,
-  },
-  comingCard: {
-    opacity: 0.5,
-    backgroundColor: '#171717',
-  },
-  workspaceIcon: {
-    color: colors.green,
-    fontSize: 17,
-    marginBottom: 7,
-  },
-  workspaceTitle: {
-    color: colors.ink,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  workspaceCount: {
-    color: colors.muted,
-    fontSize: 9,
-    marginTop: 3,
-  },
-  toolbar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 8,
-    marginBottom: 10,
-  },
-  sectionHeading: {
-    color: colors.ink,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.7,
-  },
-  addButton: {
-    backgroundColor: colors.green,
-    paddingBlock: 8,
-    paddingInline: 12,
-    borderRadius: 7,
-  },
-  addText: {
-    color: colors.background,
-    fontWeight: '800',
-    fontSize: 10,
-  },
-  search: {
-    height: 45,
-    borderRadius: 10,
-    backgroundColor: colors.surface,
-    paddingInline: 14,
-    color: colors.ink,
-    fontSize: 12,
-    marginBottom: 10,
-  },
-  segmented: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    padding: 4,
-    borderRadius: 10,
-    backgroundColor: colors.surface,
-    border: `1px solid ${colors.line}`,
-  },
-  segment: {
-    flex: 1,
-    alignItems: 'center',
-    paddingBlock: 9,
-    borderRadius: 7,
-  },
-  segmentActive: {
-    backgroundColor: colors.background,
-  },
-  segmentText: {
-    color: colors.muted,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  segmentTextActive: {
-    color: colors.ink,
-  },
-  recordTitle: {
-    color: colors.ink,
-    fontWeight: '800',
-    fontSize: 12,
-  },
-  categoryTag: {
-    color: colors.green,
-    fontSize: 8,
-    fontWeight: '800',
-    backgroundColor: colors.greenSoft,
-    paddingInline: 9,
-    paddingBlock: 5,
-    borderRadius: 7,
-  },
-  bodyText: {
-    color: colors.muted,
-    fontSize: 10,
-    lineHeight: '18px',
-    marginTop: 7,
-    whiteSpace: 'pre-wrap',
-  },
-  hint: {
-    color: colors.muted,
-    fontSize: 6,
-    marginTop: 'auto',
-    paddingTop: 9,
-    fontWeight: '700',
-  },
-  taskCard: {
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'center',
-    marginBottom: 9,
-  },
-  checkButton: {
-    width: 25,
-    height: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  check: {
-    width: 21,
-    height: 21,
-    borderWidth: 1.5,
-    borderColor: colors.green,
-    borderRadius: 5,
-    color: colors.surface,
-    textAlign: 'center',
-    fontSize: 12,
-    overflow: 'hidden',
-  },
-  checked: {
-    backgroundColor: colors.green,
-    borderColor: colors.green,
-  },
-  strike: {
-    textDecorationLine: 'line-through',
-    color: colors.muted,
-  },
-  empty: {
-    alignItems: 'center',
-    paddingBlock: 22,
-  },
-  emptyTitle: {
-    color: colors.ink,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  recentLine: {
-    paddingBlock: 8,
-    color: colors.ink,
-    fontSize: 11,
-  },
-  formPanel: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 9,
-    marginBottom: 12,
-  },
-  formLabel: {
-    color: colors.muted,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-  },
-  textarea: {
-    width: '100%',
-    minHeight: 76,
-    resize: 'vertical',
-    borderRadius: 8,
-    border: `1px solid ${colors.line}`,
-    backgroundColor: colors.background,
-    color: colors.ink,
-    padding: 11,
-    font: 'inherit',
-    fontSize: 12,
-  },
-  formInput: {
-    width: '100%',
-    minHeight: 42,
-    borderRadius: 8,
-    border: `1px solid ${colors.line}`,
-    backgroundColor: colors.background,
-    color: colors.ink,
-    paddingInline: 11,
-    font: 'inherit',
-    fontSize: 12,
-  },
-  select: {
-    minHeight: 36,
-    borderRadius: 8,
-    border: `1px solid ${colors.line}`,
-    backgroundColor: colors.background,
-    color: colors.ink,
-    paddingInline: 10,
-    fontSize: 11,
-  },
-  formRow: {
-    display: 'flex',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  inboxCard: {
-    marginBottom: 10,
-  },
-  inboxMeta: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: 8,
-    color: colors.muted,
-    fontSize: 9,
-    textTransform: 'capitalize',
-  },
-  captureContent: {
-    margin: '10px 0',
-    color: colors.ink,
-    fontSize: 12,
-    lineHeight: '19px',
-    whiteSpace: 'pre-wrap',
-    overflowWrap: 'anywhere',
-  },
-  actionRow: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 8,
-  },
-  smallAction: {
-    border: `1px solid ${colors.line}`,
-    borderRadius: 7,
-    backgroundColor: colors.surface,
-    color: colors.ink,
-    padding: '7px 9px',
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  linkCandidates: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 5,
-    marginTop: 12,
-    paddingTop: 10,
-    borderTop: `1px solid ${colors.line}`,
-  },
-  candidateButton: {
-    padding: '7px 0',
-    color: colors.green,
-    fontSize: 10,
-    textAlign: 'left',
-  },
-  reminderCard: {
-    marginBottom: 9,
-  },
-  focusedReminder: {
-    borderColor: colors.green,
-    boxShadow: `0 0 0 1px ${colors.green}`,
-  },
-  activityCard: {
-    marginBottom: 8,
-  },
-  activityButton: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: 5,
-    width: '100%',
-    textAlign: 'left',
-  },
-} as const

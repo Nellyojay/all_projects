@@ -1,0 +1,50 @@
+.app-screen {
+  flex: 1;
+  background: #000;
+}
+
+.app-scroll-content {
+  padding: 12px 20px 28px;
+}
+
+.app-panel {
+  margin-bottom: 8px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #202020d2;
+}
+
+.app-panel-grid {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 8px;
+}
+
+.app-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.app-button {
+  display: flex;
+  width: 100%;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 12px;
+  border: 1px solid #fff3;
+  border-radius: 8px;
+  background: #303030;
+}
+
+.app-button--text-only {
+  justify-content: center;
+}
+
+.app-button-text {
+  color: #f5f5f5;
+  font-size: 13px;
+  font-weight: 800;
+}

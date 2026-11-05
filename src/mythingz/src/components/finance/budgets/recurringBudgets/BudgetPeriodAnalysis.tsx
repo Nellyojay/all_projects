@@ -7,8 +7,8 @@ import {
   type Transaction,
 } from '../../../../services/database';
 import { colors } from '../../../shared/theme';
-import { budgetStyles } from './RecurringBudgetStyles';
 import { money, periodStatus } from './RecurringBudgetUtils';
+import './RecurringBudgetStyles.css';
 
 type BudgetAdjustment = {
   id: number;
@@ -65,23 +65,23 @@ function BudgetPeriodItemDetails({
         : reachedThreshold ? `Alert · ${reachedThreshold}%` : 'Healthy';
 
   return (
-    <div style={budgetStyles.periodItem}>
-      <div style={budgetStyles.itemSummaryRow}>
+    <div className="recurring-budget-period-item">
+      <div className="recurring-budget-item-summary-row">
         <strong>{item.name}</strong>
         <span>{status} · {percentage}%</span>
       </div>
-      <span style={budgetStyles.muted}>
+      <span className="recurring-budget-muted">
         {money(item.actual_amount)} spent of {money(item.final_amount)}
         {item.refunded_amount > 0 ? ` · ${money(item.refunded_amount)} refunded` : ''}
         {item.rollover_amount > 0 ? ` · ${money(item.rollover_amount)} carried` : ''}
         {item.saved_amount > 0 ? ` · ${money(item.saved_amount)} designated for savings` : ''}
       </span>
       {item.final_amount > 0 ? (
-        <div style={budgetStyles.progressTrack}>
-          <div style={Object.assign({}, budgetStyles.progress, {
+        <div className="recurring-budget-progress-track">
+          <div className="recurring-budget-progress" style={{
             width: `${Math.min(100, percentage)}%`,
             backgroundColor: percentage > 100 ? colors.orange : colors.green,
-          })} />
+          }} />
         </div>
       ) : null}
       {transactions.map((transaction) => (
@@ -89,7 +89,7 @@ function BudgetPeriodItemDetails({
           key={transaction.id}
           type="button"
           onClick={() => onOpenExpense(transaction.id)}
-          style={budgetStyles.transactionRow}
+          className="recurring-budget-transaction-row"
         >
           <span>{transaction.kind === 'income' ? 'Refund' : transaction.title} · {transaction.date}</span>
           <span>
@@ -99,7 +99,7 @@ function BudgetPeriodItemDetails({
         </button>
       ))}
       {adjustments.map((adjustment) => (
-        <span key={adjustment.id} style={budgetStyles.muted}>
+        <span key={adjustment.id} className="recurring-budget-muted">
           Adjustment: {money(adjustment.previous_amount)} → {money(adjustment.new_amount)}
           {adjustment.reason ? ` · ${adjustment.reason}` : ''}
         </span>
@@ -108,7 +108,7 @@ function BudgetPeriodItemDetails({
         type="button"
         disabled={periodClosed}
         onClick={onAdjust}
-        style={budgetStyles.secondaryButton}
+        className="recurring-budget-secondary-button"
       >
         Adjust allocation
       </button>
@@ -136,15 +136,15 @@ export function BudgetPeriodAnalysis({
   onClosePeriod,
 }: Props) {
   return (
-    <section style={budgetStyles.analysisCard}>
-      <h3 style={budgetStyles.subheading}>Period analysis</h3>
+    <section className="recurring-budget-analysis-card">
+      <h3 className="recurring-budget-subheading">Period analysis</h3>
       {period ? (
         <>
           <strong>{period.template_name}</strong>
-          <span style={budgetStyles.muted}>
+          <span className="recurring-budget-muted">
             {period.start_date} – {period.end_date} · {periodStatus(period)}
           </span>
-          <div style={budgetStyles.summaryGrid}>
+          <div className="recurring-budget-summary-grid">
             <span>Allocated - <strong>{money(period.allocated_amount)}</strong></span>
             <span>Actual Expense - <strong>{money(period.actual_amount)}</strong></span>
             <span>
@@ -162,21 +162,21 @@ export function BudgetPeriodAnalysis({
             />
           ))}
           {unallocatedCount ? (
-            <p style={budgetStyles.warning}>
+            <p className="recurring-budget-warning">
               Review {unallocatedCount} partially or unallocated expense(s) before closing.
             </p>
           ) : null}
           {period.status === 'closed' ? (
-            <button type="button" onClick={onReopenPeriod} style={budgetStyles.secondaryButton}>
+            <button type="button" onClick={onReopenPeriod} className="recurring-budget-secondary-button">
               Reopen period
             </button>
           ) : period.status !== 'cancelled' ? (
-            <button type="button" onClick={onClosePeriod} style={budgetStyles.primaryButton}>
+            <button type="button" onClick={onClosePeriod} className="recurring-budget-primary-button">
               Review and close period
             </button>
           ) : null}
         </>
-      ) : <p style={budgetStyles.muted}>Select a budget period to review its allocation and spending.</p>}
+      ) : <p className="recurring-budget-muted">Select a budget period to review its allocation and spending.</p>}
     </section>
   );
 }

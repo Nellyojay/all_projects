@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CSSProperties, FormEvent } from 'react';
+import type { FormEvent } from 'react';
 import { useDatabase } from '../../../web/DatabaseProvider';
 import {
   adjustSharedBudgetItem,
@@ -10,12 +10,12 @@ import {
   setSharedBudgetClosed,
 } from '../../../services/database';
 import type { SharedBudget, SharedBudgetItem, Transaction } from '../../../services/database';
-import { colors } from '../../shared/theme';
 import { ItemizedItemsEditor } from '../../lists/itemizedItems';
 import { BudgetCreationModal } from './BudgetCreationModal';
 import { BudgetGeneralFields } from './BudgetGeneralFields';
 import { UnallocatedExpenses } from './recurringBudgets/UnallocatedExpenses';
-import { budgetStyles } from './recurringBudgets/RecurringBudgetStyles';
+import './recurringBudgets/RecurringBudgetStyles.css';
+import './SharedBudgetManager.css';
 
 type SharedBudgetManagerProps = {
   query: string;
@@ -48,35 +48,6 @@ function emptyDraftItem(): DraftItem {
 function statusLabel(status: string) {
   return status.replaceAll('_', ' ');
 }
-
-const cardStyle: CSSProperties = {
-  background: '#191919',
-  border: '1px solid #303030',
-  borderRadius: 12,
-  padding: 16,
-  marginBottom: 12,
-};
-const mutedStyle: CSSProperties = { color: colors.muted, fontSize: 13 };
-const inputStyle: CSSProperties = {
-  width: '100%',
-  boxSizing: 'border-box',
-  padding: '10px 12px',
-  background: '#111',
-  border: '1px solid #303030',
-  borderRadius: 8,
-  color: colors.ink,
-  font: 'inherit',
-};
-const actionStyle: CSSProperties = {
-  padding: '9px 12px',
-  borderRadius: 8,
-  border: '1px solid #454545',
-  background: '#222',
-  color: colors.ink,
-  font: 'inherit',
-  fontWeight: 700,
-  cursor: 'pointer',
-};
 
 export function SharedBudgetManager({
   query,
@@ -235,9 +206,9 @@ export function SharedBudgetManager({
   return (
     <div>
       {error ? (
-        <div role="alert" style={{ ...cardStyle, color: '#f0f0f0', borderColor: '#555' }}>
+        <div role="alert" className="normal-budget-card-panel normal-budget-inline-error">
           {error}
-          <button type="button" onClick={() => void refresh()} style={{ ...actionStyle, marginLeft: 12 }}>
+          <button type="button" onClick={() => void refresh()} className="normal-budget-action normal-budget-action--spaced">
             Retry
           </button>
         </div>
@@ -250,22 +221,22 @@ export function SharedBudgetManager({
           title="Create normal budget"
           onClose={() => { onCreateHandled(); resetDraft(); }}
         >
-          <form onSubmit={(event) => void save(event)} style={cardStyle}>
-            {error ? <div role="alert" style={{ ...cardStyle, marginBottom: 12 }}>{error}</div> : null}
+          <form onSubmit={(event) => void save(event)} className="normal-budget-card-panel">
+            {error ? <div role="alert" className="normal-budget-card-panel normal-budget-form-error">{error}</div> : null}
             <BudgetGeneralFields
               name={name}
               description={description}
               onNameChange={setName}
               onDescriptionChange={setDescription}
             />
-            <div style={{ ...formGridStyle, marginTop: 12 }}>
-              <label style={fieldStyle}>
+            <div className="normal-budget-form-grid normal-budget-form-grid--spaced">
+              <label className="normal-budget-field">
                 Start date
-                <input required type="date" value={startDate} onChange={(event) => setStartDate(event.currentTarget.value)} style={inputStyle} />
+                <input required type="date" value={startDate} onChange={(event) => setStartDate(event.currentTarget.value)} className="normal-budget-input" />
               </label>
-              <label style={fieldStyle}>
+              <label className="normal-budget-field">
                 End date
-                <input required type="date" value={endDate} onChange={(event) => setEndDate(event.currentTarget.value)} style={inputStyle} />
+                <input required type="date" value={endDate} onChange={(event) => setEndDate(event.currentTarget.value)} className="normal-budget-input" />
               </label>
             </div>
             <ItemizedItemsEditor
@@ -301,7 +272,7 @@ export function SharedBudgetManager({
               totalLabel="Budget total"
             />
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button type="submit" disabled={saving} style={actionStyle}>
+              <button type="submit" disabled={saving} className="normal-budget-action">
                 {saving ? 'Saving…' : 'Create budget'}
               </button>
             </div>
@@ -310,9 +281,9 @@ export function SharedBudgetManager({
       ) : null}
 
       {loaded && !visibleBudgets.length ? (
-        <section style={budgetStyles.card}>
-          <h2 style={budgetStyles.subheading}>Normal budgets</h2>
-          <p style={budgetStyles.muted}>No normal budgets yet. Create a budget to plan spending for a date range.</p>
+        <section className="recurring-budget-card">
+          <h2 className="recurring-budget-subheading">Normal budgets</h2>
+          <p className="recurring-budget-muted">No normal budgets yet. Create a budget to plan spending for a date range.</p>
         </section>
       ) : null}
 
@@ -320,50 +291,48 @@ export function SharedBudgetManager({
         const expanded = expandedBudgetId === budget.id;
         const items = expandedItems?.budgetId === budget.id ? expandedItems.items : [];
         return (
-          <article key={budget.id}>
+          <article key={budget.id} className="recurring-budget-card">
             <button
               type="button"
-              className="budget-template-periods-toggle"
+              className="budget-template-periods-toggle normal-budget-card-toggle"
               onClick={() => {
                 setExpandedBudgetId(expanded ? null : budget.id);
                 setPendingClose(null);
               }}
               aria-expanded={expanded}
-
-              style={budgetStyles.card}
             >
-              <span style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <strong style={budgetStyles.subheading}>{budget.name}</strong>
-                <span style={budgetStyles.muted}>
+              <span className="normal-budget-card-heading">
+                <strong className="recurring-budget-subheading">{budget.name}</strong>
+                <span className="recurring-budget-muted">
                   {budget.start_date ?? 'No start date'} – {budget.end_date ?? 'No end date'}
                 </span>
               </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ ...budgetStyles.status, whiteSpace: 'nowrap' }}>
+              <span className="normal-budget-card-status">
+                <span className="recurring-budget-status">
                   {statusLabel(budget.status)}
                 </span>
-                <span aria-hidden="true" style={{ color: colors.muted }}>{expanded ? '⌄' : '›'}</span>
+                <span aria-hidden="true" style={{ color: '#A3A3A3' }}>{expanded ? '⌄' : '›'}</span>
               </span>
               <span className="budget-template-periods-label">Budget summary</span>
-              <span style={budgetStyles.templateItems}>
-                <span style={budgetStyles.itemSummary}>Allocated: {money(budget.total_allocated)}</span>
-                <span style={budgetStyles.itemSummary}>Spent: {money(budget.actual_amount)}</span>
-                <span style={budgetStyles.itemSummary}>Remaining: {money(budget.remaining_amount)}</span>
+              <span className="recurring-budget-template-items">
+                <span className="recurring-budget-item-summary">Allocated: {money(budget.total_allocated)}</span>
+                <span className="recurring-budget-item-summary">Spent: {money(budget.actual_amount)}</span>
+                <span className="recurring-budget-item-summary">Remaining: {money(budget.remaining_amount)}</span>
               </span>
             </button>
             {expanded ? (
               <div style={{ marginTop: 4, borderTop: '1px solid #303030', paddingTop: 12 }}>
-                <div style={summaryGridStyle}>
+                <div className="normal-budget-summary-grid">
                   <span>Allocated <strong>{money(budget.total_allocated)}</strong></span>
                   <span>Actual <strong>{money(budget.actual_amount)}</strong></span>
                   <span>Remaining <strong>{money(budget.remaining_amount)}</strong></span>
                 </div>
-                {budget.description ? <p style={mutedStyle}>{budget.description}</p> : null}
+                {budget.description ? <p className="normal-budget-muted">{budget.description}</p> : null}
                 {items.map((item) => (
-                  <div key={item.id} style={{ ...baseRowStyle, ...budgetStyles.periodItem }}>
+                  <div key={item.id} className="normal-budget-item-row">
                     <span style={{ minWidth: 0, flex: 1 }}>
                       <strong style={{ display: 'block' }}>{item.name}</strong>
-                      <span style={mutedStyle}>
+                      <span className="normal-budget-muted">
                         {money(item.actual_amount)} spent · {money(item.remaining_amount)} remaining
                       </span>
                     </span>
@@ -379,35 +348,35 @@ export function SharedBudgetManager({
                             ...drafts,
                             [item.id]: event.currentTarget.value,
                           }))}
-                          style={{ ...inputStyle, width: 120 }}
+                          className="normal-budget-input normal-budget-input--allocation"
                         />
-                        <button type="button" onClick={() => void saveAllocation(item)} style={actionStyle}>Save</button>
+                        <button type="button" onClick={() => void saveAllocation(item)} className="normal-budget-action">Save</button>
                       </div>
                     ) : <strong>{money(item.allocated_amount)}</strong>}
                   </div>
                 ))}
                 {pendingClose === budget.id ? (
-                  <div style={{ ...cardStyle, marginTop: 12, marginBottom: 8, background: '#222' }}>
+                  <div className="normal-budget-card-panel normal-budget-close-review">
                     <strong>Review before closing</strong>
-                    <p style={mutedStyle}>
+                    <p className="normal-budget-muted">
                       Allocated {money(budget.total_allocated)} · actual spending {money(budget.actual_amount)} ·
                       {' '}{money(budget.remaining_amount)} remaining. Review the unallocated expenses above
                       ({unallocated.length} pending, {money(unallocatedTotal)}) before confirming.
                     </p>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button type="button" onClick={() => void changeStatus(budget, true)} style={actionStyle}>
+                      <button type="button" onClick={() => void changeStatus(budget, true)} className="normal-budget-action">
                         Confirm close
                       </button>
-                      <button type="button" onClick={() => setPendingClose(null)} style={actionStyle}>Cancel</button>
+                      <button type="button" onClick={() => setPendingClose(null)} className="normal-budget-action">Cancel</button>
                     </div>
                   </div>
                 ) : null}
                 {budget.status === 'closed' ? (
-                  <button type="button" onClick={() => void changeStatus(budget, false)} style={{ ...actionStyle, marginTop: 10 }}>
+                  <button type="button" onClick={() => void changeStatus(budget, false)} className="normal-budget-action normal-budget-close-action">
                     Reopen budget
                   </button>
                 ) : (
-                  <button type="button" onClick={() => setPendingClose(budget.id)} style={{ ...actionStyle, marginTop: 10 }}>
+                  <button type="button" onClick={() => setPendingClose(budget.id)} className="normal-budget-action normal-budget-close-action">
                     Review and close budget
                   </button>
                 )}
@@ -427,30 +396,3 @@ export function SharedBudgetManager({
     </div>
   );
 }
-
-const baseRowStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 10,
-  paddingBlock: 10,
-  borderBottom: '1px solid #303030',
-  color: colors.ink,
-};
-const fieldStyle: CSSProperties = {
-  display: 'grid',
-  gap: 6,
-  color: colors.muted,
-  fontSize: 13,
-};
-const formGridStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
-  gap: 10,
-};
-const summaryGridStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-  gap: 8,
-  color: colors.muted,
-  fontSize: 13,
-};

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { CSSProperties, Dispatch, MouseEvent, SetStateAction } from 'react';
+import type { Dispatch, MouseEvent, SetStateAction } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
 import type { BrowserDatabase } from '../../web/database';
@@ -13,10 +13,11 @@ import {
   toggleListItem,
 } from '../../services/database';
 import type { Account, EventRecord, ListItem, ListRecord, RecordDraft } from '../../services/database';
-import { colors, styles } from '../shared/theme';
+import '../shared/theme.css';
 import { AccountPicker } from '../finance/accounts/account';
 import { ItemizedItemsEditor } from './itemizedItems';
 import type { ItemizedItem } from './itemizedItemsModel';
+import './list.css';
 
 type ListRecordOptions = { budgetOnly?: boolean; eventId?: number };
 
@@ -94,10 +95,10 @@ export function ListComposer({
 
   return (
     <>
-      <div style={listComposerStyles.budgetOption}>
-        <div style={listComposerStyles.budgetCopy}>
-          <span style={listComposerStyles.budgetTitle}>Add to budget</span>
-          <span style={listComposerStyles.budgetDescription}>Track item prices and total the list</span>
+      <div className="list-composer-budget-option">
+        <div className="list-composer-budget-copy">
+          <span className="list-composer-budget-title">Add to budget</span>
+          <span className="list-composer-budget-description">Track item prices and total the list</span>
         </div>
         <input
           type="checkbox"
@@ -106,46 +107,42 @@ export function ListComposer({
         />
       </div>
       {budgetEnabled ? (
-        <div style={listComposerStyles.eventBudgetSection}>
-          <label style={listComposerStyles.label} htmlFor="budget-list-notes">NOTES · OPTIONAL</label>
+        <div className="list-composer-event-budget-section">
+          <label className="list-composer-label" htmlFor="budget-list-notes">NOTES · OPTIONAL</label>
           <textarea
             id="budget-list-notes"
             value={notes}
             onChange={(event) => onNotesChange(event.currentTarget.value)}
             placeholder="Add a note about this budget list"
             rows={3}
-            style={listComposerStyles.notesInput}
+            className="list-composer-notes"
           />
-          <span style={listComposerStyles.label}>EVENT</span>
+          <span className="list-composer-label">EVENT</span>
           <button
             type="button" aria-expanded={eventPickerVisible}
             onClick={() => void openEventPicker()}
-            style={listComposerStyles.attachEventButton}
+            className="list-composer-attach-event"
           >
-            <span style={listComposerStyles.attachEventButtonText}>
+            <span className="list-composer-attach-event-text">
               {eventId === null ? '＋  Attach a saved event' : 'Change attached event'}
             </span>
           </button>
           {eventId !== null ? (
-            <span style={listComposerStyles.attachedEventText}>
+            <span className="list-composer-attached-event">
               {savedEvents.find((event) => event.id === eventId)?.title ?? 'Saved event attached'}
             </span>
           ) : null}
           {eventPickerVisible ? (
-            <div style={listComposerStyles.eventOptions}>
+            <div className="list-composer-event-options">
               <button
                 type="button" aria-selected={eventId === null}
                 onClick={() => {
                   onEventIdChange(null);
                   setEventPickerVisible(false);
                 }}
-                style={Object.assign(
-                  {},
-                  listComposerStyles.eventOption,
-                  eventId === null && listComposerStyles.eventOptionSelected,
-                )}
+                className={`list-composer-event-option${eventId === null ? ' list-composer-event-option--selected' : ''}`}
               >
-                <span style={listComposerStyles.eventOptionTitle}>No event</span>
+                <span className="list-composer-event-option-title">No event</span>
               </button>
               {savedEvents.map((event) => (
                 <button
@@ -155,18 +152,14 @@ export function ListComposer({
                     onEventIdChange(event.id);
                     setEventPickerVisible(false);
                   }}
-                  style={Object.assign(
-                    {},
-                    listComposerStyles.eventOption,
-                    eventId === event.id && listComposerStyles.eventOptionSelected,
-                  )}
+                  className={`list-composer-event-option${eventId === event.id ? ' list-composer-event-option--selected' : ''}`}
                 >
-                  <span style={listComposerStyles.eventOptionTitle}>{event.title}</span>
-                  <span style={listComposerStyles.eventOptionDate}>{event.date}</span>
+                  <span className="list-composer-event-option-title">{event.title}</span>
+                  <span className="list-composer-event-option-date">{event.date}</span>
                 </button>
               ))}
               {savedEvents.length === 0 ? (
-                <span style={listComposerStyles.noSavedEvents}>
+                <span className="list-composer-no-events">
                   Create a calendar event first to attach it to this budget.
                 </span>
               ) : null}
@@ -229,30 +222,30 @@ function OrganizerListCard({
   };
 
   return (
-    <div style={Object.assign({}, styles.panel, listStyles.organizerCard)}>
+    <div className="app-panel list-organizer-card">
       <button
         type="button"
-        style={listStyles.organizerListButton}
+        className="list-organizer-button"
         onClick={() => navigate(`/space/records/list/${list.id}`, { state: { from: location.pathname } })}
         onContextMenu={remove}
       >
-        <span style={listStyles.organizerTitle}>{list.title}</span>
-        <span style={listStyles.organizerBody}>
+        <span className="list-organizer-title">{list.title}</span>
+        <span className="list-organizer-body">
           {items.length
             ? `${items.filter((item) => item.done).length} of ${items.length} items complete`
             : 'No items yet'}
         </span>
         {list.budget_enabled ? (
-          <span style={listStyles.organizerBody}>
+          <span className="list-organizer-body">
             {list.finalized ? 'Finalized · ' : 'Budget · '}{money(listTotal(items))}
           </span>
         ) : list.finalized ? (
-          <span style={listStyles.organizerBody}>Finalized · list locked</span>
+          <span className="list-organizer-body">Finalized · list locked</span>
         ) : null}
         {list.event_id !== null && list.event_title ? (
-          <span style={listStyles.eventTag}>EVENT · {list.event_title}</span>
+          <span className="list-event-tag">EVENT · {list.event_title}</span>
         ) : null}
-        <span style={listStyles.organizerHint}>
+        <span className="list-organizer-hint">
           {list.finalized ? 'Tap to review or reopen' : 'Tap to view and check items · hold title to delete'}
         </span>
       </button>
@@ -270,9 +263,9 @@ export function FinanceBudgetLists({ lists, query }: { lists: ListRecord[]; quer
       {filtered.map((list) => <FinanceBudgetCard key={list.id} list={list} />)}
     </>
   ) : (
-    <div style={Object.assign({}, styles.panel, listStyles.emptyBudgetCard)}>
-      <span style={listStyles.emptyTitle}>Plan expenses with a list</span>
-      <span style={listStyles.secondary}>
+    <div className="app-panel list-empty-budget-card">
+      <span className="list-empty-title">Plan expenses with a list</span>
+      <span className="list-secondary">
         Add quantities and unit prices in a budget list, then finalize checked items to record the expense.
       </span>
     </div>
@@ -288,25 +281,25 @@ function FinanceBudgetCard({ list }: { list: ListRecord }) {
     <button
       type="button"
       onClick={() => navigate(`/space/records/list/${list.id}`, { state: { from: location.pathname } })}
-      style={Object.assign({}, styles.panel, listStyles.budgetCard)}
+      className="app-panel list-budget-card"
     >
-      <div style={listStyles.budgetHeading}>
+      <div className="list-budget-heading">
         <div>
-          <span style={listStyles.budgetTitle}>{list.title}</span>
-          <span style={listStyles.secondary}>
+          <span className="list-budget-title">{list.title}</span>
+          <span className="list-secondary">
             {items.length} {items.length === 1 ? 'item' : 'items'}
             {list.finalized ? ' · Finalized' : ' · In progress'}
           </span>
         </div>
-        <span style={listStyles.amount}>{money(listTotal(items))}</span>
+        <span className="list-amount">{money(listTotal(items))}</span>
       </div>
-      <span style={listStyles.secondary}>
+      <span className="list-secondary">
         {list.finalized
           ? `${money(listTotal(items, true))} recorded as expense`
           : `${money(listTotal(items, true))} checked · tap to review`}
       </span>
       {list.event_id !== null && list.event_title ? (
-        <span style={listStyles.eventTag}>EVENT · {list.event_title}</span>
+        <span className="list-event-tag">EVENT · {list.event_title}</span>
       ) : null}
     </button>
   );
@@ -314,9 +307,9 @@ function FinanceBudgetCard({ list }: { list: ListRecord }) {
 
 export function EmptyListState({ title, detail }: { title: string; detail: string }) {
   return (
-    <div style={Object.assign({}, styles.panel, listStyles.emptyState)}>
-      <span style={listStyles.emptyTitle}>{title}</span>
-      <span style={listStyles.organizerBody}>{detail}</span>
+    <div className="app-panel list-empty-state">
+      <span className="list-empty-title">{title}</span>
+      <span className="list-organizer-body">{detail}</span>
     </div>
   );
 }
@@ -419,14 +412,14 @@ export function ListDetails({
   };
 
   return (
-    <div style={listStyles.detailCard}>
-      <span style={listStyles.detailMeta}>
+    <div className="list-detail-card">
+      <span className="list-detail-meta">
         {checkedItems.length} of {items.length} complete
       </span>
       {list.event_id !== null ? (
         <button
           type="button"
-          style={listStyles.detailEventTag}
+          className="list-detail-event-tag"
           onClick={() => navigate(`/space/records/event/${list.event_id}`, {
             state: { from: location.pathname },
           })}
@@ -434,25 +427,25 @@ export function ListDetails({
           EVENT · {list.event_title || 'Attached event'}
         </button>
       ) : null}
-      {list.finalized ? <span style={listStyles.finalizedBadge}>FINALIZED · LIST LOCKED</span> : null}
+      {list.finalized ? <span className="list-finalized-badge">FINALIZED · LIST LOCKED</span> : null}
       {items.length ? items.map((item, index) => (
         <button
           key={`${list.id}-${index}`}
           type="button"
           disabled={Boolean(list.finalized)}
           onClick={() => void toggleItem(index)}
-          style={listStyles.detailItem}
+          className="list-detail-item"
         >
-          <div style={Object.assign({}, listStyles.checkbox, item.done && listStyles.checkboxDone)}>
-            {item.done ? <span style={listStyles.checkmark}>✓</span> : null}
+          <div className={`list-checkbox${item.done ? ' list-checkbox--done' : ''}`}>
+            {item.done ? <span className="list-checkmark">✓</span> : null}
           </div>
-          <span style={Object.assign({}, listStyles.detailItemText, item.done && listStyles.completedText)}>
+          <span className={`list-detail-item-text${item.done ? ' list-detail-item-text--completed' : ''}`}>
             {list.budget_enabled && (item.quantity ?? 1) > 1
               ? `${item.quantity} × ${item.text}`
               : item.text}
           </span>
           {list.budget_enabled ? (
-            <span style={listStyles.itemPrice}>
+            <span className="list-item-price">
               UGX {formatAmount(Number(item.price) || 0)} ea
               {' · '}UGX {formatAmount(
                 (Number(item.price) || 0) * (Number(item.quantity) || 1),
@@ -460,23 +453,23 @@ export function ListDetails({
             </span>
           ) : null}
         </button>
-      )) : <span style={listStyles.detailBody}>This list has no items yet.</span>}
+      )) : <span className="list-detail-body">This list has no items yet.</span>}
       {list.notes?.trim() ? (
-        <div style={listStyles.detailBody}>
+        <div className="list-detail-body">
           <strong>Notes</strong>
           <div style={{ whiteSpace: 'pre-wrap' }}>{list.notes}</div>
         </div>
       ) : null}
       {list.budget_enabled ? (
-        <div style={listStyles.totals}>
-          <span style={listStyles.totalLabel}>Number of items</span>
-          <span style={listStyles.totalValue}>
+        <div className="list-totals">
+          <span className="list-total-label">Number of items</span>
+          <span className="list-total-value">
             {items.length} {items.length === 1 ? 'item' : 'items'}
           </span>
-          <span style={listStyles.totalLabel}>Full list total</span>
-          <span style={listStyles.totalValue}>{money(listTotal(items))}</span>
-          <span style={listStyles.totalLabel}>Checked items ({checkedItems.length})</span>
-          <span style={listStyles.totalValue}>{money(checkedTotal)}</span>
+          <span className="list-total-label">Full list total</span>
+          <span className="list-total-value">{money(listTotal(items))}</span>
+          <span className="list-total-label">Checked items ({checkedItems.length})</span>
+          <span className="list-total-value">{money(checkedTotal)}</span>
         </div>
       ) : null}
       <div className='mb-2'>
@@ -494,14 +487,14 @@ export function ListDetails({
         <button
           type="button"
           onClick={finalize}
-          style={Object.assign({}, styles.button, styles.buttonTextOnly)}
+          className="app-button app-button--text-only"
         >
-          <span style={styles.buttonText}>Finalize list</span>
+          <span className="app-button-text">Finalize list</span>
         </button>
       ) : null}
       {list.finalized ? (
-        <button type="button" onClick={reopen} style={listStyles.secondaryAction}>
-          <span style={listStyles.secondaryActionText}>Reopen list · reverse expense</span>
+        <button type="button" onClick={reopen} className="list-secondary-action">
+          <span className="list-secondary-action-text">Reopen list · reverse expense</span>
         </button>
       ) : null}
     </div>
@@ -519,8 +512,8 @@ export function EventBudgetToggle({
 }) {
   if (event.budget_count <= 0) return null;
   return (
-    <button type="button" aria-expanded={expanded} onClick={onToggle} style={listStyles.budgetedTag}>
-      <span style={listStyles.budgetedTagText}>
+    <button type="button" aria-expanded={expanded} onClick={onToggle} className="list-budgeted-tag">
+      <span className="list-budgeted-tag-text">
         BUDGETED{event.budget_count > 1 ? ` · ${event.budget_count} BUDGETS` : ''}
       </span>
     </button>
@@ -564,12 +557,12 @@ export function EventBudgetPanel({
 
   if (!expanded) return null;
   return (
-    <div style={listStyles.eventBudgets}>
-      <span style={listStyles.eventBudgetsTitle}>ATTACHED BUDGETS</span>
+    <div className="list-event-budgets">
+      <span className="list-event-budgets-title">ATTACHED BUDGETS</span>
       {loading ? (
-        <span style={listStyles.eventBudgetMessage}>Loading budgets…</span>
+        <span className="list-event-budget-message">Loading budgets…</span>
       ) : loadError ? (
-        <span style={listStyles.eventBudgetMessage}>Could not load budgets. Close and reopen this section to try again.</span>
+        <span className="list-event-budget-message">Could not load budgets. Close and reopen this section to try again.</span>
       ) : budgets.length ? budgets.map((budget) => {
         const items = listItems(budget);
         return (
@@ -579,202 +572,36 @@ export function EventBudgetPanel({
             onClick={() => navigate(`/space/records/list/${budget.id}`, {
               state: { from: location.pathname },
             })}
-            style={listStyles.eventBudgetCard}
+            className="list-event-budget-card"
           >
-            <div style={listStyles.eventBudgetHeading}>
-              <span style={listStyles.eventBudgetName}>{budget.title}</span>
-              <span style={listStyles.eventBudgetTotal}>{formatCurrency(listTotal(items))}</span>
+            <div className="list-event-budget-heading">
+              <span className="list-event-budget-name">{budget.title}</span>
+              <span className="list-event-budget-total">{formatCurrency(listTotal(items))}</span>
             </div>
-            <span style={listStyles.eventBudgetMessage}>
+            <span className="list-event-budget-message">
               {budget.finalized
                 ? 'Finalized'
                 : `${items.filter((item) => item.done).length} of ${items.length} checked`}
               {' · '}{formatCurrency(listTotal(items, true))} checked
             </span>
             {items.length ? items.map((item, index) => (
-              <div key={`${budget.id}-item-${index}`} style={listStyles.eventBudgetItem}>
-                <span style={listStyles.eventBudgetItemText}>
+              <div key={`${budget.id}-item-${index}`} className="list-event-budget-item">
+                <span className="list-event-budget-item-text">
                   {item.done ? '✓  ' : '○  '}
                   {(item.quantity ?? 1) > 1 ? `${item.quantity} × ` : ''}{item.text}
                 </span>
-                <span style={listStyles.eventBudgetItemPrice}>
+                <span className="list-event-budget-item-price">
                   {formatCurrency((Number(item.price) || 0) * (Number(item.quantity) || 1))}
                 </span>
               </div>
-            )) : <span style={listStyles.eventBudgetMessage}>No items added.</span>}
+            )) : <span className="list-event-budget-message">No items added.</span>}
           </button>
         );
       }) : (
-        <span style={listStyles.eventBudgetMessage}>
+        <span className="list-event-budget-message">
           No budget lists are currently attached to this event.
         </span>
       )}
     </div>
   );
 }
-
-const listStyles = {
-  organizerCard: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  organizerListButton: {
-    display: 'flex',
-    flex: 1,
-    flexDirection: 'column',
-    alignItems: 'stretch',
-    textAlign: 'left',
-  },
-  organizerTitle: { color: colors.ink, fontWeight: '800', fontSize: 12 },
-  organizerBody: {
-    color: colors.muted, fontSize: 10, lineHeight: '18px', marginTop: 7, whiteSpace: 'pre-wrap',
-  },
-  organizerHint: {
-    color: colors.muted, fontSize: 6, marginTop: 'auto', paddingTop: 9, fontWeight: '700',
-  },
-  eventTag: {
-    alignSelf: 'flex-start', color: colors.green, fontSize: 9, fontWeight: '800',
-    letterSpacing: 0.4, backgroundColor: colors.greenSoft, paddingInline: 9, paddingBlock: 6,
-    borderRadius: 6, marginTop: 10, overflow: 'hidden',
-  },
-  emptyState: { alignItems: 'center', paddingBlock: 22 },
-  emptyBudgetCard: { backgroundColor: colors.yellowSoft, borderColor: colors.yellowSoft },
-  emptyTitle: { color: colors.ink, fontSize: 13, fontWeight: '800' },
-  secondary: { color: colors.muted, fontSize: 10, marginTop: 4, lineHeight: '17px', display: 'flex', alignItems: 'flex-start' },
-  budgetCard: { marginBottom: 10 },
-  budgetHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  budgetTitle: { color: colors.ink, fontWeight: '700', fontSize: 12, alignSelf: 'flex-start' },
-  amount: { color: colors.ink, fontSize: 11, fontWeight: '700' },
-  detailCard: {
-    backgroundColor: colors.surface, borderRadius: 11, padding: 16, borderWidth: 1,
-    borderColor: colors.line, marginTop: 12,
-  },
-  detailMeta: { color: colors.muted, fontSize: 10, marginBottom: 8 },
-  detailEventTag: {
-    alignSelf: 'flex-start', color: colors.green, fontSize: 9, fontWeight: '800',
-    letterSpacing: 0.4, paddingBlock: 6, paddingInline: 9, borderRadius: 6,
-    backgroundColor: colors.greenSoft, marginBottom: 10,
-  },
-  finalizedBadge: {
-    alignSelf: 'flex-start', color: colors.ink, fontSize: 9, fontWeight: '800',
-    letterSpacing: 0.8, paddingBlock: 6, paddingInline: 9, borderRadius: 5,
-    backgroundColor: colors.line, marginBottom: 8,
-  },
-  detailItem: {
-    minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderTopWidth: 1, borderTopColor: colors.line,
-  },
-  checkbox: {
-    width: 22, height: 22, borderRadius: 5, borderWidth: 1, borderColor: colors.muted,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  checkboxDone: { backgroundColor: colors.ink, borderColor: colors.ink },
-  checkmark: { color: colors.background, fontSize: 12, fontWeight: '800' },
-  detailItemText: { flex: 1, color: colors.ink, fontSize: 12 },
-  itemPrice: { color: colors.muted, fontSize: 9, fontWeight: '600', marginLeft: 'auto' },
-  completedText: { color: colors.muted, textDecorationLine: 'line-through' },
-  detailBody: { color: colors.muted, fontSize: 12, lineHeight: '20px' },
-  totals: { borderTopWidth: 1, borderTopColor: colors.line, marginTop: 10, paddingTop: 12 },
-  totalLabel: { color: colors.muted, fontSize: 9, marginBottom: 4 },
-  totalValue: { color: colors.ink, fontSize: 12, fontWeight: '800', marginBottom: 10 },
-  finalizeButton: {
-    minHeight: 46, alignItems: 'center', justifyContent: 'center', borderRadius: 8,
-    backgroundColor: colors.ink, marginTop: 8,
-  },
-  finalizeText: { color: colors.background, fontSize: 11, fontWeight: '800' },
-  secondaryAction: {
-    alignSelf: 'flex-start', borderRadius: 8, borderWidth: 1, borderColor: colors.line,
-    paddingBlock: 10, paddingInline: 14, marginTop: 16, border: `1px solid ${colors.line}`,
-  },
-  secondaryActionText: { color: colors.ink, fontSize: 11, fontWeight: '700' },
-  budgetedTag: {
-    alignSelf: 'flex-start', minHeight: 34, justifyContent: 'center', paddingBlock: 7,
-    paddingInline: 10, borderRadius: 6, backgroundColor: colors.greenSoft, marginTop: 14,
-  },
-  budgetedTagText: { color: colors.green, fontSize: 9, fontWeight: '800', letterSpacing: 0.8 },
-  eventBudgets: {
-    backgroundColor: colors.surface, borderRadius: 11, padding: 14, borderWidth: 1,
-    border: `1px solid ${colors.line}`, marginTop: 12,
-  },
-  eventBudgetsTitle: {
-    color: colors.muted, fontSize: 9, fontWeight: '800', letterSpacing: 0.8, marginBottom: 10,
-  },
-  eventBudgetCard: {
-    display: 'block', width: '100%', color: colors.ink, textAlign: 'left',
-    backgroundColor: 'transparent', borderTop: `1px solid ${colors.line}`,
-    paddingTop: 11, marginTop: 4,
-  },
-  eventBudgetHeading: {
-    flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8,
-  },
-  eventBudgetName: { flex: 1, color: colors.ink, fontSize: 12, fontWeight: '800' },
-  eventBudgetTotal: { color: colors.ink, fontSize: 10, fontWeight: '800' },
-  eventBudgetMessage: { color: colors.muted, fontSize: 9, lineHeight: '16px', marginTop: 5 },
-  eventBudgetItem: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, paddingTop: 8 },
-  eventBudgetItemText: { flex: 1, color: colors.ink, fontSize: 10 },
-  eventBudgetItemPrice: { color: colors.muted, fontSize: 9, fontWeight: '600' },
-} satisfies Record<string, CSSProperties>;
-
-const listComposerStyles = {
-  label: {
-    display: 'block',
-    color: colors.muted,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1,
-    marginTop: 12,
-    marginBottom: 7,
-  },
-  budgetOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingBlock: 12,
-    marginTop: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.line,
-  },
-  budgetCopy: { flex: 1, paddingRight: 12 },
-  budgetTitle: { color: colors.ink, fontSize: 12, fontWeight: '700' },
-  budgetDescription: { color: colors.muted, fontSize: 9, marginTop: 3 },
-  eventBudgetSection: { marginTop: 4 },
-  notesInput: {
-    width: '100%',
-    minHeight: 76,
-    padding: 10,
-    border: `1px solid ${colors.line}`,
-    borderRadius: 8,
-    backgroundColor: colors.surface,
-    color: colors.ink,
-    font: 'inherit',
-    fontSize: 11,
-    resize: 'vertical',
-  },
-  attachEventButton: {
-    minHeight: 46,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
-  },
-  attachEventButtonText: { color: colors.ink, fontSize: 11, fontWeight: '700' },
-  attachedEventText: { color: colors.green, fontSize: 10, fontWeight: '700', marginTop: 8 },
-  eventOptions: { gap: 8, marginTop: 8 },
-  eventOption: {
-    minHeight: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingInline: 12,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 7,
-    backgroundColor: colors.surface,
-  },
-  eventOptionSelected: { borderColor: colors.green, backgroundColor: colors.greenSoft },
-  eventOptionTitle: { color: colors.ink, fontSize: 11, fontWeight: '700' },
-  eventOptionDate: { color: colors.muted, fontSize: 9 },
-  noSavedEvents: { color: colors.muted, fontSize: 10, lineHeight: '18px' },
-} satisfies Record<string, CSSProperties>;

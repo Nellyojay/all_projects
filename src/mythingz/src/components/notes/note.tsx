@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { MAX_TITLE_LENGTH } from '../records/RecordComposer';
 import { useBackButtonBlocker } from '../../constants/backButtonBlocker';
 import { useDatabase } from '../../web/DatabaseProvider';
-import { colors, styles } from '../shared/theme';
-import type { CSSProperties } from 'react';
+import '../shared/theme.css';
 import { saveRecord } from '../../services/database';
 import type { NoteRecord } from '../../services/database';
+import './note.css';
 
 type NoteProps = {
   note: NoteRecord;
@@ -25,13 +25,13 @@ export const NoteCard = ({ note, remove }: NoteProps) => {
         if (!remove) return;
         remove('notes', note.id, note.title);
       }}
-      style={Object.assign({}, styles.panel, noteStyles.recordCard)}
+      className="app-panel note-card"
     >
-      <div style={noteStyles.cardHeading}>
-        <span style={noteStyles.recordTitle}>{note.title}</span>
+      <div className="note-card-heading">
+        <span className="note-record-title">{note.title}</span>
       </div>
-      <span style={noteStyles.bodyText}>{note.notes.slice(0, 25) + (note.notes.length > 25 ? '...' : '') || 'An empty note'}</span>
-      <span style={noteStyles.hint}>Tap to view · hold to delete</span>
+      <span className="note-card-body-text">{note.notes.slice(0, 25) + (note.notes.length > 25 ? '...' : '') || 'An empty note'}</span>
+      <span className="note-hint">Tap to view · hold to delete</span>
     </button>
   );
 };
@@ -52,8 +52,8 @@ export function NoteHeader({
   onStartEditing,
 }: NoteHeaderProps) {
   return (
-    <div style={noteStyles.titleRow}>
-      <div style={noteStyles.titleLine}>
+    <div className="note-title-row">
+      <div className="note-title-line">
         {editing ? (
           <input
             autoFocus
@@ -61,19 +61,19 @@ export function NoteHeader({
             value={titleDraft}
             onChange={(event) => onTitleDraftChange(event.currentTarget.value)}
             aria-label="Note title"
-            style={Object.assign({}, noteStyles.title, noteStyles.titleInRow, noteStyles.titleInput)}
+            className="note-title note-title--inline note-title-input"
           />
         ) : (
           <button
             type="button"
             onClick={onStartEditing}
             aria-label="Edit note title"
-            style={Object.assign({}, noteStyles.title, noteStyles.titleInRow, noteStyles.editableText)}
+            className="note-title note-title--inline note-editable-text"
           >
             {note.title}
           </button>
         )}
-        <span style={noteStyles.updated}>
+        <span className="note-updated">
           Updated {new Date(note.updated_at).toLocaleDateString('en-GB', {
             day: 'numeric',
             month: 'long',
@@ -101,15 +101,15 @@ export function NoteBody({
   onStartEditing,
 }: NoteBodyProps) {
   return editing ? (
-    <div style={noteStyles.bodyEditor}>
-      <span style={noteStyles.meta}>{note.category}</span>
+    <div className="note-body-editor">
+      <span className="note-meta">{note.category}</span>
       <textarea
         autoFocus
         value={bodyDraft}
         onChange={(event) => onBodyDraftChange(event.currentTarget.value)}
         aria-label="Note body"
         placeholder="This note is empty."
-        style={Object.assign({}, noteStyles.body, noteStyles.bodyInput)}
+        className="note-body note-body-input"
       />
     </div>
   ) : (
@@ -117,10 +117,10 @@ export function NoteBody({
       type="button"
       onClick={onStartEditing}
       aria-label="Edit note body"
-      style={noteStyles.bodyEditButton}
+      className="note-body-edit-button"
     >
-      <span style={noteStyles.meta}>{note.category}</span>
-      <span style={noteStyles.body}>
+      <span className="note-meta">{note.category}</span>
+      <span className="note-body">
         {note.notes || 'This note is empty.'}
       </span>
     </button>
@@ -203,7 +203,7 @@ export function NoteDetails({
   useBackButtonBlocker(isEditing, resetBackAction);
 
   return (
-    <div style={noteStyles.details}>
+    <div className="note-details">
       <NoteHeader
         note={note}
         titleDraft={titleDraft}
@@ -237,121 +237,3 @@ export function NoteDetails({
     </div>
   );
 }
-
-const noteStyles = {
-  title: {
-    color: colors.ink,
-    fontSize: 18,
-    lineHeight: '32px',
-    fontWeight: '800',
-    marginBottom: 8,
-  },
-  titleRow: {
-    position: 'sticky',
-    top: 0,
-    paddingBlock: 8,
-    zIndex: 1,
-    backgroundColor: colors.background,
-  },
-  titleLine: {
-    display: 'flex',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 12,
-  },
-  details: {
-    display: 'flex',
-    flex: 1,
-    flexDirection: 'column',
-    minHeight: 0,
-  },
-  titleInRow: {
-    flex: 1,
-    minWidth: 0,
-    marginBottom: 0,
-  },
-  titleInput: {
-    outline: 'none',
-  },
-  editableText: {
-    display: 'block',
-    width: '100%',
-    textAlign: 'left',
-    whiteSpace: 'pre-wrap',
-  },
-  updated: {
-    color: colors.muted,
-    fontSize: 9,
-    textAlign: 'right',
-    flexShrink: 0,
-  },
-  meta: {
-    color: colors.muted,
-    fontSize: 11,
-    marginBottom: 14,
-  },
-  body: {
-    display: 'block',
-    color: colors.ink,
-    fontSize: 13,
-    lineHeight: '23px',
-    whiteSpace: 'pre-wrap',
-    backgroundColor: colors.surface,
-    flex: 1,
-    minHeight: 0,
-    padding: 8,
-    borderRadius: 8,
-  },
-  bodyEditor: {
-    display: 'flex',
-    flex: 1,
-    flexDirection: 'column',
-    minHeight: 0,
-  },
-  bodyEditButton: {
-    display: 'flex',
-    flex: 1,
-    width: '100%',
-    textAlign: 'left',
-    cursor: 'text',
-  },
-  bodyInput: {
-    flex: 1,
-    width: '100%',
-    minHeight: 0,
-    boxSizing: 'border-box',
-    outline: 'none',
-    fontFamily: 'inherit',
-    resize: 'none',
-  },
-  recordCard: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-  },
-  cardHeading: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  recordTitle: {
-    color: colors.ink,
-    fontWeight: '800',
-    fontSize: 12,
-  },
-  bodyText: {
-    color: colors.muted,
-    fontSize: 10,
-    lineHeight: '18px',
-    marginTop: 2,
-    whiteSpace: 'pre-wrap',
-  },
-  hint: {
-    color: colors.muted,
-    fontSize: 6,
-    marginTop: 'auto',
-    paddingTop: 4,
-    fontWeight: '700',
-  },
-} satisfies Record<string, CSSProperties>;

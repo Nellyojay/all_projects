@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { BudgetSummary } from '../../../../services/database';
 import { money } from './RecurringBudgetUtils';
-import { budgetStyles } from './RecurringBudgetStyles';
+import './RecurringBudgetStyles.css';
 
 type Props = {
   periods: BudgetSummary[];
@@ -25,30 +25,30 @@ export function BudgetPeriodComparison({
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <section style={budgetStyles.card}>
-      <div style={budgetStyles.headingRow}>
+    <section className="recurring-budget-card">
+      <div className="recurring-budget-heading-row">
         <span>
-          <h3 style={budgetStyles.subheading}>Compare periods</h3>
-          <p style={budgetStyles.muted}>Compare spending across different periods.</p>
+          <h3 className="recurring-budget-subheading">Compare periods</h3>
+          <p className="recurring-budget-muted">Compare spending across different periods.</p>
         </span>
         <button
           type="button"
           aria-expanded={isOpen}
           onClick={() => setIsOpen((current) => !current)}
-          style={budgetStyles.secondaryButton}
+          className="recurring-budget-secondary-button"
         >
           {isOpen ? 'Close' : 'Open'}
         </button>
       </div>
       {isOpen ? (
         <>
-          <div style={budgetStyles.formGrid}>
-            <label style={budgetStyles.label}>
+          <div className="recurring-budget-form-grid">
+            <label className="recurring-budget-label">
               FIRST PERIOD
               <select
                 value={firstPeriodId}
                 onChange={(event) => onFirstPeriodChange(event.currentTarget.value)}
-                style={budgetStyles.input}
+                className="recurring-budget-input"
               >
                 <option value="">Select a period</option>
                 {periods.map((period) => (
@@ -58,12 +58,12 @@ export function BudgetPeriodComparison({
                 ))}
               </select>
             </label>
-            <label style={budgetStyles.label}>
+            <label className="recurring-budget-label">
               SECOND PERIOD
               <select
                 value={secondPeriodId}
                 onChange={(event) => onSecondPeriodChange(event.currentTarget.value)}
-                style={budgetStyles.input}
+                className="recurring-budget-input"
               >
                 <option value="">Select a period</option>
                 {periods.map((period) => (
@@ -75,7 +75,7 @@ export function BudgetPeriodComparison({
             </label>
           </div>
           {firstPeriod && secondPeriod ? (
-            <p style={budgetStyles.muted}>
+            <p className="recurring-budget-muted">
               Actual spending changed by {money(secondPeriod.actual_amount - firstPeriod.actual_amount)}
               {' '}from {firstPeriod.template_name} ({firstPeriod.start_date}) to
               {' '}{secondPeriod.template_name} ({secondPeriod.start_date}).
@@ -83,9 +83,9 @@ export function BudgetPeriodComparison({
             </p>
           ) : null}
           {periods.length ? (
-            <div style={budgetStyles.periodList}>
+            <div className="recurring-budget-period-list">
               {periods.slice(0, 12).map((period) => (
-                <div key={period.id} style={budgetStyles.analysisRow}>
+                <div key={period.id} className="recurring-budget-analysis-row">
                   <span>{period.template_name} · {period.start_date}</span>
                   <span>{money(period.actual_amount)} actual / {money(period.allocated_amount)} allocated</span>
                 </div>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { colors } from './theme';
+import './ActionPopup.css';
 
 export type PopupAction = {
   label: string;
@@ -46,25 +46,25 @@ export function ActionPopup({
   };
 
   return (
-    <div ref={containerRef} style={popupStyles.container}>
+    <div ref={containerRef} className="action-popup">
       <button
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((visible) => !visible)}
-        style={popupStyles.trigger}
+        className="action-popup-trigger"
       >
-        <span style={popupStyles.triggerText}>{triggerLabel}</span>
+        <span className="action-popup-trigger-text">{triggerLabel}</span>
       </button>
       {open ? (
-        <div role="menu" aria-label={menuLabel} style={popupStyles.menu}>
+        <div role="menu" aria-label={menuLabel} className="action-popup-menu">
           {actions.map((action, index) => (
             <button
               key={`${action.label}-${index}`}
               type="button"
               role="menuitem"
               onClick={() => selectAction(action.onSelect)}
-              style={popupStyles.option}
+              className="action-popup-option"
             >
               {action.label}
             </button>
@@ -74,47 +74,3 @@ export function ActionPopup({
     </div>
   );
 }
-
-const popupStyles = {
-  container: {
-    position: 'relative',
-  },
-  trigger: {
-    backgroundColor: colors.green,
-    paddingBlock: 10,
-    paddingInline: 12,
-    borderRadius: 7,
-    cursor: 'pointer',
-  },
-  triggerText: {
-    color: colors.background,
-    fontWeight: '800',
-    fontSize: 10,
-  },
-  menu: {
-    position: 'absolute',
-    top: 'calc(100% + 6px)',
-    right: 0,
-    zIndex: 20,
-    minWidth: 190,
-    display: 'flex',
-    flexDirection: 'column',
-    padding: 5,
-    borderRadius: 9,
-    border: `1px solid ${colors.line}`,
-    backgroundColor: colors.background,
-    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.14)',
-  },
-  option: {
-    width: '100%',
-    padding: '10px 12px',
-    border: 0,
-    borderRadius: 6,
-    backgroundColor: 'transparent',
-    color: colors.ink,
-    fontSize: 11,
-    fontWeight: '700',
-    textAlign: 'left',
-    cursor: 'pointer',
-  },
-} as const;

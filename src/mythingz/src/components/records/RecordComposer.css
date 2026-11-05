@@ -1,0 +1,235 @@
+.record-composer-backdrop {
+  position: fixed;
+  inset: 0px;
+  z-index: 1000;
+  display: flex;
+  width: 100%;
+  min-height: 100dvh;
+  overflow-y: auto;
+  background-color: #000000;
+}
+
+.record-composer-sheet {
+  width: 100%;
+  max-width: 960px;
+  min-height: 100dvh;
+  margin-inline: auto;
+  background-color: #000000;
+  padding-inline: 12px;
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+}
+
+.record-composer-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding-block: 20px;
+  margin-bottom: 8px;
+  border-bottom-width: 1px;
+  border-bottom-color: #323232;
+}
+
+.record-composer-heading {
+  margin: 0px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #F5F5F5;
+}
+
+.record-composer-closeButton {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 14px;
+  border: 1px solid #323232;
+  border-radius: 7px;
+  background-color: #202020d2;
+  color: #A3A3A3;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.record-composer-form {
+  width: 100%;
+  max-width: 760px;
+  min-height: 0px;
+  margin-inline: auto;
+  padding-bottom: 12px;
+  padding-inline: 8px;
+  overflow-y: auto;
+}
+
+.record-composer-label {
+  color: #A3A3A3;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  margin-top: 12px;
+  margin-bottom: 7px;
+}
+
+.record-composer-advancedOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 10px;
+  background-color: #202020d2;
+  border: 1px solid #323232;
+}
+
+.record-composer-advancedSummary {
+  color: #F5F5F5;
+  font-size: 11px;
+  font-weight: 800;
+  padding-block: 5px;
+}
+
+.record-composer-removeReceipt {
+  align-self: flex-start;
+  color: #B8B8B8;
+  font-size: 10px;
+  font-weight: 700;
+  padding-block: 6px;
+}
+
+.record-composer-receiptError {
+  color: #B8B8B8;
+  font-size: 10px;
+  margin-top: 3px;
+}
+
+.record-composer-input {
+  min-height: 48px;
+  border-radius: 10px;
+  border-color: #323232;
+  border-width: 1px;
+  background-color: #202020d2;
+  color: #F5F5F5;
+  padding-inline: 14px;
+  font-size: 13px;
+}
+
+.record-composer-noteTitlePreview {
+  display: block;
+  width: 100%;
+  border: 0px;
+  padding: 0px;
+  background-color: transparent;
+  color: #F5F5F5;
+  font-size: 18px;
+  line-height: 32px;
+  font-weight: 800;
+  text-align: left;
+  font-family: inherit;
+}
+
+.record-composer-noteTitleInput {
+  outline: none;
+  line-height: 32px;
+  font-weight: 800;
+}
+
+.record-composer-noteCategory {
+  display: block;
+  width: 100%;
+  outline: none;
+  border: 0px;
+  padding: 0px;
+  margin-top: 4px;
+  background-color: transparent;
+  color: #A3A3A3;
+  font-size: 11px;
+  font-family: inherit;
+}
+
+.record-composer-noteBodyPreview {
+  display: block;
+  width: 100%;
+  min-height: 120px;
+  border: 0px;
+  padding: 0px;
+  margin-top: 14px;
+  background-color: transparent;
+  color: #F5F5F5;
+  font-size: 13px;
+  line-height: 23px;
+  text-align: left;
+  white-space: pre-wrap;
+  font-family: inherit;
+}
+
+.record-composer-noteBodyInput {
+  width: 100%;
+  outline: none;
+  min-height: 140px;
+  margin-top: 40px;
+  font-size: 13px;
+}
+
+.record-composer-transferCharges {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: #202020d2;
+  color: #F5F5F5;
+  font-size: 11px;
+}
+
+.record-composer-categoryOption {
+  display: flex;
+  min-height: 36px;
+  min-width: 30%;
+  flex-grow: 1;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border-width: 1px;
+  background-color: #202020d2;
+}
+
+.record-composer-categoryOptionSelected {
+  border-color: #E5E5E5;
+  background-color: #303030;
+}
+
+.record-composer-categoryOptionText {
+  color: #A3A3A3;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.record-composer-categoryOptionTextSelected {
+  color: #E5E5E5;
+}
+
+.record-composer-multiline {
+  min-height: 100px;
+  padding-top: 12px;
+}
+
+.record-composer-save {
+  display: flex;
+  min-height: 52px;
+  justify-content: center;
+  align-items: center;
+  background-color: #E5E5E5;
+  border-radius: 11px;
+  margin-top: 20px;
+}
+
+.record-composer-saveText {
+  color: #202020d2;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.record-composer-disabled {
+  opacity: 0.6;
+}

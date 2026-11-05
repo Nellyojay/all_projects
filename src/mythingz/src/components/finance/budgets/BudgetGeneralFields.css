@@ -1,0 +1,22 @@
+.budget-general-field {
+  display: grid;
+  gap: 6px;
+  color: #a0a0a0;
+  font-size: 13px;
+}
+
+.budget-general-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #303030;
+  border-radius: 8px;
+  background: #111;
+  color: #fff;
+  font: inherit;
+}
+
+.budget-general-textarea {
+  resize: vertical;
+}

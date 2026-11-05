@@ -1,0 +1,166 @@
+.record-details-page {
+  position: fixed;
+  inset: 0px;
+  z-index: 1000;
+  display: flex;
+  width: 100%;
+  min-height: 100dvh;
+  overflow-y: auto;
+  background-color: #000000;
+}
+
+.record-details-pageContent {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 960px;
+  min-height: 100dvh;
+  margin-inline: auto;
+  padding-top: env(safe-area-inset-top);
+  padding-inline: 12px;
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+  background-color: #000000;
+}
+
+.record-details-header {
+  display: flex;
+  padding-block: 8px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom-width: 1px;
+  border-bottom-color: #323232;
+  background-color: #000000;
+}
+
+.record-details-headerAction {
+  color: #A3A3A3;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.record-details-headerTitle {
+  color: #F5F5F5;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.record-details-headerDelete {
+  display: flex;
+  min-height: 36px;
+  padding-inline: 12px;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid #323232;
+  border-radius: 7px;
+  background-color: #202020d2;
+}
+
+.record-details-headerDeleteText {
+  color: #A3A3A3;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.record-details-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  margin-inline: auto;
+}
+
+.record-details-typeBadge {
+  align-self: flex-start;
+  padding-block: 6px;
+  padding-inline: 10px;
+  border-radius: 6px;
+  background-color: #303030;
+  margin-bottom: 14px;
+}
+
+.record-details-typeText {
+  color: #A3A3A3;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.record-details-title {
+  color: #F5F5F5;
+  font-size: 18px;
+  line-height: 32px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.record-details-body {
+  color: #F5F5F5;
+  font-size: 13px;
+  line-height: 23px;
+  margin-top: 14px;
+}
+
+.record-details-infoCard {
+  background-color: #202020d2;
+  border-radius: 11px;
+  padding: 16px;
+  border-width: 1px;
+  border-color: #323232;
+  margin-top: 12px;
+}
+
+.record-details-infoLabel {
+  color: #A3A3A3;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  margin-top: 10px;
+}
+
+.record-details-infoValue {
+  color: #F5F5F5;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 5px;
+}
+
+.record-details-secondaryAction {
+  align-self: flex-start;
+  border-radius: 8px;
+  border-width: 1px;
+  border-color: #323232;
+  padding-block: 10px;
+  padding-inline: 14px;
+  margin-top: 16px;
+  border: 1px solid #323232;
+}
+
+.record-details-secondaryActionText {
+  color: #F5F5F5;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.record-details-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.record-details-editButton {
+  display: flex;
+  flex: 1;
+  min-height: 50px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background-color: #F5F5F5;
+}
+
+.record-details-editText {
+  color: #000000;
+  font-size: 12px;
+  font-weight: 800;
+}

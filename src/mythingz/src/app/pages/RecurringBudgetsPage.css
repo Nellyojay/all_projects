@@ -305,6 +305,7 @@
 
 .budget-dashboard-unallocated-summary {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 8px 18px;
@@ -470,6 +471,7 @@
 }
 
 .app-content .budget-dashboard-section-header {
+  display: flex;
   flex-direction: row;
   justify-content: space-between;
   text-align: left;

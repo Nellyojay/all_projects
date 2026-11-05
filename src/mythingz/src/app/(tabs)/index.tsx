@@ -5,7 +5,7 @@ import { ExpenseComposer } from '../../components/finance/transactions/ExpenseCo
 import { TransactionReceipt } from '../../components/finance/transactions/TransactionReceipt';
 import { RecordComposer } from '../../components/records/RecordComposer';
 import { ScreenHeader, SectionTitle } from '../../components/shared/ScreenHeader';
-import { colors, styles } from '../../components/shared/theme';
+import '../../components/shared/theme.css';
 import {
   deleteRecord,
   getAccounts,
@@ -28,6 +28,7 @@ import {
   type Transfer,
 } from '../../services/database';
 import { NoteCard } from '../../components/notes/note';
+import './index.css';
 
 const formatMoney = (amount: number) =>
   `UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(amount)}`;
@@ -304,8 +305,8 @@ export default function HomeScreen() {
     }
   };
   return (
-    <div style={styles.screen}>
-      <div style={styles.scrollContent}>
+    <div className="app-screen">
+      <div className="app-scroll-content">
         <ScreenHeader
           title={`${greeting()}!`}
           subtitle={new Date().toLocaleDateString('en-GB', {
@@ -313,8 +314,8 @@ export default function HomeScreen() {
           })}
           profile
         />
-        <span style={localStyles.eyebrow}>YOUR DAY, AT A GLANCE</span>
-        <div style={localStyles.quickGrid}>
+        <span className="home-eyebrow">YOUR DAY, AT A GLANCE</span>
+        <div className="home-quickGrid">
           {([
             ['budget-list', '☷', 'Budget list'],
             ['note', '✎', 'New note'],
@@ -334,32 +335,32 @@ export default function HomeScreen() {
                   setComposer(kind);
                 }
               }}
-              type="button" style={localStyles.quickAction}
+              type="button" className="home-quickAction"
             >
-              <span style={localStyles.quickIcon}>{icon}</span>
-              <span style={localStyles.quickLabel}>{label}</span>
+              <span className="home-quickIcon">{icon}</span>
+              <span className="home-quickLabel">{label}</span>
             </button>
           ))}
         </div>
 
         <SectionTitle title="FINANCIAL OVERVIEW" action="Open finances →" onAction={() => navigate('/space/finances')} />
-        <div style={Object.assign({}, styles.panel, localStyles.financeCard)}>
-          <div style={localStyles.metricGrid}>
+        <div className="app-panel home-financeCard" >
+          <div className="home-metricGrid">
             {[
               ['TOTAL ACCOUNT BALANCE', accountBalance],
               ['MONTHLY INCOME', monthlyIncome],
               ['MONTHLY EXPENSES', monthlySpent],
               ['ACTIVE BUDGETS', activeListPlan],
             ].map(([label, amount]) => (
-              <div key={label} style={localStyles.metric}>
-                <span style={localStyles.cardKicker}>{label}</span>
-                <span style={localStyles.metricValue}>{formatMoney(Number(amount))}</span>
+              <div key={label} className="home-metric">
+                <span className="home-cardKicker">{label}</span>
+                <span className="home-metricValue">{formatMoney(Number(amount))}</span>
               </div>
             ))}
           </div>
           {budgetOverview.length > 0 && (
-            <div style={localStyles.budgetList}>
-              <span style={localStyles.cardKicker}>BUDGET REMAINING</span>
+            <div className="home-budgetList">
+              <span className="home-cardKicker">BUDGET REMAINING</span>
               {budgetOverview.slice(0, 4).map((budget) => {
                 const remaining = budget.planned - budget.actual;
                 const percentage = budget.planned > 0
@@ -370,10 +371,10 @@ export default function HomeScreen() {
                     key={budget.id}
                     type="button"
                     onClick={() => navigate(`/space/records/list/${budget.id}`, { state: { from: location.pathname } })}
-                    style={localStyles.budgetRow}
+                    className="home-budgetRow"
                   >
-                    <span style={localStyles.budgetName}>{budget.title}</span>
-                    <span style={localStyles.muted}>
+                    <span className="home-budgetName">{budget.title}</span>
+                    <span className="home-muted">
                       {formatMoney(remaining)} remaining · {percentage}% used
                     </span>
                   </button>
@@ -384,47 +385,47 @@ export default function HomeScreen() {
         </div>
 
         <SectionTitle title="TODAY'S OVERVIEW" action="See all" onAction={() => navigate('/space/organize')} />
-        <div style={styles.panel}>
-          <span style={localStyles.cardKicker}>TASKS DUE TODAY</span>
+        <div className="app-panel">
+          <span className="home-cardKicker">TASKS DUE TODAY</span>
           {dueTodayTasks.length ? dueTodayTasks.map((task) => (
             <button
               key={task.id}
               onClick={() => navigate(`/space/records/task/${task.id}`, { state: { from: location.pathname } })}
             >
-              <span style={localStyles.listLine}>○  {task.title}</span>
+              <span className="home-listLine">○  {task.title}</span>
             </button>
-          )) : <span style={localStyles.muted}>No tasks due today.</span>}
+          )) : <span className="home-muted">No tasks due today.</span>}
           {overdueTasks.length > 0 && (
-            <div style={localStyles.attentionGroup}>
-              <span style={localStyles.attentionLabel}>OVERDUE TASKS</span>
+            <div className="home-attentionGroup">
+              <span className="home-attentionLabel">OVERDUE TASKS</span>
               {overdueTasks.slice(0, 4).map((task) => (
                 <button
                   key={task.id}
                   type="button"
                   onClick={() => navigate(`/space/records/task/${task.id}`, { state: { from: location.pathname } })}
-                  style={localStyles.attentionButton}
+                  className="home-attentionButton"
                 >
                   {task.title} · due {task.date}
                 </button>
               ))}
             </div>
           )}
-          <div style={localStyles.attentionGroup}>
-            <span style={localStyles.cardKicker}>EVENTS TODAY</span>
+          <div className="home-attentionGroup">
+            <span className="home-cardKicker">EVENTS TODAY</span>
             {todayEvents.length ? todayEvents.map((event) => (
               <button
                 key={event.id}
                 type="button"
                 onClick={() => navigate(`/space/records/event/${event.id}`, { state: { from: location.pathname } })}
-                style={localStyles.attentionButton}
+                className="home-attentionButton"
               >
                 {event.title}
               </button>
-            )) : <span style={localStyles.muted}>No events scheduled today.</span>}
+            )) : <span className="home-muted">No events scheduled today.</span>}
           </div>
           {remindersDue.length > 0 && (
-            <div style={localStyles.attentionGroup}>
-              <span style={localStyles.attentionLabel}>REMINDERS DUE OR OVERDUE</span>
+            <div className="home-attentionGroup">
+              <span className="home-attentionLabel">REMINDERS DUE OR OVERDUE</span>
               {remindersDue.slice(0, 4).map((reminder) => (
                 <button
                   key={reminder.id}
@@ -432,7 +433,7 @@ export default function HomeScreen() {
                   onClick={() => navigate('/space/organize', {
                     state: { section: 'Reminders', focusReminderId: reminder.id },
                   })}
-                  style={localStyles.attentionButton}
+                  className="home-attentionButton"
                 >
                   {reminder.title} · {formatScheduleDate(reminder.due_at)}
                 </button>
@@ -442,18 +443,18 @@ export default function HomeScreen() {
         </div>
 
         <SectionTitle title="NEEDS ATTENTION" action="Open reminders →" onAction={() => navigate('/space/organize', { state: { section: 'Reminders' } })} />
-        <div style={styles.panel}>
+        <div className="app-panel">
           {overdueTasks.length === 0 && remindersDue.length === 0 && budgetAttention.length === 0
             && eventPreparation.length === 0
             && loans.every((loan) => loan.due_date >= today)
-            ? <span style={localStyles.muted}>Nothing needs attention right now.</span>
+            ? <span className="home-muted">Nothing needs attention right now.</span>
             : null}
           {overdueTasks.slice(0, 3).map((task) => (
             <button
               key={`task-${task.id}`}
               type="button"
               onClick={() => navigate(`/space/records/task/${task.id}`, { state: { from: location.pathname } })}
-              style={localStyles.attentionButton}
+              className="home-attentionButton"
             >
               Overdue task: {task.title}
             </button>
@@ -463,7 +464,7 @@ export default function HomeScreen() {
               key={`budget-${budget.id}`}
               type="button"
               onClick={() => navigate(`/space/records/list/${budget.id}`, { state: { from: location.pathname } })}
-              style={localStyles.attentionButton}
+              className="home-attentionButton"
             >
               Budget near limit: {budget.title} ({Math.round((budget.actual / budget.planned) * 100)}% used)
             </button>
@@ -473,7 +474,7 @@ export default function HomeScreen() {
               key={`event-${event.id}`}
               type="button"
               onClick={() => navigate(`/space/records/event/${event.id}`, { state: { from: location.pathname } })}
-              style={localStyles.attentionButton}
+              className="home-attentionButton"
             >
               Event needs preparation: {event.title} · {event.tasks} incomplete tasks
             </button>
@@ -483,7 +484,7 @@ export default function HomeScreen() {
               key={`loan-${loan.id}`}
               type="button"
               onClick={() => navigate('/space/finances', { state: { section: 'loans' } })}
-              style={localStyles.attentionButton}
+              className="home-attentionButton"
             >
               Overdue loan repayment: {loan.lender} · {loan.due_date}
             </button>
@@ -493,7 +494,7 @@ export default function HomeScreen() {
               key={`reminder-${reminder.id}`}
               type="button"
               onClick={() => navigate('/space/organize', { state: { section: 'Reminders', focusReminderId: reminder.id } })}
-              style={localStyles.attentionButton}
+              className="home-attentionButton"
             >
               Reminder due: {reminder.title}
             </button>
@@ -501,73 +502,70 @@ export default function HomeScreen() {
         </div>
 
         <SectionTitle title="UPCOMING SCHEDULE" action="Open calendar →" onAction={() => navigate('/space/calendar')} />
-        <div style={styles.panel}>
+        <div className="app-panel">
           {upcomingSchedule.length ? upcomingSchedule.map((item) => (
             <button
               key={`${item.kind}-${item.id}`}
               type="button"
               onClick={() => openScheduleItem(item)}
-              style={localStyles.scheduleRow}
+              className="home-scheduleRow"
             >
-              <span style={localStyles.scheduleDate}>{formatScheduleDate(item.date)}</span>
-              <span style={localStyles.recordTitle}>{item.title}</span>
-              <span style={localStyles.scheduleKind}>{item.kind}</span>
+              <span className="home-scheduleDate">{formatScheduleDate(item.date)}</span>
+              <span className="home-recordTitle">{item.title}</span>
+              <span className="home-scheduleKind">{item.kind}</span>
             </button>
-          )) : <span style={localStyles.muted}>Nothing scheduled soon.</span>}
+          )) : <span className="home-muted">Nothing scheduled soon.</span>}
         </div>
 
         <SectionTitle title="RECENT NOTES" action="Open organize →" onAction={() => navigate('/space/organize')} />
-        <div style={styles.panelGrid}>
+        <div className="app-panel-grid">
           {notes.length ? notes.map((note) => (
             <NoteCard key={note.id} note={note} remove={removeNote} />
-          )) : <span style={localStyles.muted}>Your recently updated notes will appear here.</span>}
+          )) : <span className="home-muted">Your recently updated notes will appear here.</span>}
         </div>
 
         <SectionTitle title="RECENT TRANSACTIONS" />
-        <div style={styles.panel}>
+        <div className="app-panel">
           {transactions.length ? transactions.map((transaction) => (
             <button
               key={transaction.id}
               type="button"
               onClick={() => setSelectedTransaction(transaction)}
-              style={localStyles.transactionRow}
+              className="home-transactionRow"
             >
-              <div style={localStyles.transactionIcon}>
+              <div className="home-transactionIcon">
                 <span>
                   {transaction.kind === 'expense'
                     ? '−'
                     : transaction.loan_id !== null ? '↔' : '+'}
                 </span>
               </div>
-              <div style={localStyles.previewText}>
-                <span style={localStyles.recordTitle}>{transaction.title}</span>
-                <span style={localStyles.muted}>
+              <div className="home-previewText">
+                <span className="home-recordTitle">{transaction.title}</span>
+                <span className="home-muted">
                   {transaction.loan_id !== null ? 'Loan proceeds' : transaction.category}
                 </span>
               </div>
-              <span style={Object.assign({},
-                localStyles.recordTitle,
-                transaction.kind === 'income' && transaction.loan_id === null && localStyles.income,
-              )}>
+              <span className={`home-recordTitle${transaction.kind === 'income' && transaction.loan_id === null ? ' home-income' : ''}`}>
                 {transaction.kind === 'expense' ? '−' : '+'}{formatMoney(transaction.amount)}
               </span>
             </button>
-          )) : <span style={localStyles.muted}>Add an expense or income, or finalize a budget list.</span>}
+          )) : <span className="home-muted">Add an expense or income, or finalize a budget list.</span>}
         </div>
 
         <SectionTitle title="PERSONAL PROGRESS" action="Open tasks →" onAction={() => navigate('/space/organize', { state: { section: 'Tasks' } })} />
-        <div style={Object.assign({}, styles.panel, localStyles.metricGrid)}>
-          <div style={localStyles.metric}>
-            <span style={localStyles.cardKicker}>TASKS COMPLETED · 7 DAYS</span>
-            <span style={localStyles.metricValue}>{completedThisWeek}</span>
+        <div className="app-panel home-metricGrid" >
+          <div className="home-metric">
+            <span className="home-cardKicker">TASKS COMPLETED · 7 DAYS</span>
+            <span className="home-metricValue">{completedThisWeek}</span>
           </div>
-          <div style={localStyles.metric}>
-            <span style={localStyles.cardKicker}>TASKS REMAINING</span>
-            <span style={localStyles.metricValue}>{remainingTasks}</span>
+          <div className="home-metric">
+            <span className="home-cardKicker">TASKS REMAINING</span>
+            <span className="home-metricValue">{remainingTasks}</span>
           </div>
-          <div style={localStyles.metric}>
-            <span style={localStyles.cardKicker}>BUDGET UTILIZATION</span>
-            <span style={localStyles.metricValue}>
+          <div className="home-metric">
+            <span className="home-cardKicker">BUDGET UTILIZATION</span>
+            <span className="home-metricValue">
               {budgetOverview.reduce((total, budget) => total + budget.planned, 0) > 0
                 ? `${Math.round(
                   budgetOverview.reduce((total, budget) => total + budget.actual, 0)
@@ -583,26 +581,26 @@ export default function HomeScreen() {
           action="View all"
           onAction={() => navigate('/space/organize', { state: { section: 'Activity' } })}
         />
-        <div style={styles.panel}>
+        <div className="app-panel">
           {activities.length ? activities.map((activity) => (
-            <div key={activity.id} style={localStyles.activityRow}>
+            <div key={activity.id} className="home-activityRow">
               {activity.action !== 'deleted' && activity.module !== 'links' && activity.record_id !== null ? (
-                <button type="button" onClick={() => openActivity(activity)} style={localStyles.activityButton}>
-                  <span style={localStyles.recordTitle}>{activity.description}</span>
-                  <time dateTime={activity.occurred_at} style={localStyles.muted}>
+                <button type="button" onClick={() => openActivity(activity)} className="home-activityButton">
+                  <span className="home-recordTitle">{activity.description}</span>
+                  <time dateTime={activity.occurred_at} className="home-muted">
                     {new Date(activity.occurred_at).toLocaleString()}
                   </time>
                 </button>
               ) : (
                 <>
-                  <span style={localStyles.recordTitle}>{activity.description}</span>
-                  <time dateTime={activity.occurred_at} style={localStyles.muted}>
+                  <span className="home-recordTitle">{activity.description}</span>
+                  <time dateTime={activity.occurred_at} className="home-muted">
                     {new Date(activity.occurred_at).toLocaleString()}
                   </time>
                 </>
               )}
             </div>
-          )) : <span style={localStyles.muted}>Your recent activity will appear here.</span>}
+          )) : <span className="home-muted">Your recent activity will appear here.</span>}
         </div>
       </div>
       <RecordComposer
@@ -631,222 +629,3 @@ export default function HomeScreen() {
     </div>
   );
 }
-
-const localStyles = {
-  eyebrow: {
-    color: colors.muted,
-    fontSize: 9,
-    letterSpacing: 1.3,
-    fontWeight: '800',
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  quickGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  quickAction: {
-    width: '48%',
-    minHeight: 50,
-    borderRadius: 11,
-    backgroundColor: colors.surface,
-    border: `1px solid ${colors.line}`,
-    justifyContent: 'center',
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingInline: 8,
-    gap: 10,
-  },
-  quickIcon: {
-    fontSize: 16,
-    color: colors.green,
-    fontWeight: '800',
-  },
-  quickLabel: {
-    color: colors.ink,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  financeCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.line,
-    padding: 20,
-  },
-  metricGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    gap: 14,
-  },
-  metric: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 6,
-  },
-  metricValue: {
-    color: colors.ink,
-    fontSize: 17,
-    fontWeight: '800',
-  },
-  budgetList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-    marginTop: 16,
-    paddingTop: 14,
-    borderTop: `1px solid ${colors.line}`,
-  },
-  budgetRow: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 3,
-    paddingBlock: 5,
-    textAlign: 'left',
-  },
-  budgetName: {
-    color: colors.ink,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  attentionGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    marginTop: 11,
-    paddingTop: 9,
-    borderTop: `1px solid ${colors.line}`,
-  },
-  attentionLabel: {
-    color: colors.orange,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-  },
-  attentionButton: {
-    width: '100%',
-    paddingBlock: 8,
-    color: colors.ink,
-    fontSize: 11,
-    textAlign: 'left',
-  },
-  scheduleRow: {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(90px, 0.8fr) minmax(0, 2fr) auto',
-    alignItems: 'center',
-    gap: 10,
-    width: '100%',
-    paddingBlock: 10,
-    textAlign: 'left',
-    borderBottom: `1px solid ${colors.line}`,
-  },
-  scheduleDate: {
-    color: colors.muted,
-    fontSize: 9,
-  },
-  scheduleKind: {
-    color: colors.green,
-    fontSize: 9,
-    textTransform: 'capitalize',
-  },
-  activityRow: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 5,
-    paddingBlock: 9,
-    borderBottom: `1px solid ${colors.line}`,
-  },
-  activityButton: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: 5,
-    textAlign: 'left',
-  },
-  financeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  cardKicker: {
-    color: '#B8B8B8',
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  spent: {
-    color: colors.ink,
-    fontSize: 22,
-    fontWeight: '800',
-    marginTop: 8,
-  },
-  budgetLine: {
-    color: '#B8B8B8',
-    fontSize: 10,
-    marginTop: 3,
-  },
-  financeMark: {
-    color: colors.yellow,
-    fontSize: 23,
-    fontWeight: '700',
-  },
-  listLine: {
-    color: colors.ink,
-    fontSize: 12,
-    paddingBlock: 8,
-  },
-  muted: {
-    color: colors.muted,
-    fontSize: 11,
-    lineHeight: '19px',
-  },
-  previewRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingBlock: 8,
-    gap: 12,
-  },
-  previewText: {
-    flex: 1,
-  },
-  eventIcon: {
-    color: colors.orange,
-    fontSize: 18,
-    width: 26,
-    textAlign: 'center',
-  },
-  noteIcon: {
-    color: colors.green,
-    fontSize: 18,
-    width: 26,
-    textAlign: 'center',
-  },
-  recordTitle: {
-    color: colors.ink,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  transactionRow: {
-    display: 'flex',
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    paddingBlock: 8,
-    textAlign: 'left',
-    color: colors.ink,
-    backgroundColor: 'transparent',
-    border: 0,
-    cursor: 'pointer',
-  },
-  transactionIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    backgroundColor: colors.greenSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  income: {
-    color: colors.green,
-  },
-} as const

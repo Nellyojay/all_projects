@@ -5,8 +5,9 @@ import { useDatabase } from '../../../web/DatabaseProvider';
 import { ACCOUNT_TYPES } from '../../../constants/finance';
 import { createAccount } from '../../../services/database';
 import type { Account } from '../../../services/database';
-import { colors, styles } from '../../shared/theme';
 import { ScreenHeader } from '../../shared/ScreenHeader';
+import '../../shared/theme.css';
+import './account.css';
 
 const money = (amount: number) =>
   `UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(amount)}`;
@@ -24,14 +25,14 @@ export function AccountPicker({
 }) {
   return (
     <div style={{ marginTop: 12 }}>
-      <label style={accountStyles.label} htmlFor={`account-${label.replace(/\W/g, '-')}`}>
+      <label className="account-form-label" htmlFor={`account-${label.replace(/\W/g, '-')}`}>
         {label}
       </label>
       <select
         id={`account-${label.replace(/\W/g, '-')}`}
         value={value ?? ''}
         onChange={(event) => onChange(Number(event.currentTarget.value))}
-        style={accountStyles.select}
+        className="account-picker-select"
         required
       >
         <option value="" disabled>Select an account</option>
@@ -75,16 +76,16 @@ export function CreateAccountPage() {
   };
 
   return (
-    <div style={styles.screen}>
-      <div style={styles.scrollContent}>
+    <div className="app-screen">
+      <div className="app-scroll-content">
         <ScreenHeader
           title="Create account"
           subtitle="Add a place where you keep your money"
           action={{ label: 'Back', onPress: () => navigate(-1), compact: true }}
         />
-        <form onSubmit={(event) => void save(event)} style={accountStyles.form}>
-          <div style={Object.assign({}, styles.panel, accountStyles.formPanel)}>
-            <label style={accountStyles.label} htmlFor="account-name">ACCOUNT NAME</label>
+        <form onSubmit={(event) => void save(event)} className="account-form">
+          <div className="app-panel account-form-panel">
+            <label className="account-form-label" htmlFor="account-name">ACCOUNT NAME</label>
             <input
               id="account-name"
               autoFocus
@@ -92,20 +93,20 @@ export function CreateAccountPage() {
               value={name}
               onChange={(event) => setName(event.currentTarget.value)}
               placeholder="e.g. MTN Mobile Money"
-              style={accountStyles.input}
+              className="account-form-input"
             />
-            <label style={accountStyles.label} htmlFor="account-type">ACCOUNT TYPE</label>
+            <label className="account-form-label" htmlFor="account-type">ACCOUNT TYPE</label>
             <select
               id="account-type"
               value={type}
               onChange={(event) => setType(event.currentTarget.value)}
-              style={accountStyles.input}
+              className="account-form-input"
             >
               {ACCOUNT_TYPES.map((accountType) => (
                 <option key={accountType} value={accountType}>{accountType}</option>
               ))}
             </select>
-            <label style={accountStyles.label} htmlFor="account-opening-balance">
+            <label className="account-form-label" htmlFor="account-opening-balance">
               OPENING BALANCE · UGX
             </label>
             <input
@@ -114,15 +115,15 @@ export function CreateAccountPage() {
               onChange={(event) => setOpeningBalance(event.currentTarget.value)}
               placeholder="0"
               inputMode="decimal"
-              style={accountStyles.input}
+              className="account-form-input"
             />
           </div>
           <button
             type="submit"
             disabled={saving}
-            style={Object.assign({}, styles.button, styles.buttonTextOnly)}
+            className="app-button app-button--text-only"
           >
-            <span style={styles.buttonText}>
+            <span className="app-button-text">
               {saving ? 'Saving…' : 'Create account'}
             </span>
           </button>
@@ -131,63 +132,3 @@ export function CreateAccountPage() {
     </div>
   );
 }
-
-const accountStyles = {
-  toolbar: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBlock: 16,
-  },
-  heading: { color: colors.ink, fontSize: 11, fontWeight: '800', letterSpacing: 0.7 },
-  addButton: {
-    color: colors.background,
-    backgroundColor: colors.green,
-    borderRadius: 7,
-    paddingBlock: 8,
-    paddingInline: 12,
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  form: { display: 'flex', flexDirection: 'column', gap: 8 },
-  formPanel: { display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 4 },
-  label: { color: colors.muted, fontSize: 9, fontWeight: '800', letterSpacing: 0.7 },
-  input: {
-    minHeight: 42,
-    borderRadius: 8,
-    backgroundColor: colors.background,
-    border: `1px solid ${colors.line}`,
-    color: colors.ink,
-    paddingInline: 12,
-    fontSize: 12,
-  },
-  select: {
-    display: 'block',
-    width: '100%',
-    minHeight: 44,
-    borderRadius: 8,
-    backgroundColor: colors.surface,
-    border: `1px solid ${colors.line}`,
-    color: colors.ink,
-    paddingInline: 12,
-    marginTop: 6,
-  },
-  card: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 9,
-  },
-  name: { color: colors.ink, fontSize: 13, fontWeight: '800' },
-  typeText: { display: 'block', color: colors.muted, fontSize: 10, marginTop: 4 },
-  balance: { color: colors.ink, fontSize: 12, fontWeight: '700' },
-  totalCard: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.greenSoft,
-    borderColor: colors.greenSoft,
-    marginTop: 14,
-  },
-  total: { color: colors.ink, fontSize: 18, fontWeight: '800' },
-} as const;

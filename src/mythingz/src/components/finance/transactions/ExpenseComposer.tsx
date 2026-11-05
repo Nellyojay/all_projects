@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../../../web/DatabaseProvider';
-import type { CSSProperties } from 'react';
 import {
   EXPENSE_CATEGORIES,
   getAccounts,
@@ -12,9 +11,9 @@ import {
   type ExpenseDraft,
   type BudgetPeriodItem,
 } from '../../../services/database';
-import { colors } from '../../shared/theme';
 import { AccountPicker } from '../accounts/account';
 import { ItemizedItemsEditor } from '../../lists/itemizedItems';
+import './ExpenseComposer.css';
 import {
   createEmptyItemizedItem,
   parseItemizedItems,
@@ -188,16 +187,16 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
   };
 
   return (
-    <section className="record-composer-page" style={expenseStyles.backdrop} aria-label="Add expense">
-      <div style={expenseStyles.sheet}>
-        <div style={expenseStyles.header}>
-          <h1 style={expenseStyles.heading}>Add expense</h1>
-          <button onClick={close} type="button" style={expenseStyles.closeButton}>
+    <section className="record-composer-page expense-composer-backdrop"  aria-label="Add expense">
+      <div className="expense-composer-sheet">
+        <div className="expense-composer-header">
+          <h1 className="expense-composer-heading">Add expense</h1>
+          <button onClick={close} type="button" className="expense-composer-closeButton">
             Cancel
           </button>
         </div>
-        <form onSubmit={(event) => void submit(event)} style={expenseStyles.form}>
-          <label style={expenseStyles.label} htmlFor="expense-title">TITLE</label>
+        <form onSubmit={(event) => void submit(event)} className="expense-composer-form">
+          <label className="expense-composer-label" htmlFor="expense-title">TITLE</label>
           <input
             id="expense-title"
             autoFocus
@@ -205,14 +204,14 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
             value={title}
             onChange={(event) => setTitle(event.currentTarget.value)}
             placeholder="What was this expense for?"
-            style={expenseStyles.input}
+            className="expense-composer-input"
           />
-          <label style={expenseStyles.label} htmlFor="expense-category">CATEGORY</label>
+          <label className="expense-composer-label" htmlFor="expense-category">CATEGORY</label>
           <select
             id="expense-category"
             value={category}
             onChange={(event) => setCategory(event.currentTarget.value)}
-            style={expenseStyles.input}
+            className="expense-composer-input"
           >
             {EXPENSE_CATEGORIES.map((expenseCategory) => (
               <option key={expenseCategory} value={expenseCategory}>
@@ -231,11 +230,11 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
             onItemsChange={setItems}
             itemsLabel="EXPENSE ITEMS"
           />
-          <section style={expenseStyles.budgetSection} aria-label="Optional budget allocation">
-            <span style={expenseStyles.label}>BUDGET ALLOCATION · OPTIONAL</span>
+          <section className="expense-composer-budgetSection" aria-label="Optional budget allocation">
+            <span className="expense-composer-label">BUDGET ALLOCATION · OPTIONAL</span>
             {budgetItems.length ? (
               <>
-                <div style={expenseStyles.allocationControls}>
+                <div className="expense-composer-allocationControls">
                   <select
                     value={selectedBudgetItemId}
                     onChange={(event) => {
@@ -247,7 +246,7 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
                       );
                     }}
                     aria-label="Choose a budget item"
-                    style={expenseStyles.input}
+                    className="expense-composer-input"
                   >
                     <option value="">Choose a budget item</option>
                     {budgetItems.map((item) => (
@@ -265,7 +264,7 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
                     onChange={(event) => setBudgetAllocationAmount(event.currentTarget.value)}
                     placeholder={`Amount · up to ${Math.max(0, allocationRemainder)}`}
                     aria-label="Amount to allocate to this budget item"
-                    style={expenseStyles.input}
+                    className="expense-composer-input"
                   />
                   <button
                     type="button"
@@ -283,7 +282,7 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
                       setSelectedBudgetItemId('');
                       setBudgetAllocationAmount('');
                     }}
-                    style={expenseStyles.addAllocation}
+                    className="expense-composer-addAllocation"
                   >
                     Add item
                   </button>
@@ -291,8 +290,8 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
                 {budgetAllocations.map((allocation) => {
                   const item = budgetItems.find((candidate) => candidate.id === allocation.budgetItemId);
                   return (
-                    <div key={allocation.budgetItemId} style={expenseStyles.allocationRow}>
-                      <span style={expenseStyles.allocationName}>
+                    <div key={allocation.budgetItemId} className="expense-composer-allocationRow">
+                      <span className="expense-composer-allocationName">
                         {item ? `${item.template_name} · ${item.name}` : 'Budget item'}
                       </span>
                       <span>{allocation.amount.toLocaleString('en-UG')} UGX</span>
@@ -302,36 +301,36 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
                         onClick={() => setBudgetAllocations((current) =>
                           current.filter((entry) => entry.budgetItemId !== allocation.budgetItemId),
                         )}
-                        style={expenseStyles.removeAllocation}
+                        className="expense-composer-removeAllocation"
                       >
                         Remove
                       </button>
                     </div>
                   );
                 })}
-                <span style={expenseStyles.allocationBalance}>
+                <span className="expense-composer-allocationBalance">
                   {allocatedTotal > 0
                     ? `${Math.max(0, allocationRemainder).toLocaleString('en-UG')} UGX remains unallocated. You can leave this balance unassigned.`
                     : 'Choose one or more items, or leave the full expense unallocated.'}
                 </span>
               </>
             ) : (
-              <span style={expenseStyles.allocationBalance}>No active recurring budget items cover today.</span>
+              <span className="expense-composer-allocationBalance">No active recurring budget items cover today.</span>
             )}
           </section>
-          <label style={expenseStyles.label} htmlFor="expense-notes">NOTES · OPTIONAL</label>
+          <label className="expense-composer-label" htmlFor="expense-notes">NOTES · OPTIONAL</label>
           <textarea
             id="expense-notes"
             value={notes}
             onChange={(event) => setNotes(event.currentTarget.value)}
             placeholder="Add a note"
             rows={3}
-            style={expenseStyles.textarea}
+            className="expense-composer-textarea"
           />
           <button
             type="submit"
             disabled={saving}
-            style={Object.assign({}, expenseStyles.save, saving && expenseStyles.disabled)}
+            className={`expense-composer-save${saving ? ' expense-composer-disabled' : ''}`}
           >
             {saving ? 'Saving…' : 'Save expense'}
           </button>
@@ -340,127 +339,3 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
     </section>
   );
 }
-
-const expenseStyles = {
-  backdrop: {
-    position: 'fixed',
-    inset: 0,
-    zIndex: 1000,
-    display: 'flex',
-    width: '100%',
-    minHeight: '100dvh',
-    overflowY: 'auto',
-    backgroundColor: colors.background,
-  },
-  sheet: {
-    width: '100%',
-    maxWidth: 960,
-    minHeight: '100dvh',
-    marginInline: 'auto',
-    backgroundColor: colors.background,
-    paddingInline: 12,
-    paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
-  },
-  header: {
-    display: 'flex',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingBlock: 20,
-    marginBottom: 8,
-    borderBottom: `1px solid ${colors.line}`,
-  },
-  heading: { margin: 0, fontSize: 18, fontWeight: '800', color: colors.ink },
-  closeButton: {
-    minHeight: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingInline: 14,
-    border: `1px solid ${colors.line}`,
-    borderRadius: 7,
-    backgroundColor: colors.surface,
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    width: '100%',
-    maxWidth: 760,
-    marginInline: 'auto',
-    paddingBottom: 12,
-    paddingInline: 8,
-  },
-  label: {
-    color: colors.muted,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1,
-    marginTop: 12,
-    marginBottom: 7,
-  },
-  input: {
-    minHeight: 48,
-    borderRadius: 10,
-    border: `1px solid ${colors.line}`,
-    backgroundColor: colors.surface,
-    color: colors.ink,
-    paddingInline: 14,
-    fontSize: 13,
-  },
-  textarea: {
-    minHeight: 84,
-    borderRadius: 10,
-    border: `1px solid ${colors.line}`,
-    backgroundColor: colors.surface,
-    color: colors.ink,
-    padding: 12,
-    fontSize: 13,
-    resize: 'vertical',
-  },
-  budgetSection: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-    marginTop: 16,
-    padding: 12,
-    border: `1px solid ${colors.line}`,
-    borderRadius: 10,
-    backgroundColor: colors.surface,
-  },
-  allocationControls: { display: 'flex', flexDirection: 'column', gap: 8 },
-  addAllocation: {
-    minHeight: 40,
-    alignSelf: 'flex-start',
-    paddingInline: 14,
-    borderRadius: 8,
-    backgroundColor: colors.green,
-    color: colors.background,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  allocationRow: {
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    fontSize: 10,
-    color: colors.ink,
-  },
-  allocationName: { flex: 1 },
-  removeAllocation: { color: colors.muted, fontSize: 9 },
-  allocationBalance: { color: colors.muted, fontSize: 10, lineHeight: '16px' },
-  save: {
-    minHeight: 52,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.green,
-    borderRadius: 11,
-    marginTop: 20,
-    color: colors.background,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  disabled: { opacity: 0.6 },
-} satisfies Record<string, CSSProperties>;

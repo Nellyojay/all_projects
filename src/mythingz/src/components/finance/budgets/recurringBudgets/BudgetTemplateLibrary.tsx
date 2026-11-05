@@ -3,8 +3,8 @@ import type { BudgetAlert, BudgetSummary } from '../../../../services/database';
 import { localDateKey } from '../../../../services/database';
 import type { TemplateWithItems } from './RecurringBudgetModels';
 import { money } from './RecurringBudgetUtils';
-import { budgetStyles } from './RecurringBudgetStyles';
 import { BudgetTemplatePeriods } from './BudgetTemplatePeriods';
+import './RecurringBudgetStyles.css';
 
 type Props = {
   loading: boolean;
@@ -50,42 +50,42 @@ function TemplateCard({
   const [periodsExpanded, setPeriodsExpanded] = useState(false);
 
   return (
-    <article style={budgetStyles.card}>
+    <article className="recurring-budget-card">
       <button
         type="button"
         className="budget-template-periods-toggle"
         aria-expanded={periodsExpanded}
         onClick={() => setPeriodsExpanded((current) => !current)}
       >
-        <span style={budgetStyles.templateHeader}>
+        <span className="recurring-budget-template-header">
           <span>
             {archived ? (
-              <span style={budgetStyles.subheading}>{template.name}</span>
+              <span className="recurring-budget-subheading">{template.name}</span>
             ) : (
-              <strong style={budgetStyles.subheading}>{template.name}</strong>
+              <strong className="recurring-budget-subheading">{template.name}</strong>
             )}
-            <span style={budgetStyles.muted}>
+            <span className="recurring-budget-muted">
               {template.recurrence} · starts {template.start_date}
               {template.end_date ? ` · ends ${template.end_date}` : ''}
             </span>
-            {template.description ? <span className="budget-template-description" style={budgetStyles.muted}>{template.description}</span> : null}
+            {template.description ? <span className="budget-template-description recurring-budget-muted">{template.description}</span> : null}
           </span>
-          <span style={budgetStyles.status}>
+          <span className="recurring-budget-status">
             {archived ? 'Archived' : template.active ? 'Active' : 'Paused'}
           </span>
         </span>
         <span className="budget-template-periods-label">
           {periods.length} {periods.length === 1 ? 'period' : 'periods'}
         </span>
-        <div style={budgetStyles.templateItems}>
+        <div className="recurring-budget-template-items">
           {template.items.filter((item) => item.active).map((item) => (
-            <span key={item.id} style={budgetStyles.itemSummary}>
+            <span key={item.id} className="recurring-budget-item-summary">
               {item.name}: {money(item.allocated_amount)}
             </span>
           ))}
         </div>
-        <div style={budgetStyles.formActions}>
-          <button type="button" onClick={() => onEdit(template)} style={budgetStyles.secondaryButton}>
+        <div className="recurring-budget-form-actions">
+          <button type="button" onClick={() => onEdit(template)} className="recurring-budget-secondary-button">
             Edit
           </button>
           {!archived ? (
@@ -93,18 +93,18 @@ function TemplateCard({
               <button
                 type="button"
                 onClick={() => onChangeState(template, { active: !template.active })}
-                style={budgetStyles.secondaryButton}
+                className="recurring-budget-secondary-button"
               >
                 {template.active ? 'Pause' : 'Resume'}
               </button>
               <button
                 type="button"
                 onClick={() => onChangeState(template, { active: false, archived: true })}
-                style={budgetStyles.secondaryButton}
+                className="recurring-budget-secondary-button"
               >
                 Archive
               </button>
-              <button type="button" onClick={() => onRemove(template)} style={budgetStyles.removeButton}>
+              <button type="button" onClick={() => onRemove(template)} className="recurring-budget-remove-button">
                 Delete
               </button>
             </>
@@ -112,7 +112,7 @@ function TemplateCard({
             <button
               type="button"
               onClick={() => onChangeState(template, { active: false, archived: false })}
-              style={budgetStyles.primaryButton}
+              className="recurring-budget-primary-button"
             >
               Restore as paused
             </button>
@@ -168,8 +168,8 @@ export function BudgetTemplateLibrary({
   };
 
   const content = (
-    <div style={budgetStyles.section}>
-      {loading ? <p style={budgetStyles.muted}>Loading recurring budgets…</p> : null}
+    <div className="recurring-budget-section">
+      {loading ? <p className="recurring-budget-muted">Loading recurring budgets…</p> : null}
       {!loading && activeTemplates.length === 0 ? (
         dashboard ? (
           <div className="budget-dashboard-empty">
@@ -177,19 +177,19 @@ export function BudgetTemplateLibrary({
             <p>Create a template to automatically generate daily, weekly or monthly budgets.</p>
           </div>
         ) : (
-          <div style={budgetStyles.card}>
-            <strong style={budgetStyles.subheading}>No active recurring budgets</strong>
-            <span style={budgetStyles.muted}>
+          <div className="recurring-budget-card">
+            <strong className="recurring-budget-subheading">No active recurring budgets</strong>
+            <span className="recurring-budget-muted">
               Create a template to generate daily, weekly, or monthly budget periods.
             </span>
           </div>
         )
       ) : null}
       {alerts.length ? (
-        <section style={budgetStyles.card} aria-label="Budget spending alerts">
-          <h3 style={budgetStyles.subheading}>Spending alerts</h3>
+        <section className="recurring-budget-card" aria-label="Budget spending alerts">
+          <h3 className="recurring-budget-subheading">Spending alerts</h3>
           {alerts.slice(0, 5).map((alert) => (
-            <span key={alert.id} style={budgetStyles.warning}>
+            <span key={alert.id} className="recurring-budget-warning">
               {alert.template_name} · {alert.item_name} reached {alert.threshold}% on {alert.start_date}.
             </span>
           ))}
@@ -209,9 +209,9 @@ export function BudgetTemplateLibrary({
         />
       ))}
       {archivedTemplates.length && (!dashboard || showAll) ? (
-        <section style={budgetStyles.archivedSection} aria-label="Archived recurring budgets">
-          <h3 style={budgetStyles.subheading}>Archived recurring budgets</h3>
-          <p style={budgetStyles.muted}>
+        <section className="recurring-budget-archived-section" aria-label="Archived recurring budgets">
+          <h3 className="recurring-budget-subheading">Archived recurring budgets</h3>
+          <p className="recurring-budget-muted">
             Archived templates are kept here with their historical periods. They will not generate new periods.
           </p>
           {archivedTemplates.map((template) => (

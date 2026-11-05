@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import type { CSSProperties } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../../web/DatabaseProvider';
 import {
@@ -14,7 +13,7 @@ import type {
   UniversalSearchFilter,
   UniversalSearchResult,
 } from '../../services/database';
-import { colors } from '../shared/theme';
+import './RelatedRecords.css';
 
 const linkTargets: { type: Exclude<LinkedRecordType, 'inbox'>; module: UniversalSearchFilter }[] = [
   { type: 'event', module: 'Events' },
@@ -133,38 +132,37 @@ export function RelatedRecords({
   };
 
   return (
-    <section style={relatedStyles.section} aria-label="Related records">
+    <section className="related-records" aria-label="Related records">
       <button
         type="button"
         aria-expanded={isExpanded}
         aria-controls={`related-records-${record.type}-${record.id}`}
         onClick={() => setIsExpanded((expanded) => !expanded)}
-        style={relatedStyles.toggle}
+        className="related-records-toggle"
       >
         {isExpanded ? 'Hide related records' : 'View related records'}
       </button>
       {isExpanded ? (
-        <div id={`related-records-${record.type}-${record.id}`} style={relatedStyles.content}>
-          <h2 style={relatedStyles.heading}>RELATED RECORDS</h2>
+        <div id={`related-records-${record.type}-${record.id}`} className="related-records-content">
+          <h2 className="related-records-heading">RELATED RECORDS</h2>
           {related.length ? related.map((item) => (
-            <div key={item.linkId} style={relatedStyles.row}>
-              <button type="button" onClick={() => openRelated(item)} style={relatedStyles.recordButton}>
-                <span style={relatedStyles.recordType}>{item.type}</span>
-                <span style={relatedStyles.recordTitle}>{item.title}</span>
+            <div key={item.linkId} className="related-record-row">
+              <button type="button" onClick={() => openRelated(item)} className="related-record-button">
+                <span className="related-record-type">{item.type}</span>
+                <span className="related-record-title">{item.title}</span>
               </button>
               <button
                 type="button"
                 onClick={() => void removeLink(item.linkId, item.title)}
                 aria-label={`Remove link to ${item.title}`}
-                style={relatedStyles.removeButton}
+                className="related-record-remove"
               >
                 Remove
               </button>
             </div>
-          )) : <p style={relatedStyles.empty}>No linked records yet.</p>}
-
-          <div style={relatedStyles.addRow}>
-            <label htmlFor="related-record-type" style={relatedStyles.label}>LINK A RECORD</label>
+          )) : <p className="related-record-empty">No linked records yet.</p>}
+          <div className="related-record-add-row">
+            <label htmlFor="related-record-type" className="related-record-label">LINK A RECORD</label>
             <select
               id="related-record-type"
               value={targetType}
@@ -172,7 +170,7 @@ export function RelatedRecords({
                 setTargetType(event.currentTarget.value as Exclude<LinkedRecordType, 'inbox'>);
                 setCandidates([]);
               }}
-              style={relatedStyles.select}
+              className="related-record-select"
             >
               {linkTargets.map((target) => (
                 <option key={target.type} value={target.type}>{target.type}</option>
@@ -183,94 +181,23 @@ export function RelatedRecords({
               onChange={(event) => setQuery(event.currentTarget.value)}
               placeholder={`Search ${targetType}s`}
               aria-label={`Search ${targetType}s to link`}
-              style={relatedStyles.input}
+              className="related-record-input"
             />
             {candidates.map((candidate) => (
               <button
                 type="button"
                 key={`${candidate.kind}-${candidate.id}`}
                 onClick={() => void addLink(candidate)}
-                style={relatedStyles.candidate}
+                className="related-record-candidate"
               >
                 {candidate.title}
                 <span>{candidate.detail} · Add link</span>
               </button>
             ))}
           </div>
-          {error ? <p role="alert" style={relatedStyles.error}>{error}</p> : null}
+          {error ? <p role="alert" className="related-record-error">{error}</p> : null}
         </div>
       ) : null}
     </section>
   );
 }
-
-const relatedStyles = {
-  section: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-    marginTop: 6,
-  },
-  toggle: {
-    alignSelf: 'flex-end',
-    color: colors.muted,
-    fontSize: 10,
-    fontWeight: '400',
-  },
-  content: { display: 'flex', flexDirection: 'column', gap: 8 },
-  heading: {
-    margin: 0,
-    color: colors.muted,
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.7,
-  },
-  row: {
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-    padding: 9,
-    borderRadius: 8,
-    backgroundColor: colors.surface,
-  },
-  recordButton: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3 },
-  recordType: { color: colors.muted, fontSize: 9, textTransform: 'uppercase' },
-  recordTitle: { color: colors.ink, fontSize: 11, fontWeight: '700' },
-  removeButton: { color: colors.muted, fontSize: 9 },
-  empty: { margin: 0, color: colors.muted, fontSize: 10 },
-  addRow: { display: 'flex', flexDirection: 'column', gap: 7, marginTop: 5 },
-  label: { color: colors.muted, fontSize: 9, fontWeight: '800' },
-  select: {
-    minHeight: 38,
-    paddingInline: 9,
-    border: `1px solid ${colors.line}`,
-    borderRadius: 7,
-    backgroundColor: colors.surface,
-    color: colors.ink,
-    fontSize: 10,
-    textTransform: 'capitalize',
-  },
-  input: {
-    minHeight: 38,
-    paddingInline: 9,
-    border: `1px solid ${colors.line}`,
-    borderRadius: 7,
-    backgroundColor: colors.surface,
-    color: colors.ink,
-    fontSize: 10,
-  },
-  candidate: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-    padding: 9,
-    borderRadius: 7,
-    backgroundColor: colors.greenSoft,
-    color: colors.ink,
-    textAlign: 'left',
-    fontSize: 10,
-  },
-  error: { margin: 0, color: colors.orange, fontSize: 10 },
-} satisfies Record<string, CSSProperties>;

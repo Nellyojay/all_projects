@@ -15,11 +15,12 @@ import type {
   RecordKind,
   TaskRecord,
 } from '../../services/database';
-import { colors, styles } from '../shared/theme';
+import '../shared/theme.css';
 import { EventDetails, EventHeading } from '../calendar/event';
 import { ListDetails } from '../lists/list';
 import { NoteDetails } from '../notes/note';
 import { RelatedRecords } from './RelatedRecords';
+import './RecordDetailsModal.css';
 
 export type SelectedRecord =
   | { kind: 'event'; record: EventRecord }
@@ -143,48 +144,48 @@ export function RecordDetailsModal({
       {selected ? (
         <section
           className="record-details-page"
-          style={modalStyles.page}
+
           aria-label={`${recordLabels[selected.kind]} details`}
         >
-          <div style={modalStyles.pageContent}>
-            <div style={modalStyles.header}>
+          <div className="record-details-pageContent">
+            <div className="record-details-header">
               <button onClick={close} type="button">
-                <span style={modalStyles.headerAction}>Close</span>
+                <span className="record-details-headerAction">Close</span>
               </button>
-              <span style={modalStyles.headerTitle}>
+              <span className="record-details-headerTitle">
                 {selected.kind === 'event'
                   ? <EventHeading event={selected.record} />
                   : recordLabels[selected.kind]}
               </span>
-              <button onClick={confirmDelete} type="button" style={modalStyles.headerDelete}>
-                <span style={modalStyles.headerDeleteText}>Delete</span>
+              <button onClick={confirmDelete} type="button" className="record-details-headerDelete">
+                <span className="record-details-headerDeleteText">Delete</span>
               </button>
             </div>
 
-            <div style={modalStyles.content}>
+            <div className="record-details-content">
               {selected.kind === 'note' ? (
                 <NoteDetails note={selected.record} onChanged={onChanged} />
               ) : (
-                <span style={modalStyles.title}>{selected.record.title}</span>
+                <span className="record-details-title">{selected.record.title}</span>
               )}
 
               {selected.kind === 'task' ? (
                 <>
-                  <div style={modalStyles.infoCard}>
-                    <span style={modalStyles.infoLabel}>DUE DATE</span>
-                    <span style={modalStyles.infoValue}>{selected.record.date}</span>
-                    <span style={modalStyles.infoLabel}>PRIORITY</span>
-                    <span style={modalStyles.infoValue}>{selected.record.category}</span>
-                    <span style={modalStyles.infoLabel}>STATUS</span>
-                    <span style={modalStyles.infoValue}>
+                  <div className="record-details-infoCard">
+                    <span className="record-details-infoLabel">DUE DATE</span>
+                    <span className="record-details-infoValue">{selected.record.date}</span>
+                    <span className="record-details-infoLabel">PRIORITY</span>
+                    <span className="record-details-infoValue">{selected.record.category}</span>
+                    <span className="record-details-infoLabel">STATUS</span>
+                    <span className="record-details-infoValue">
                       {selected.record.completed ? 'Completed' : 'Pending'}
                     </span>
                   </div>
                   {selected.record.notes ? (
-                    <span style={modalStyles.body}>{selected.record.notes}</span>
+                    <span className="record-details-body">{selected.record.notes}</span>
                   ) : null}
-                  <button onClick={() => void toggleTaskStatus()} style={modalStyles.secondaryAction}>
-                    <span style={modalStyles.secondaryActionText}>
+                  <button onClick={() => void toggleTaskStatus()} className="record-details-secondaryAction">
+                    <span className="record-details-secondaryActionText">
                       Mark as {selected.record.completed ? 'pending' : 'complete'}
                     </span>
                   </button>
@@ -195,7 +196,6 @@ export function RecordDetailsModal({
                 <EventDetails
                   event={selected.record}
                   formatAmount={formatAmount}
-                  sharedStyles={modalStyles}
                 />
               ) : null}
 
@@ -220,7 +220,7 @@ export function RecordDetailsModal({
               {selected.kind !== 'note' && (selected.kind !== 'list' || !(checkedList?.id === selected.record.id
                 ? checkedList.finalized
                 : selected.record.finalized)) ? (
-                <div style={modalStyles.actions}>
+                <div className="record-details-actions">
                   <button
                     onClick={() => {
                       const recordForEdit = selected.kind === 'list' && checkedList?.id === selected.record.id
@@ -229,9 +229,9 @@ export function RecordDetailsModal({
                       onEdit(selected.kind, toDraft(recordForEdit));
                       if (closeOnEdit) close();
                     }}
-                    type="button" style={Object.assign({}, styles.button, styles.buttonTextOnly)}
+                    type="button" className="app-button app-button--text-only"
                   >
-                    <span style={styles.buttonText}>
+                    <span className="app-button-text">
                       Edit {recordLabels[selected.kind].toLowerCase()}
                     </span>
                   </button>
@@ -257,149 +257,3 @@ export function RecordDetailsModal({
     </>
   );
 }
-
-const modalStyles = {
-  page: {
-    position: 'fixed',
-    inset: 0,
-    zIndex: 1000,
-    display: 'flex',
-    width: '100%',
-    minHeight: '100dvh',
-    overflowY: 'auto',
-    backgroundColor: colors.background,
-  },
-  pageContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    width: '100%',
-    maxWidth: 960,
-    minHeight: '100dvh',
-    marginInline: 'auto',
-    paddingTop: 'env(safe-area-inset-top)',
-    paddingInline: 12,
-    paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
-    backgroundColor: colors.background,
-  },
-  header: {
-    paddingBlock: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.line,
-    backgroundColor: colors.background,
-  },
-  headerAction: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  headerTitle: {
-    color: colors.ink,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  headerDelete: {
-    minHeight: 36,
-    paddingInline: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    border: `1px solid ${colors.line}`,
-    borderRadius: 7,
-    backgroundColor: colors.surface,
-  },
-  headerDeleteText: {
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  content: {
-    display: 'flex',
-    flex: 1,
-    flexDirection: 'column',
-    width: '100%',
-    marginInline: 'auto',
-  },
-  typeBadge: {
-    alignSelf: 'flex-start',
-    paddingBlock: 6,
-    paddingInline: 10,
-    borderRadius: 6,
-    backgroundColor: colors.greenSoft,
-    marginBottom: 14,
-  },
-  typeText: {
-    color: colors.muted,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  title: {
-    color: colors.ink,
-    fontSize: 18,
-    lineHeight: '32px',
-    fontWeight: '800',
-    marginBottom: 8,
-  },
-  body: {
-    color: colors.ink,
-    fontSize: 13,
-    lineHeight: '23px',
-    marginTop: 14,
-  },
-  infoCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 11,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.line,
-    marginTop: 12,
-  },
-  infoLabel: {
-    color: colors.muted,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    marginTop: 10,
-  },
-  infoValue: {
-    color: colors.ink,
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: 5,
-  },
-  secondaryAction: {
-    alignSelf: 'flex-start',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.line,
-    paddingBlock: 10,
-    paddingInline: 14,
-    marginTop: 16,
-    border: `1px solid ${colors.line}`,
-  },
-  secondaryActionText: {
-    color: colors.ink,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 28,
-  },
-  editButton: {
-    flex: 1,
-    minHeight: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 10,
-    backgroundColor: colors.ink,
-  },
-  editText: {
-    color: colors.background,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-} as const;

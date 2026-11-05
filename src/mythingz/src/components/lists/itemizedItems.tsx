@@ -1,6 +1,6 @@
-import type { CSSProperties, Dispatch, SetStateAction } from 'react';
-import { colors } from '../shared/theme';
+import type { Dispatch, SetStateAction } from 'react';
 import { createEmptyItemizedItem, type ItemizedItem } from './itemizedItemsModel';
+import './itemizedItems.css';
 
 export function ItemizedItemsEditor({
   items,
@@ -32,21 +32,21 @@ export function ItemizedItemsEditor({
 
   return (
     <>
-      <span style={itemEditorStyles.label}>{itemsLabel}</span>
+      <span className="itemized-editor-label">{itemsLabel}</span>
       {showPricing ? (
-        <div style={itemEditorStyles.itemColumnLabels}>
-          <span style={Object.assign({}, itemEditorStyles.itemColumnLabel, itemEditorStyles.itemNameColumn)}>ITEM</span>
+        <div className="itemized-editor-columns">
+          <span className="itemized-editor-column-label itemized-editor-name-column">ITEM</span>
           {showQuantity ? (
-            <span style={Object.assign({}, itemEditorStyles.itemColumnLabel, itemEditorStyles.itemQuantity)}>QTY</span>
+            <span className="itemized-editor-column-label itemized-editor-quantity">QTY</span>
           ) : null}
-          <span style={Object.assign({}, itemEditorStyles.itemColumnLabel, itemEditorStyles.itemPrice)}>
+          <span className="itemized-editor-column-label itemized-editor-price">
             {showQuantity ? 'UNIT PRICE · UGX' : 'AMOUNT · UGX'}
           </span>
-          <div style={itemEditorStyles.removeSpacer} />
+          <div className="itemized-editor-remove-spacer" />
         </div>
       ) : null}
       {items.map((item, index) => (
-        <div key={item.editorKey ?? `itemized-item-${index}`} style={itemEditorStyles.itemRow}>
+        <div key={item.editorKey ?? `itemized-item-${index}`} className="itemized-editor-row">
           <input
             value={item.text}
             onChange={(event) => {
@@ -56,7 +56,7 @@ export function ItemizedItemsEditor({
               ));
             }}
             placeholder={`Item ${index + 1}`}
-            style={Object.assign({}, itemEditorStyles.input, itemEditorStyles.itemNameColumn)}
+            className="itemized-editor-input itemized-editor-name-column"
           />
           {showPricing ? (
             <>
@@ -71,7 +71,7 @@ export function ItemizedItemsEditor({
                   }}
                   aria-label={`Quantity for item ${index + 1}`}
                   placeholder="1" inputMode="numeric"
-                  style={Object.assign({}, itemEditorStyles.input, itemEditorStyles.itemQuantity)}
+                  className="itemized-editor-input itemized-editor-quantity"
                 />
               ) : null}
               <input
@@ -87,7 +87,7 @@ export function ItemizedItemsEditor({
                 }}
                 aria-label={`${showQuantity ? 'Unit price' : 'Allocation'} for item ${index + 1}`}
                 placeholder="0" inputMode="decimal"
-                style={Object.assign({}, itemEditorStyles.input, itemEditorStyles.itemPrice)}
+                className="itemized-editor-input itemized-editor-price"
               />
             </>
           ) : null}
@@ -96,23 +96,23 @@ export function ItemizedItemsEditor({
             onClick={() => onItemsChange((current) => current.length > 1
               ? current.filter((_, entryIndex) => entryIndex !== index)
               : [createEmptyItemizedItem()])}
-            style={itemEditorStyles.removeItem}
+            className="itemized-editor-remove"
           >
-            <span style={itemEditorStyles.removeItemText}>−</span>
+            <span className="itemized-editor-remove-text">−</span>
           </button>
         </div>
       ))}
       <button
         type="button"
         onClick={() => onItemsChange((current) => [...current, createEmptyItemizedItem()])}
-        style={Object.assign({}, itemEditorStyles.addItem, monochrome && itemEditorStyles.monochromeAddItem)}
+        className={`itemized-editor-add${monochrome ? ' itemized-editor-add--monochrome' : ''}`}
       >
-        <span style={Object.assign({}, itemEditorStyles.addItemText, monochrome && itemEditorStyles.monochromeAddItemText)}>
+        <span className="itemized-editor-add-text">
           ＋  Add item
         </span>
       </button>
       {showTotal ? (
-        <span style={itemEditorStyles.listTotal}>
+        <span className="itemized-editor-total">
           {namedItems.length} {namedItems.length === 1 ? 'item' : 'items'}
           {' · '}{totalLabel} · UGX {new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(total)}
         </span>
@@ -120,67 +120,3 @@ export function ItemizedItemsEditor({
     </>
   );
 }
-
-const itemEditorStyles = {
-  label: {
-    display: 'block',
-    color: colors.muted,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1,
-    marginTop: 12,
-    marginBottom: 7,
-  },
-  input: {
-    minHeight: 48,
-    borderRadius: 10,
-    borderColor: colors.line,
-    borderWidth: 1,
-    backgroundColor: colors.surface,
-    color: colors.ink,
-    paddingInline: 14,
-    fontSize: 13,
-  },
-  itemColumnLabels: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
-  },
-  itemColumnLabel: { flex: 1, color: colors.muted, fontSize: 9, fontWeight: '800', letterSpacing: 0.6 },
-  itemNameColumn: { flex: 1, minWidth: 70 },
-  itemQuantity: { width: 52, flexGrow: 0, flexShrink: 0, textAlign: 'center' },
-  itemPrice: { flex: 0.8, minWidth: 76, paddingInline: 10 },
-  removeSpacer: { width: 32 },
-  itemRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  removeItem: {
-    width: 32,
-    height: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 7,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.line,
-  },
-  removeItemText: { color: colors.muted, fontSize: 18 },
-  addItem: {
-    alignSelf: 'flex-start',
-    paddingBlock: 10,
-    paddingInline: 12,
-    borderRadius: 7,
-    backgroundColor: colors.greenSoft,
-    marginTop: 2,
-  },
-  addItemText: { color: colors.ink, fontSize: 10, fontWeight: '700' },
-  monochromeAddItem: { backgroundColor: '#222222', border: '1px solid #303030' },
-  monochromeAddItemText: { color: colors.ink },
-  listTotal: {
-    display: 'block',
-    color: colors.ink,
-    fontSize: 11,
-    fontWeight: '800',
-    textAlign: 'right',
-    marginTop: 12,
-  },
-} satisfies Record<string, CSSProperties>;
