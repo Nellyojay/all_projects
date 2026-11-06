@@ -19,8 +19,8 @@ type BudgetAllocationOption = BudgetPeriodItem & {
   period_item_id: number | null;
   budget_type: 'normal' | 'recurring';
   template_name: string;
-  start_date: string;
-  end_date: string;
+  start_date: string | null;
+  end_date: string | null;
   period_status: string;
 };
 type SavedBudgetAllocation = Awaited<ReturnType<typeof getTransactionBudgetAllocations>>[number];

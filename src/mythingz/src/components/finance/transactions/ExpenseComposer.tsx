@@ -40,9 +40,10 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
   const [accountId, setAccountId] = useState<number | null>(null);
   const [items, setItems] = useState<ItemizedItem[]>([createEmptyItemizedItem()]);
   const [budgetItems, setBudgetItems] = useState<(BudgetPeriodItem & {
+    budget_type: 'normal' | 'recurring';
     template_name: string;
-    start_date: string;
-    end_date: string;
+    start_date: string | null;
+    end_date: string | null;
   })[]>([]);
   const [selectedBudgetItemId, setSelectedBudgetItemId] = useState('');
   const [budgetAllocationAmount, setBudgetAllocationAmount] = useState('');
@@ -187,7 +188,7 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
   };
 
   return (
-    <section className="record-composer-page expense-composer-backdrop"  aria-label="Add expense">
+    <section className="record-composer-page expense-composer-backdrop" aria-label="Add expense">
       <div className="expense-composer-sheet">
         <div className="expense-composer-header">
           <h1 className="expense-composer-heading">Add expense</h1>
@@ -249,11 +250,13 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
                     className="expense-composer-input"
                   >
                     <option value="">Choose a budget item</option>
-                    {budgetItems.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.template_name} · {item.name} ({item.start_date}–{item.end_date})
-                      </option>
-                    ))}
+                    {budgetItems.map((item) => {
+                      return (
+                        <option key={item.id} value={item.id}>
+                          {item.budget_type === 'normal' ? 'Normal' : 'Recurring'} · {item.template_name} · {item.name}
+                        </option>
+                      );
+                    })}
                   </select>
                   <input
                     type="number"
@@ -292,7 +295,9 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
                   return (
                     <div key={allocation.budgetItemId} className="expense-composer-allocationRow">
                       <span className="expense-composer-allocationName">
-                        {item ? `${item.template_name} · ${item.name}` : 'Budget item'}
+                        {item
+                          ? `${item.budget_type === 'normal' ? 'Normal' : 'Recurring'} · ${item.template_name} · ${item.name}`
+                          : 'Budget item'}
                       </span>
                       <span>{allocation.amount.toLocaleString('en-UG')} UGX</span>
                       <button
@@ -315,7 +320,9 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
                 </span>
               </>
             ) : (
-              <span className="expense-composer-allocationBalance">No active recurring budget items cover today.</span>
+              <span className="expense-composer-allocationBalance">
+                No active normal or recurring budget items cover today.
+              </span>
             )}
           </section>
           <label className="expense-composer-label" htmlFor="expense-notes">NOTES · OPTIONAL</label>

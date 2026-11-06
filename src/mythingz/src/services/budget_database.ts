@@ -861,6 +861,19 @@ export async function getAllocatableBudgetItems(database: BrowserDatabase, date 
   return getBudgetItemsForExpenseDate(database, date);
 }
 
+function budgetCoversDate(
+  type: string,
+  startDate: string | null,
+  endDate: string | null,
+  date: string,
+) {
+  if (type === 'normal') {
+    return (!startDate || date >= startDate) && (!endDate || date <= endDate);
+  }
+  if (type !== 'recurring' || !startDate || !endDate) return false;
+  return date >= startDate && date <= endDate;
+}
+
 export async function getBudgetItemsForExpenseDate(database: BrowserDatabase, date: string) {
   await generateBudgetPeriods(database);
   return database.getAllAsync<BudgetPeriodItem & {
@@ -868,8 +881,8 @@ export async function getBudgetItemsForExpenseDate(database: BrowserDatabase, da
     period_item_id: number | null;
     budget_type: 'normal' | 'recurring';
     template_name: string;
-    start_date: string;
-    end_date: string;
+    start_date: string | null;
+    end_date: string | null;
     period_status: string;
   }>(
     `SELECT items.id, budgets.id AS period_id, itemMap.period_item_id,
@@ -892,9 +905,16 @@ export async function getBudgetItemsForExpenseDate(database: BrowserDatabase, da
      FROM budget_items items JOIN budgets ON budgets.id = items.budget_id
      LEFT JOIN legacy_budget_item_map itemMap ON itemMap.budget_item_id = items.id
      WHERE budgets.status IN ('active', 'awaiting_review')
-       AND budgets.start_date IS NOT NULL AND budgets.end_date IS NOT NULL
-       AND budgets.start_date <= ? AND budgets.end_date >= ?
+       AND (
+         (budgets.type = 'normal'
+           AND (budgets.start_date IS NULL OR budgets.start_date <= ?)
+           AND (budgets.end_date IS NULL OR budgets.end_date >= ?))
+         OR (budgets.type = 'recurring'
+           AND budgets.start_date <= ? AND budgets.end_date >= ?)
+       )
      ORDER BY budgets.name COLLATE NOCASE, items.position, items.id`,
+    date,
+    date,
     date,
     date,
   );
@@ -933,7 +953,7 @@ export async function saveTransactionBudgetAllocations(
 ) {
   if (allocations.some((allocation) =>
     !Number.isSafeInteger(allocation.amount) || allocation.amount <= 0
-      || !Number.isSafeInteger(allocation.budgetItemId) || allocation.budgetItemId < 1
+    || !Number.isSafeInteger(allocation.budgetItemId) || allocation.budgetItemId < 1
   )) {
     throw new Error('Budget allocation amounts must be positive whole numbers.');
   }
@@ -976,20 +996,25 @@ export async function saveTransactionBudgetAllocations(
       const budgetItem = await database.getFirstAsync<{
         id: number;
         status: string;
+        type: string;
         start_date: string | null;
         end_date: string | null;
         budget_id: number;
       }>(
-        `SELECT items.id, budgets.status, budgets.start_date, budgets.end_date, budgets.id AS budget_id
+        `SELECT items.id, budgets.status, budgets.type, budgets.start_date, budgets.end_date,
+           budgets.id AS budget_id
          FROM budget_items items JOIN budgets ON budgets.id = items.budget_id
          WHERE items.id = ?`,
         allocation.budgetItemId,
       );
       if (!budgetItem
         || !['active', 'awaiting_review'].includes(budgetItem.status)
-        || !budgetItem.start_date || !budgetItem.end_date
-        || transaction.date < budgetItem.start_date
-        || transaction.date > budgetItem.end_date) {
+        || !budgetCoversDate(
+          budgetItem.type,
+          budgetItem.start_date,
+          budgetItem.end_date,
+          transaction.date,
+        )) {
         throw new Error('Choose an open budget item covering the expense date.');
       }
     }
@@ -1136,7 +1161,7 @@ export async function allocateTransactionToBudgets(
   }
   if (allocations.some((allocation) =>
     !Number.isSafeInteger(allocation.amount) || allocation.amount <= 0
-      || !Number.isSafeInteger(allocation.budgetItemId) || allocation.budgetItemId < 1
+    || !Number.isSafeInteger(allocation.budgetItemId) || allocation.budgetItemId < 1
   )) {
     throw new Error('Budget allocation amounts must be positive whole numbers.');
   }
@@ -1167,21 +1192,25 @@ export async function allocateTransactionToBudgets(
     const budgetItem = await database.getFirstAsync<{
       budget_id: number;
       status: string;
+      type: string;
       start_date: string | null;
       end_date: string | null;
       period_item_id: number | null;
     }>(
-      `SELECT budgets.id AS budget_id, budgets.status, budgets.start_date, budgets.end_date,
-         itemMap.period_item_id
+      `SELECT budgets.id AS budget_id, budgets.status, budgets.type, budgets.start_date,
+         budgets.end_date, itemMap.period_item_id
        FROM budget_items items JOIN budgets ON budgets.id = items.budget_id
        LEFT JOIN legacy_budget_item_map itemMap ON itemMap.budget_item_id = items.id
        WHERE items.id = ?`,
       allocation.budgetItemId,
     );
     if (!budgetItem || !['active', 'awaiting_review'].includes(budgetItem.status)
-      || !budgetItem.start_date || !budgetItem.end_date
-      || transaction.date < budgetItem.start_date
-      || transaction.date > budgetItem.end_date) {
+      || !budgetCoversDate(
+        budgetItem.type,
+        budgetItem.start_date,
+        budgetItem.end_date,
+        transaction.date,
+      )) {
       throw new Error('Choose an active budget item covering the expense date.');
     }
     await database.runAsync(
