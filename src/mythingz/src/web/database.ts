@@ -1,5 +1,6 @@
 import initSqlJs, { type Database as SqlJsDatabase, type SqlValue } from 'sql.js';
 import sqliteWasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
+import { initializeDatabase } from '../services/schema_database';
 
 export type SqlParameter = string | number | null | Uint8Array | undefined;
 
@@ -14,6 +15,8 @@ export type BrowserDatabase = {
   getAllAsync: <T>(sql: string, ...params: SqlParameter[]) => Promise<T[]>;
   getFirstAsync: <T>(sql: string, ...params: SqlParameter[]) => Promise<T | null>;
   withTransactionAsync: (task: () => Promise<void>) => Promise<void>;
+  exportDatabaseAsync: () => Promise<Uint8Array>;
+  restoreDatabaseAsync: (bytes: Uint8Array) => Promise<void>;
   createBackupAsync: (backupKey: string) => Promise<void>;
 };
 
@@ -67,12 +70,17 @@ function asSqlValue(value: SqlParameter): SqlValue {
   return value ?? null;
 }
 
-function wrapDatabase(database: SqlJsDatabase): BrowserDatabase {
+function wrapDatabase(
+  initialDatabase: SqlJsDatabase,
+  createDatabase: (bytes: Uint8Array) => SqlJsDatabase,
+  persistChanges = true,
+): BrowserDatabase {
+  let database = initialDatabase;
   let transactionDepth = 0;
   let transactionQueue = Promise.resolve();
 
   const persistIfReady = async () => {
-    if (transactionDepth === 0) await persistFile(database);
+    if (persistChanges && transactionDepth === 0) await persistFile(database);
   };
 
   const wrapper: BrowserDatabase = {
@@ -152,6 +160,58 @@ function wrapDatabase(database: SqlJsDatabase): BrowserDatabase {
       const rows = await wrapper.getAllAsync<T>(sql, ...params);
       return rows[0] ?? null;
     },
+    async exportDatabaseAsync() {
+      return database.export();
+    },
+    async restoreDatabaseAsync(bytes: Uint8Array) {
+      if (bytes.length < 16
+        || new TextDecoder().decode(bytes.subarray(0, 16)) !== 'SQLite format 3\u0000') {
+        throw new Error('This is not a valid SQLite backup file.');
+      }
+
+      const previousTransaction = transactionQueue;
+      let releaseTransaction!: () => void;
+      transactionQueue = new Promise<void>((resolve) => {
+        releaseTransaction = resolve;
+      });
+      await previousTransaction;
+
+      let restoredDatabase: SqlJsDatabase | undefined;
+      try {
+        restoredDatabase = createDatabase(bytes);
+        const restoredWrapper = wrapDatabase(restoredDatabase, createDatabase, false);
+        const checkIntegrity = async () => {
+          const result = await restoredWrapper.getFirstAsync<{ integrity_check: string }>(
+            'PRAGMA integrity_check',
+          );
+          if (result?.integrity_check !== 'ok') {
+            throw new Error('The selected database file is damaged and cannot be restored.');
+          }
+        };
+        const checkAppDatabase = async () => {
+          const tables = await restoredWrapper.getAllAsync<{ name: string }>(
+            "SELECT name FROM sqlite_master WHERE type = 'table'",
+          );
+          if (!tables.some((table) => table.name === 'accounts')
+            || !tables.some((table) => table.name === 'transactions')) {
+            throw new Error('This file does not contain a compatible Mine backup.');
+          }
+        };
+
+        await checkIntegrity();
+        await checkAppDatabase();
+        await initializeDatabase(restoredWrapper);
+        await checkIntegrity();
+        await persistFile(restoredDatabase);
+        const previousDatabase = database;
+        database = restoredDatabase;
+        restoredDatabase = undefined;
+        previousDatabase.close();
+      } finally {
+        restoredDatabase?.close();
+        releaseTransaction();
+      }
+    },
     async withTransactionAsync(task: () => Promise<void>) {
       const previousTransaction = transactionQueue;
       let releaseTransaction!: () => void;
@@ -186,7 +246,7 @@ export function openBrowserDatabase() {
     const SQL = await initSqlJs({ locateFile: () => sqliteWasmUrl });
     const existingFile = await loadFile();
     const database = new SQL.Database(existingFile);
-    return wrapDatabase(database);
+    return wrapDatabase(database, (bytes) => new SQL.Database(bytes));
   })().catch((error: unknown) => {
     databasePromise = undefined;
     throw error;

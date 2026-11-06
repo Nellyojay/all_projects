@@ -72,6 +72,61 @@
   font-size: 19px;
 }
 
+.settings-backup-row {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 10px;
+}
+
+.settings-backup-copy {
+  display: flex;
+  min-width: 140px;
+  flex: 1;
+  flex-direction: column;
+}
+
+.settings-backup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-backup-button {
+  position: relative;
+  width: auto;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.settings-backup-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.settings-restore-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.settings-backup-button:has(.settings-restore-input:disabled) {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.settings-backup-status {
+  display: block;
+  padding-top: 8px;
+  color: #a3a3a3;
+  font-size: 10px;
+  line-height: 16px;
+}
+
 .settings-privacy {
   display: block;
   margin-block: 18px;

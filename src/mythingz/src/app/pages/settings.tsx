@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScreenHeader } from '../../components/shared/ScreenHeader';
+import { useDatabase } from '../../web/DatabaseProvider';
 import '../../components/shared/theme.css';
 import './settings.css';
 
@@ -8,12 +10,57 @@ const settings = [
   ['◐', 'Appearance', 'Coming soon · light theme'],
   ['⌑', 'Security & app lock', 'Coming soon · device protection'],
   ['♧', 'Notifications', 'Coming soon · reminders and alerts'],
-  ['↥', 'Data & backup', 'Your data is stored on this device'],
   ['i', 'About Mine', 'A little more about your personal workspace'],
 ];
 
 export default function SettingsScreen() {
   const navigate = useNavigate();
+  const database = useDatabase();
+  const [backupStatus, setBackupStatus] = useState('');
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  const downloadBackup = async () => {
+    setIsBackingUp(true);
+    setBackupStatus('');
+    try {
+      const bytes = await database.exportDatabaseAsync();
+      const file = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/x-sqlite3' });
+      const url = URL.createObjectURL(file);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `mine-backup-${new Date().toISOString().slice(0, 10)}.db`;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setBackupStatus('Backup downloaded. Keep the .db file somewhere safe.');
+    } catch (error) {
+      console.error('Unable to download the database backup', error);
+      setBackupStatus(error instanceof Error ? `Backup failed: ${error.message}` : 'Backup failed. Please try again.');
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
+
+  const restoreBackup = async (file: File) => {
+    if (!window.confirm(
+      `Restore "${file.name}"? This will replace all data currently stored in this app.`,
+    )) return;
+
+    setIsRestoring(true);
+    setBackupStatus('');
+    try {
+      await database.restoreDatabaseAsync(new Uint8Array(await file.arrayBuffer()));
+      setBackupStatus('Backup restored. Reloading your workspace…');
+      window.setTimeout(() => window.location.reload(), 1200);
+    } catch (error) {
+      console.error('Unable to restore the database backup', error);
+      setBackupStatus(error instanceof Error ? `Restore failed: ${error.message}` : 'Restore failed. Please try again.');
+      setIsRestoring(false);
+    }
+  };
+
   return (
     <div className="app-screen">
       <div className="app-scroll-content">
@@ -38,6 +85,39 @@ export default function SettingsScreen() {
               <span className="settings-chevron">›</span>
             </div>
           ))}
+          <div className="settings-row settings-backup-row">
+            <div className="settings-backup-copy">
+              <span className="settings-title">Data & backup</span>
+              <span className="settings-detail">Download a copy or restore a previously downloaded .db backup.</span>
+            </div>
+            <div className="settings-backup-actions">
+              <button
+                className="app-button settings-backup-button"
+                onClick={() => void downloadBackup()}
+                disabled={isBackingUp || isRestoring}
+                type="button"
+              >
+                <span className="app-button-text">{isBackingUp ? 'Preparing…' : 'Download backup'}</span>
+              </button>
+              <label className="app-button settings-backup-button" aria-disabled={isRestoring}>
+                <span className="app-button-text">{isRestoring ? 'Restoring…' : 'Restore backup'}</span>
+                <input
+                  className="settings-restore-input"
+                  type="file"
+                  accept=".db,application/x-sqlite3"
+                  disabled={isRestoring || isBackingUp}
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0];
+                    if (file) void restoreBackup(file);
+                    event.currentTarget.value = '';
+                  }}
+                />
+              </label>
+            </div>
+          </div>
+          {backupStatus && (
+            <span className="settings-backup-status" role="status">{backupStatus}</span>
+          )}
         </div>
         <span className="settings-privacy">Your records are saved locally on this device. Cloud backup and synchronization are not enabled.</span>
         <button onClick={() => navigate('/space')} className="settings-done">
