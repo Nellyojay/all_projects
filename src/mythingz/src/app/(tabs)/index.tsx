@@ -78,8 +78,8 @@ export default function HomeScreen() {
   const [editingDraft, setEditingDraft] = useState<RecordDraft | null>(null);
   const [monthlySpent, setMonthlySpent] = useState(0);
   const [activeListPlan, setActiveListPlan] = useState(0);
-  const [monthlyIncome, setMonthlyIncome] = useState(0);
-  const [accountBalance, setAccountBalance] = useState(0);
+  const [_monthlyIncome, setMonthlyIncome] = useState(0);
+  const [_accountBalance, setAccountBalance] = useState(0);
   const [budgetOverview, setBudgetOverview] = useState<BudgetOverview[]>([]);
   const [eventPreparation, setEventPreparation] = useState<{ id: number; title: string; tasks: number }[]>([]);
   const [reminders, setReminders] = useState<ReminderRecord[]>([]);
@@ -352,8 +352,6 @@ export default function HomeScreen() {
         <div className="app-panel home-financeCard" >
           <div className="home-metricGrid">
             {[
-              ['TOTAL ACCOUNT BALANCE', accountBalance],
-              ['MONTHLY INCOME', monthlyIncome],
               ['MONTHLY EXPENSES', monthlySpent],
               ['ACTIVE BUDGETS', activeListPlan],
             ].map(([label, amount]) => (
