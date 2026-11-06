@@ -9,6 +9,11 @@ export type DatabaseRunResult = {
   lastInsertRowId: number;
 };
 
+export type JsonBackupSnapshot = {
+  exportedAt: string;
+  data: string;
+};
+
 export type BrowserDatabase = {
   execAsync: (sql: string) => Promise<void>;
   runAsync: (sql: string, ...params: SqlParameter[]) => Promise<DatabaseRunResult>;
@@ -17,11 +22,14 @@ export type BrowserDatabase = {
   withTransactionAsync: (task: () => Promise<void>) => Promise<void>;
   exportDatabaseAsync: () => Promise<Uint8Array>;
   restoreDatabaseAsync: (bytes: Uint8Array) => Promise<void>;
+  getJsonBackupSnapshotAsync: () => Promise<JsonBackupSnapshot | null>;
+  saveJsonBackupSnapshotAsync: (snapshot: JsonBackupSnapshot) => Promise<void>;
   createBackupAsync: (backupKey: string) => Promise<void>;
 };
 
 const storageName = 'mine-sqlite';
 const storageKey = 'mine.db';
+const jsonSnapshotKey = 'mine.json-snapshot';
 const storageObjectStoreName = 'files';
 let databasePromise: Promise<BrowserDatabase> | undefined;
 
@@ -163,6 +171,34 @@ function wrapDatabase(
     async exportDatabaseAsync() {
       return database.export();
     },
+    async getJsonBackupSnapshotAsync() {
+      const storage = await openStorage();
+      return new Promise<JsonBackupSnapshot | null>((resolve, reject) => {
+        const transaction = storage.transaction(storageObjectStoreName, 'readonly');
+        const request = transaction.objectStore(storageObjectStoreName).get(jsonSnapshotKey);
+        request.onsuccess = () => resolve(request.result ?? null);
+        request.onerror = () => reject(request.error ?? new Error('Could not read the automatic JSON snapshot.'));
+        transaction.oncomplete = () => storage.close();
+        transaction.onerror = () => {
+          storage.close();
+          reject(transaction.error ?? new Error('Could not read the automatic JSON snapshot.'));
+        };
+        transaction.onabort = () => {
+          storage.close();
+          reject(transaction.error ?? new Error('Reading the automatic JSON snapshot was aborted.'));
+        };
+      });
+    },
+    async saveJsonBackupSnapshotAsync(snapshot: JsonBackupSnapshot) {
+      const storage = await openStorage();
+      await new Promise<void>((resolve, reject) => {
+        const transaction = storage.transaction(storageObjectStoreName, 'readwrite');
+        transaction.objectStore(storageObjectStoreName).put(snapshot, jsonSnapshotKey);
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error ?? new Error('Could not save the automatic JSON snapshot.'));
+        transaction.onabort = () => reject(transaction.error ?? new Error('Saving the automatic JSON snapshot was aborted.'));
+      }).finally(() => storage.close());
+    },
     async restoreDatabaseAsync(bytes: Uint8Array) {
       if (bytes.length < 16
         || new TextDecoder().decode(bytes.subarray(0, 16)) !== 'SQLite format 3\u0000') {
@@ -202,6 +238,14 @@ function wrapDatabase(
         await checkAppDatabase();
         await initializeDatabase(restoredWrapper);
         await checkIntegrity();
+        const storage = await openStorage();
+        await new Promise<void>((resolve, reject) => {
+          const transaction = storage.transaction(storageObjectStoreName, 'readwrite');
+          transaction.objectStore(storageObjectStoreName).delete(jsonSnapshotKey);
+          transaction.oncomplete = () => resolve();
+          transaction.onerror = () => reject(transaction.error ?? new Error('Could not clear the outdated JSON snapshot.'));
+          transaction.onabort = () => reject(transaction.error ?? new Error('Clearing the outdated JSON snapshot was aborted.'));
+        }).finally(() => storage.close());
         await persistFile(restoredDatabase);
         const previousDatabase = database;
         database = restoredDatabase;

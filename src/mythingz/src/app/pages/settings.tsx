@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScreenHeader } from '../../components/shared/ScreenHeader';
+import { refreshJsonBackupSnapshotIfDue } from '../../services/json_data';
 import { useDatabase } from '../../web/DatabaseProvider';
 import '../../components/shared/theme.css';
 import './settings.css';
@@ -38,6 +39,29 @@ export default function SettingsScreen() {
     } catch (error) {
       console.error('Unable to download the database backup', error);
       setBackupStatus(error instanceof Error ? `Backup failed: ${error.message}` : 'Backup failed. Please try again.');
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
+
+  const downloadJsonBackup = async () => {
+    setIsBackingUp(true);
+    setBackupStatus('');
+    try {
+      const snapshot = await refreshJsonBackupSnapshotIfDue(database);
+      const file = new Blob([snapshot.data], { type: 'application/json' });
+      const url = URL.createObjectURL(file);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `mine-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setBackupStatus('JSON backup downloaded. Keep the .json file somewhere safe.');
+    } catch (error) {
+      console.error('Unable to download the JSON database backup', error);
+      setBackupStatus(error instanceof Error ? `JSON backup failed: ${error.message}` : 'JSON backup failed. Please try again.');
     } finally {
       setIsBackingUp(false);
     }
@@ -88,7 +112,7 @@ export default function SettingsScreen() {
           <div className="settings-row settings-backup-row">
             <div className="settings-backup-copy">
               <span className="settings-title">Data & backup</span>
-              <span className="settings-detail">Download a copy or restore a previously downloaded .db backup.</span>
+              <span className="settings-detail">A JSON snapshot refreshes every 24 hours while Mine is open. Download it here, or make a .db backup.</span>
             </div>
             <div className="settings-backup-actions">
               <button
@@ -98,6 +122,14 @@ export default function SettingsScreen() {
                 type="button"
               >
                 <span className="app-button-text">{isBackingUp ? 'Preparing…' : 'Download backup'}</span>
+              </button>
+              <button
+                className="app-button settings-backup-button"
+                onClick={() => void downloadJsonBackup()}
+                disabled={isBackingUp || isRestoring}
+                type="button"
+              >
+                <span className="app-button-text">{isBackingUp ? 'Preparing…' : 'Download JSON'}</span>
               </button>
               <label className="app-button settings-backup-button" aria-disabled={isRestoring}>
                 <span className="app-button-text">{isRestoring ? 'Restoring…' : 'Restore backup'}</span>

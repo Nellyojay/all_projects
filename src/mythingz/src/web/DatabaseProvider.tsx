@@ -4,6 +4,10 @@ import {
   type BrowserDatabase,
 } from './database';
 import { initializeDatabase } from '../services/database';
+import {
+  JSON_SNAPSHOT_INTERVAL_MS,
+  refreshJsonBackupSnapshotIfDue,
+} from '../services/json_data';
 
 const DatabaseContext = createContext<BrowserDatabase | null>(null);
 let initializedDatabase: Promise<BrowserDatabase> | undefined;
@@ -39,6 +43,34 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       });
     return () => { active = false; };
   }, []);
+
+
+  useEffect(() => {
+    if (!database) return undefined;
+
+    let active = true;
+    let timeout: number;
+    const refreshSnapshot = async () => {
+      let nextRefreshDelay = 60 * 60 * 1000;
+      try {
+        const snapshot = await refreshJsonBackupSnapshotIfDue(database);
+        const age = Date.now() - Date.parse(snapshot.exportedAt);
+        nextRefreshDelay = Math.max(1000, JSON_SNAPSHOT_INTERVAL_MS - Math.max(0, age));
+      } catch (reason) {
+        return;
+      }
+
+      if (active) {
+        timeout = window.setTimeout(() => void refreshSnapshot(), nextRefreshDelay);
+      }
+    };
+
+    void refreshSnapshot();
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+    };
+  }, [database]);
 
   if (error) {
     return (
