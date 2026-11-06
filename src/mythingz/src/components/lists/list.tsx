@@ -5,16 +5,11 @@ import { useDatabase } from '../../web/DatabaseProvider';
 import type { BrowserDatabase } from '../../web/database';
 import {
   deleteRecord,
-  finalizeBudgetList,
-  getAccounts,
-  InsufficientBalanceError,
-  InsufficientFundsError,
   reopenBudgetList,
   toggleListItem,
 } from '../../services/database';
-import type { Account, EventRecord, ListItem, ListRecord, RecordDraft } from '../../services/database';
+import type { EventRecord, ListItem, ListRecord } from '../../services/database';
 import '../shared/theme.css';
-import { AccountPicker } from '../finance/accounts/account';
 import { useRecordDetailsModal } from '../records/RecordDetailsModalContext';
 import { ItemizedItemsEditor } from './itemizedItems';
 import type { ItemizedItem } from './itemizedItemsModel';
@@ -237,16 +232,16 @@ function OrganizerListCard({
         </span>
         {list.budget_enabled ? (
           <span className="list-organizer-body">
-            {list.finalized ? 'Finalized · ' : 'Budget · '}{money(listTotal(items))}
+            {list.finalized ? 'Legacy expense · ' : 'Budget plan · '}{money(listTotal(items))}
           </span>
         ) : list.finalized ? (
-          <span className="list-organizer-body">Finalized · list locked</span>
+          <span className="list-organizer-body">Legacy expense · list locked</span>
         ) : null}
         {list.event_id !== null && list.event_title ? (
           <span className="list-event-tag">EVENT · {list.event_title}</span>
         ) : null}
         <span className="list-organizer-hint">
-          {list.finalized ? 'Tap to review or reopen' : 'Tap to view and check items · hold title to delete'}
+          {list.finalized ? 'Tap to review or reopen legacy expense' : 'Tap to view and check items · hold title to delete'}
         </span>
       </button>
     </div>
@@ -264,9 +259,9 @@ export function FinanceBudgetLists({ lists, query }: { lists: ListRecord[]; quer
     </>
   ) : (
     <div className="app-panel list-empty-budget-card">
-      <span className="list-empty-title">Plan expenses with a list</span>
+      <span className="list-empty-title">Plan spending with a list</span>
       <span className="list-secondary">
-        Add quantities and unit prices in a budget list, then finalize checked items to record the expense.
+        Track items and estimated costs here. Record actual expenses separately, then allocate them to a normal or recurring budget.
       </span>
     </div>
   );
@@ -287,14 +282,14 @@ function FinanceBudgetCard({ list }: { list: ListRecord }) {
           <span className="list-budget-title">{list.title}</span>
           <span className="list-secondary">
             {items.length} {items.length === 1 ? 'item' : 'items'}
-            {list.finalized ? ' · Finalized' : ' · In progress'}
+            {list.finalized ? ' · Legacy expense recorded' : ' · Budget plan'}
           </span>
         </div>
         <span className="list-amount">{money(listTotal(items))}</span>
       </div>
       <span className="list-secondary">
         {list.finalized
-          ? `${money(listTotal(items, true))} recorded as expense`
+          ? `${money(listTotal(items, true))} recorded as a legacy expense`
           : `${money(listTotal(items, true))} checked · tap to review`}
       </span>
       {list.event_id !== null && list.event_title ? (
@@ -318,36 +313,18 @@ export function ListDetails({
   formatAmount,
   onChanged,
   onListChanged,
-  onLoanDraft,
 }: {
   initialList: ListRecord;
   formatAmount: (amount: number) => string;
   onChanged: () => Promise<void>;
   onListChanged: (list: ListRecord) => void;
-  onLoanDraft: (draft: RecordDraft) => void;
 }) {
   const database = useDatabase();
   const location = useLocation();
   const navigate = useNavigate();
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [accountId, setAccountId] = useState<number | null>(null);
   const list = initialList;
   const items = listItems(list);
   const checkedItems = items.filter((item) => item.done);
-  const checkedTotal = listTotal(items, true);
-
-  useEffect(() => {
-    let active = true;
-    void getAccounts(database).then((rows) => {
-      if (!active) return;
-      setAccounts(rows);
-      setAccountId((current) => current ?? rows[0]?.id ?? null);
-    }).catch((error: unknown) => {
-      console.error('Unable to load accounts for budget list', error);
-      window.alert('Could not load accounts\n\nPlease try again.');
-    });
-    return () => { active = false; };
-  }, [database]);
 
   const updateList = (next: ListRecord) => {
     onListChanged(next);
@@ -367,38 +344,8 @@ export function ListDetails({
     }
   };
 
-  const finalize = () => {
-    if (!window.confirm(`Finalize this list?\n\nUGX ${formatAmount(checkedTotal)} will be recorded as an expense. The list will be locked until reopened.`)) return;
-    if (!accountId) {
-      window.alert('Choose an account\n\nSelect the account this expense will be paid from.');
-      return;
-    }
-    void finalizeBudgetList(database, list.id, accountId)
-      .then((result) => {
-        updateList({ ...list, finalized: 1, final_transaction_id: result.transactionId });
-        return onChanged();
-      })
-      .catch((error: unknown) => {
-        if (error instanceof InsufficientFundsError || error instanceof InsufficientBalanceError) {
-          if (window.confirm(`Not enough available funds\n\n${error.message}\n\nCreate a loan for the exact shortfall?`)) {
-            onLoanDraft({
-              title: '',
-              category: 'Loan',
-              amount: error.shortfall,
-              fees: 0,
-              dueDate: '',
-              accountId,
-              notes: `Shortfall financing for ${list.title}`,
-            });
-          }
-          return;
-        }
-        window.alert(`Could not finalize list\n\n${error instanceof Error ? error.message : 'Please try again.'}`);
-      });
-  };
-
   const reopen = () => {
-    if (!window.confirm('Reopen this list?\n\nThe linked expense will be removed and you can edit the list again.')) return;
+    if (!window.confirm('Reopen this legacy finalized list?\n\nIts linked expense will be removed so you can edit the plan.')) return;
     void reopenBudgetList(database, list.id)
       .then(async () => {
         updateList({ ...list, finalized: 0, final_transaction_id: null });
@@ -426,7 +373,7 @@ export function ListDetails({
           EVENT · {list.event_title || 'Attached event'}
         </button>
       ) : null}
-      {list.finalized ? <span className="list-finalized-badge">FINALIZED · LIST LOCKED</span> : null}
+      {list.finalized ? <span className="list-finalized-badge">LEGACY EXPENSE RECORDED · LIST LOCKED</span> : null}
       {items.length ? items.map((item, index) => (
         <button
           key={`${list.id}-${index}`}
@@ -460,40 +407,25 @@ export function ListDetails({
         </div>
       ) : null}
       {list.budget_enabled ? (
+        <p className="list-detail-body">
+          This list is for planning only. Checking items does not record spending. Record each actual expense separately, then allocate it to a normal or recurring budget.
+        </p>
+      ) : null}
+      {list.budget_enabled ? (
         <div className="list-totals">
           <span className="list-total-label">Number of items</span>
           <span className="list-total-value">
             {items.length} {items.length === 1 ? 'item' : 'items'}
           </span>
-          <span className="list-total-label">Full list total</span>
+          <span className="list-total-label">Planned total</span>
           <span className="list-total-value">{money(listTotal(items))}</span>
-          <span className="list-total-label">Checked items ({checkedItems.length})</span>
-          <span className="list-total-value">{money(checkedTotal)}</span>
+          <span className="list-total-label">Checked item estimate ({checkedItems.length})</span>
+          <span className="list-total-value">{money(listTotal(items, true))}</span>
         </div>
-      ) : null}
-      <div className='mb-2'>
-        {list.budget_enabled && !list.finalized ? (
-          <AccountPicker
-            accounts={accounts}
-            value={accountId}
-            onChange={setAccountId}
-            label="PAID FROM · ACCOUNT"
-          />
-        ) : null}
-      </div>
-
-      {list.budget_enabled && !list.finalized ? (
-        <button
-          type="button"
-          onClick={finalize}
-          className="app-button app-button--text-only"
-        >
-          <span className="app-button-text">Finalize list</span>
-        </button>
       ) : null}
       {list.finalized ? (
         <button type="button" onClick={reopen} className="list-secondary-action">
-          <span className="list-secondary-action-text">Reopen list · reverse expense</span>
+          <span className="list-secondary-action-text">Reopen legacy list · reverse linked expense</span>
         </button>
       ) : null}
     </div>
@@ -575,8 +507,8 @@ export function EventBudgetPanel({
               <span className="list-event-budget-total">{formatCurrency(listTotal(items))}</span>
             </div>
             <span className="list-event-budget-message">
-              {budget.finalized
-                ? 'Finalized'
+                  {budget.finalized
+                ? 'Legacy expense recorded'
                 : `${items.filter((item) => item.done).length} of ${items.length} checked`}
               {' · '}{formatCurrency(listTotal(items, true))} checked
             </span>

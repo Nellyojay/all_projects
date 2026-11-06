@@ -1,9 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useDatabase } from '../../web/DatabaseProvider';
-import { RecordComposer } from './RecordComposer';
 import {
   deleteRecord,
-  saveRecord,
   toggleTask,
 } from '../../services/database';
 import type {
@@ -99,11 +97,9 @@ export function RecordDetailsModal({
 }: Props) {
   const database = useDatabase();
   const [checkedList, setCheckedList] = useState<ListRecord | null>(null);
-  const [loanDraft, setLoanDraft] = useState<RecordDraft | null>(null);
 
   const close = useCallback(() => {
     setCheckedList(null);
-    setLoanDraft(null);
     onClose();
   }, [onClose]);
 
@@ -186,7 +182,6 @@ export function RecordDetailsModal({
               formatAmount={formatAmount}
               onChanged={onChanged}
               onListChanged={setCheckedList}
-              onLoanDraft={setLoanDraft}
             />
           ) : null}
           <RelatedRecords
@@ -220,19 +215,6 @@ export function RecordDetailsModal({
           ) : null}
         </DetailsModal>
       ) : null}
-      <RecordComposer
-        key={loanDraft ? `shortfall-loan-${loanDraft.amount}` : 'no-shortfall-loan'}
-        kind={loanDraft ? 'loan' : null}
-        initialDraft={loanDraft ?? undefined}
-        amountLocked
-        onClose={() => setLoanDraft(null)}
-        onSave={async (kind, draft) => {
-          await saveRecord(database, kind, draft);
-          setLoanDraft(null);
-          await onChanged();
-          window.alert('Loan recorded\n\nThe list remains unfinalized. Finalize it again to record the checked-item expense.');
-        }}
-      />
     </>
   );
 }

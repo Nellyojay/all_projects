@@ -4,8 +4,6 @@ import {
   type ListRecord,
   type RecordDraft,
 } from './database_types';
-import { today } from './budget_database';
-import { ensureAccountBalance } from './finance_database';
 import { ensureListNotesColumn } from './schema_database';
 
 // Create or update a list while preserving item completion and event links.
@@ -116,70 +114,6 @@ export async function toggleListItem(
     );
     if (result.changes === 0) throw new Error('Reopen the list before changing its items.');
   });
-}
-
-// Turn checked list items into an expense and mark the list finalized.
-export async function finalizeBudgetList(database: BrowserDatabase, listId: number, accountId: number) {
-  await ensureListNotesColumn(database);
-  const finalization: {
-    value?: { transactionId: number; total: number; checkedCount: number };
-  } = {};
-  await database.withTransactionAsync(async () => {
-    const list = await database.getFirstAsync<{
-      title: string;
-      notes: string;
-      items: string;
-      budget_enabled: number;
-      finalized: number;
-    }>('SELECT title, notes, items, budget_enabled, finalized FROM lists WHERE id = ?', listId);
-    if (!list) throw new Error('The list no longer exists.');
-    if (list.finalized) throw new Error('This list is already finalized.');
-    if (!list.budget_enabled) throw new Error('Enable list budgeting before finalizing.');
-    if (!accountId) throw new Error('Choose the account paying for this budget list.');
-
-    const items: ListItem[] = JSON.parse(list.items);
-    const checkedItems = items.filter((item) => item.done);
-    if (!checkedItems.length) throw new Error('Check at least one item before finalizing.');
-    if (checkedItems.some((item) =>
-      !Number.isFinite(item.price) || item.price <= 0 ||
-      !Number.isInteger(item.quantity) || item.quantity <= 0
-    )) {
-      throw new Error('Add a valid quantity and unit price greater than zero to every checked item.');
-    }
-
-    const total = checkedItems.reduce((sum, item) => sum + item.quantity * item.price, 0);
-    await ensureAccountBalance(database, accountId, total);
-    const notes = [
-      [`Finalized list · ${checkedItems.length} checked items`, list.notes.trim()]
-        .filter(Boolean)
-        .join('\n'),
-      'Items:',
-      ...checkedItems.map((item) =>
-        `${item.quantity} × ${item.text.replace(/\s+/g, ' ').trim()} · UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 20 }).format(item.price)
-        } each`,
-      ),
-    ].join('\n');
-    const insert = await database.runAsync(
-      'INSERT INTO transactions (kind, title, category, amount, date, notes, account_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      'expense',
-      list.title,
-      'Expense',
-      total,
-      today(),
-      notes,
-      accountId,
-    );
-    const transactionId = insert.lastInsertRowId;
-    const update = await database.runAsync(
-      'UPDATE lists SET finalized = 1, final_transaction_id = ? WHERE id = ? AND finalized = 0',
-      transactionId,
-      listId,
-    );
-    if (update.changes === 0) throw new Error('This list has already been finalized.');
-    finalization.value = { transactionId, total, checkedCount: checkedItems.length };
-  });
-  if (!finalization.value) throw new Error('List finalization did not complete.');
-  return finalization.value;
 }
 
 export async function reopenBudgetList(database: BrowserDatabase, listId: number) {

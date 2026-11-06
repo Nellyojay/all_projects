@@ -131,8 +131,6 @@ export function SharedBudgetManager({
     : [];
   const loadingSelectedItems = selectedBudgetId !== null
     && selectedBudgetItems?.budgetId !== selectedBudgetId;
-  const unallocatedTotal = unallocated.reduce((sum, expense) => sum + expense.unallocated_amount, 0);
-
   const resetDraft = () => {
     setName('');
     setDescription('');
@@ -348,19 +346,23 @@ export function SharedBudgetManager({
           title={selectedBudget.name}
           onClose={closeBudgetDetails}
         >
-          <h1 className="normal-budget-details-title">{selectedBudget.name}</h1>
+          <h1 className="normal-budget-details-title">Budget overview</h1>
           {error ? <p role="alert" className="normal-budget-inline-error">{error}</p> : null}
           {detailsError ? <p role="alert" className="normal-budget-inline-error">{detailsError}</p> : null}
           <div className="record-details-infoCard normal-budget-details-summary">
-            <span className="record-details-infoLabel">PERIOD</span>
-            <span className="record-details-infoValue">
-              {selectedBudget.start_date ?? 'No start date'} – {selectedBudget.end_date ?? 'No end date'}
-            </span>
+            {selectedBudget.start_date || selectedBudget.end_date ? (
+              <>
+                <span className="record-details-infoLabel">PERIOD</span>
+                <span className="record-details-infoValue">
+                  {selectedBudget.start_date ?? 'No start date'} – {selectedBudget.end_date ?? 'No end date'}
+                </span>
+              </>
+            ) : null}
             <span className="record-details-infoLabel">STATUS</span>
             <span className="record-details-infoValue">{statusLabel(selectedBudget.status)}</span>
             <div className="normal-budget-summary-grid">
               <span>Allocated <strong>{money(selectedBudget.total_allocated)}</strong></span>
-              <span>Spent <strong>{money(selectedBudget.actual_amount)}</strong></span>
+              <span>Actual expenses <strong>{money(selectedBudget.actual_amount)}</strong></span>
               <span>Remaining <strong>{money(selectedBudget.remaining_amount)}</strong></span>
             </div>
           </div>
@@ -376,7 +378,7 @@ export function SharedBudgetManager({
                 <span className="normal-budget-item-copy">
                   <strong>{item.name}</strong>
                   <span className="normal-budget-muted">
-                    {money(item.actual_amount)} spent · {money(item.remaining_amount)} remaining
+                    {money(item.actual_amount)} in expenses · {money(item.remaining_amount)} remaining
                   </span>
                 </span>
                 {selectedBudget.status !== 'closed' ? (
@@ -408,9 +410,9 @@ export function SharedBudgetManager({
             <div className="normal-budget-card-panel normal-budget-close-review">
               <strong>Review before closing</strong>
               <p className="normal-budget-muted">
-                Allocated {money(selectedBudget.total_allocated)} · actual spending {money(selectedBudget.actual_amount)} ·
-                {' '}{money(selectedBudget.remaining_amount)} remaining. Review the unallocated expenses above
-                ({unallocated.length} pending, {money(unallocatedTotal)}) before confirming.
+                Closing only locks this budget; it does not create or change expenses. Actual expenses remain separate records and count toward this budget when allocated.
+                {' '}Allocated {money(selectedBudget.total_allocated)} · actual expenses {money(selectedBudget.actual_amount)} ·
+                {' '}{money(selectedBudget.remaining_amount)} remaining.
               </p>
               <div className="normal-budget-review-actions">
                 <button type="button" onClick={() => void changeStatus(selectedBudget, true)} className="normal-budget-action">

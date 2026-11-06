@@ -416,7 +416,7 @@ export default function FinancesScreen() {
                 </button>
               )) : (
                 <span className="finance-secondary">
-                  Add an expense or income, or finalize a budget list to see transactions here.
+                  Add an expense or income here. Budget lists are plans; record actual expenses separately.
                 </span>
               )}
             </div>

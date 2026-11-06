@@ -555,7 +555,7 @@ export default function HomeScreen() {
                 {transaction.kind === 'expense' ? '−' : '+'}{formatMoney(transaction.amount)}
               </span>
             </button>
-          )) : <span className="home-muted">Add an expense or income, or finalize a budget list.</span>}
+          )) : <span className="home-muted">Add an expense or income to see transactions here.</span>}
         </div>
 
         <SectionTitle title="PERSONAL PROGRESS" action="Open tasks →" onAction={() => navigate('/space/organize', { state: { section: 'Tasks' } })} />
