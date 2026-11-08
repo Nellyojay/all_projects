@@ -10,9 +10,6 @@ import { useModalBack } from '../../components/shared/ModalBackContext';
 import '../../components/shared/theme.css';
 import {
   deleteRecord,
-  getAccounts,
-  getRecentActivity,
-  getReminders,
   localDateKey,
   saveExpense,
   saveRecord,
@@ -31,6 +28,7 @@ import {
 } from '../../services/database';
 import { NoteCard } from '../../components/notes/note';
 import './index.css';
+import { useMyThingsDb } from '../../services/readAPI';
 
 const formatMoney = (amount: number) =>
   `UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(amount)}`;
@@ -94,119 +92,41 @@ export default function HomeScreen() {
   }[]>([]);
   const [completedThisWeek, setCompletedThisWeek] = useState(0);
   const [remainingTasks, setRemainingTasks] = useState(0);
+  const mythingsdb = useMyThingsDb();
 
   const refresh = useCallback(async () => {
     const month = localDateKey().slice(0, 7);
     const today = localDateKey();
-    const [transactionRows, taskRows, eventRows, noteRows, spent, budgetLists,
-      accounts, income, reminderRows, activityRows, loanRows, taskCounts, preparationRows] = await Promise.all([
-        database.getAllAsync<Transaction>(
-          `SELECT transactions.*, accounts.name AS account_name
-         FROM transactions LEFT JOIN accounts ON accounts.id = transactions.account_id
-         ORDER BY transactions.date DESC, transactions.id DESC LIMIT 4`,
-        ),
-        database.getAllAsync<TaskRecord>(
-          "SELECT * FROM tasks WHERE completed = 0 AND date <= date(?, '+7 days') ORDER BY date LIMIT 30",
-          today,
-        ),
-        database.getAllAsync<EventRecord>(
-          `SELECT events.*,
-          (SELECT COUNT(*) FROM lists WHERE lists.event_id = events.id AND lists.budget_enabled = 1) AS budget_count
-         FROM events
-         WHERE date >= ?
-         ORDER BY date
-         LIMIT 8`,
-          today,
-        ),
-        database.getAllAsync<NoteRecord>('SELECT * FROM notes ORDER BY updated_at DESC LIMIT 3'),
-        database.getFirstAsync<{ total: number }>(
-          "SELECT COALESCE(SUM(amount), 0) AS total FROM transactions WHERE kind = 'expense' AND substr(date, 1, 7) = ?",
-          month,
-        ),
-        database.getAllAsync<{
-          id: number;
-          title: string;
-          items: string;
-          actual: number;
-        }>(
-          `SELECT lists.id, lists.title, lists.items,
-          COALESCE((
-            SELECT SUM(transactions.amount)
-            FROM record_links
-            JOIN transactions ON transactions.id = CASE
-              WHEN record_links.source_type = 'transaction' THEN record_links.source_id
-              ELSE record_links.target_id
-            END
-            WHERE ((record_links.source_type = 'budget' AND record_links.source_id = lists.id
-                    AND record_links.target_type = 'transaction')
-                OR (record_links.target_type = 'budget' AND record_links.target_id = lists.id
-                    AND record_links.source_type = 'transaction'))
-              AND transactions.kind = 'expense'
-          ), 0) AS actual
-         FROM lists WHERE budget_enabled = 1 AND finalized = 0 ORDER BY title COLLATE NOCASE`,
-        ),
-        getAccounts(database),
-        database.getFirstAsync<{ total: number }>(
-          `SELECT COALESCE(SUM(amount), 0) AS total FROM transactions
-         WHERE kind = 'income' AND loan_id IS NULL AND refund_of_transaction_id IS NULL
-           AND substr(date, 1, 7) = ?`,
-          month,
-        ),
-        getReminders(database, 'pending'),
-        getRecentActivity(database, 8),
-        database.getAllAsync<{
-          id: number;
-          lender: string;
-          due_date: string;
-          principal: number;
-          fees: number;
-          repaid: number;
-        }>(
-          `SELECT loans.id, loans.lender, loans.due_date, loans.principal, loans.fees,
-           COALESCE(SUM(CASE WHEN transactions.kind = 'expense' THEN transactions.amount ELSE 0 END), 0) AS repaid
-         FROM loans LEFT JOIN transactions ON transactions.loan_id = loans.id
-         GROUP BY loans.id
-         HAVING loans.principal + loans.fees >
-           COALESCE(SUM(CASE WHEN transactions.kind = 'expense' THEN transactions.amount ELSE 0 END), 0)
-         ORDER BY loans.due_date LIMIT 6`,
-        ),
-        database.getFirstAsync<{ completed: number; remaining: number }>(
-          `SELECT
-           (SELECT COUNT(*) FROM tasks WHERE completed = 1 AND date(completed_at) >= date(?, '-6 days')) AS completed,
-           (SELECT COUNT(*) FROM tasks WHERE completed = 0) AS remaining`,
-          today,
-        ),
-        database.getAllAsync<{ id: number; title: string; tasks: number }>(
-          `SELECT events.id, events.title, COUNT(tasks.id) AS tasks
-         FROM events
-         JOIN record_links ON
-           ((record_links.source_type = 'event' AND record_links.source_id = events.id
-              AND record_links.target_type = 'task')
-            OR (record_links.target_type = 'event' AND record_links.target_id = events.id
-              AND record_links.source_type = 'task'))
-         JOIN tasks ON tasks.id = CASE
-           WHEN record_links.source_type = 'task' THEN record_links.source_id
-           ELSE record_links.target_id
-         END
-         WHERE events.date >= ? AND tasks.completed = 0
-         GROUP BY events.id, events.title ORDER BY events.date LIMIT 6`,
-          today,
-        ),
-      ]);
-    setTransactions(transactionRows);
-    setTasks(taskRows);
-    setEvents(eventRows);
-    setNotes(noteRows);
-    setMonthlySpent(spent?.total ?? 0);
-    setMonthlyIncome(income?.total ?? 0);
-    setAccountBalance(accounts.reduce((total, account: Account) => total + account.balance, 0));
-    setReminders(reminderRows);
-    setActivities(activityRows);
-    setLoans(loanRows);
-    setEventPreparation(preparationRows);
-    setCompletedThisWeek(taskCounts?.completed ?? 0);
-    setRemainingTasks(taskCounts?.remaining ?? 0);
-    const budgets = budgetLists.map((row) => {
+    const [recentTransactions, transactionAccounts] = await Promise.all([
+      mythingsdb.tables.finance.transactions.list<Transaction>({
+        orderBy: ['date', 'id'],
+        direction: 'DESC',
+        limit: 4,
+      }),
+      mythingsdb.tables.finance.accounts.list<{ id: number; name: string }>(),
+    ]);
+    const accountNames = new Map(transactionAccounts.map((account) => [account.id, account.name]));
+    const transactions = recentTransactions.map((transaction) => ({
+      ...transaction,
+      account_name: transaction.account_id === null
+        ? null
+        : accountNames.get(transaction.account_id) ?? null,
+    }));
+    const data = await mythingsdb.home.getDashboardData(month, today, transactions);
+    setTransactions(data.transactions);
+    setTasks(data.tasks);
+    setEvents(data.events);
+    setNotes(data.notes);
+    setMonthlySpent(data.spent);
+    setMonthlyIncome(data.income);
+    setAccountBalance(data.accounts.reduce((total, account: Account) => total + account.balance, 0));
+    setReminders(data.reminders);
+    setActivities(data.activities);
+    setLoans(data.loans);
+    setEventPreparation(data.eventPreparation);
+    setCompletedThisWeek(data.completedThisWeek);
+    setRemainingTasks(data.remainingTasks);
+    const budgets = data.budgetLists.map((row) => {
       const items: ListItem[] = JSON.parse(row.items);
       return {
         id: row.id,
@@ -220,7 +140,22 @@ export default function HomeScreen() {
     });
     setBudgetOverview(budgets);
     setActiveListPlan(budgets.reduce((total, budget) => total + budget.planned, 0));
-  }, [database]);
+  }, [database, mythingsdb]);
+
+  useEffect(() => {
+    const loadLists = async () => {
+      const count = await mythingsdb.tables.records.lists.count();
+      console.log('Count of lists in mythingsdb:', count);
+
+      const lists = await mythingsdb.tables.records.lists.list();
+      console.log('Lists in mythingsdb:', lists);
+
+      const budgets = await mythingsdb.budgets.getBudgetTemplates();
+      console.log('Budgets in mythingsdb:', budgets);
+    }
+
+    loadLists();
+  }, [mythingsdb]);
 
   useEffect(() => {
     let active = true;

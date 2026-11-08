@@ -1,5 +1,6 @@
 import * as budgetOperations from './budget_database';
 import * as financeOperations from './finance_database';
+import * as homeOperations from './home_database';
 import * as listOperations from './list_database';
 import * as noteOperations from './note_database';
 import * as recordOperations from './record_database';
@@ -190,7 +191,7 @@ type TableRow<Columns extends readonly string[]> = {
 };
 type ListOptions<Columns extends readonly string[]> = {
   where?: Partial<TableRow<Columns>>;
-  orderBy?: Columns[number];
+  orderBy?: Columns[number] | readonly Columns[number][];
   direction?: 'ASC' | 'DESC';
   limit?: number;
   offset?: number;
@@ -201,7 +202,9 @@ export type TableApi<
   PrimaryKey extends string = 'id',
 > = {
   primaryKey: PrimaryKey;
-  list: (options?: ListOptions<Columns>) => Promise<TableRow<Columns>[]>;
+  list: <Row = TableRow<Columns>>(
+    options?: ListOptions<Columns>,
+  ) => Promise<Row[]>;
   findFirst: (options?: Omit<ListOptions<Columns>, 'limit' | 'offset'>) => Promise<TableRow<Columns> | null>;
   getById: (id: number) => Promise<TableRow<Columns> | null>;
   getByKey: (key: DatabaseValue) => Promise<TableRow<Columns> | null>;
@@ -294,13 +297,16 @@ function createTableApi<const Columns extends readonly string[]>(
 
   const api: TableApi<Columns, typeof primaryKey> = {
     primaryKey,
-    async list(options = {}) {
+    async list<Row = TableRow<Columns>>(options: ListOptions<Columns> = {}) {
       const { sql: whereSql, values } = buildWhere(options.where);
       let orderSql = '';
       if (options.orderBy) {
-        assertColumn(options.orderBy);
+        const orderColumns = Array.isArray(options.orderBy)
+          ? options.orderBy
+          : [options.orderBy];
+        for (const column of orderColumns) assertColumn(column);
         const direction = options.direction ?? 'ASC';
-        orderSql = ` ORDER BY ${quoteIdentifier(options.orderBy)} ${direction}`;
+        orderSql = ` ORDER BY ${orderColumns.map(quoteIdentifier).join(', ')} ${direction}`;
       } else if (idIsColumn) {
         orderSql = ' ORDER BY "id" ASC';
       }
@@ -325,7 +331,7 @@ function createTableApi<const Columns extends readonly string[]>(
         pagingSql = ' LIMIT -1 OFFSET ?';
         values.push(options.offset);
       }
-      return database.getAllAsync<TableRow<Columns>>(
+      return database.getAllAsync<Row>(
         `SELECT * FROM ${quoteIdentifier(table)}${whereSql}${orderSql}${pagingSql}`,
         ...values,
       );
@@ -430,6 +436,7 @@ export function createDatabaseApi(database: BrowserDatabase) {
       records: createTableGroup(database, tableDefinitions.records),
     },
     finance: bindOperations(database, financeOperations),
+    home: bindOperations(database, homeOperations),
     budgets: bindOperations(database, budgetOperations),
     records: bindOperations(database, recordsOperations),
     recordEditor: bindOperations(database, recordOperations),
