@@ -143,21 +143,6 @@ export default function HomeScreen() {
   }, [database, mythingsdb]);
 
   useEffect(() => {
-    const loadLists = async () => {
-      const count = await mythingsdb.tables.records.lists.count();
-      console.log('Count of lists in mythingsdb:', count);
-
-      const lists = await mythingsdb.tables.records.lists.list();
-      console.log('Lists in mythingsdb:', lists);
-
-      const budgets = await mythingsdb.budgets.getBudgetTemplates();
-      console.log('Budgets in mythingsdb:', budgets);
-    }
-
-    loadLists();
-  }, [mythingsdb]);
-
-  useEffect(() => {
     let active = true;
     void refresh().catch((error: unknown) => {
       console.error('Unable to load home dashboard', error);

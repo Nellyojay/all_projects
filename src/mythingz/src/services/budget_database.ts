@@ -522,6 +522,14 @@ export async function deleteBudgetTemplate(database: BrowserDatabase, templateId
   });
 }
 
+export async function deleteBudget(database: BrowserDatabase, budgetId: number) {
+  await database.withTransactionAsync(async () => {
+    await database.runAsync('DELETE FROM budget_items WHERE budget_id = ?', budgetId);
+    const result = await database.runAsync('DELETE FROM budgets WHERE id = ?', budgetId);
+    if (!result.changes) throw new Error('This budget no longer exists.');
+  });
+}
+
 async function reconcileBudgetPeriodRollover(database: BrowserDatabase, periodId: number) {
   const period = await database.getFirstAsync<{
     template_id: number;

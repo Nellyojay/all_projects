@@ -221,8 +221,8 @@ type GroupApi<Definitions> = {
     columns: infer Columns extends readonly string[];
     primaryKey?: infer PrimaryKey extends string;
   }
-    ? TableApi<Columns, PrimaryKey>
-    : never;
+  ? TableApi<Columns, PrimaryKey>
+  : never;
 };
 
 export type DatabaseTablesApi = {
