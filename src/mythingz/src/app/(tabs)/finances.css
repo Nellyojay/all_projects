@@ -103,12 +103,6 @@
   line-height: 17px;
 }
 
-.finance-amount {
-  color: #f5f5f5;
-  font-size: 11px;
-  font-weight: 700;
-}
-
 .finance-repay-button {
   display: flex;
   min-height: 38px;
@@ -172,16 +166,6 @@
   color: #f5f5f5;
   text-align: left;
   cursor: pointer;
-}
-
-.finance-transaction-icon {
-  display: flex;
-  width: 36px;
-  height: 36px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  background: #303030;
 }
 
 .finance-transaction-icon--income,

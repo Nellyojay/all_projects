@@ -456,12 +456,10 @@ export default function HomeScreen() {
               onClick={() => setSelectedTransaction(transaction)}
               className="home-transactionRow"
             >
-              <div className="home-transactionIcon">
-                <span>
-                  {transaction.kind === 'expense'
-                    ? '−'
-                    : transaction.loan_id !== null ? '↔' : '+'}
-                </span>
+              <div className={`text-2xl ${transaction.kind === 'expense' ? 'text-red-500/50' : 'text-green-500/50'}`}>
+                {transaction.kind === 'expense'
+                  ? '−'
+                  : transaction.loan_id !== null ? '↔' : '+'}
               </div>
               <div className="home-previewText">
                 <span className="home-recordTitle">{transaction.title}</span>

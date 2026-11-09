@@ -240,16 +240,6 @@
   cursor: pointer;
 }
 
-.home-transactionIcon {
-  display: flex;
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
-  background-color: #303030;
-  align-items: center;
-  justify-content: center;
-}
-
 .home-income {
   color: #E5E5E5;
 }

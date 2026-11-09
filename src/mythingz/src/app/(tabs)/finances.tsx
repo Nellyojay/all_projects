@@ -393,13 +393,9 @@ export default function FinancesScreen() {
                   onClick={() => setSelectedTransaction(transaction)}
                   className="finance-transaction finance-transaction--button"
                 >
-                  <div className={`finance-transaction-icon${transaction.kind === 'income' && transaction.loan_id === null ? ' finance-transaction-icon--income' : ''}`}>
-                    <span style={{
-                      color: transaction.kind === 'income' && transaction.loan_id === null
-                        ? colors.green
-                        : colors.orange,
-                    }}>
-                      {transaction.kind === 'expense' ? '↙' : transaction.loan_id !== null ? '↔' : '↗'}
+                  <div className={`text-2xl ${transaction.kind === 'income' && transaction.loan_id === null ? 'text-green-500/50' : 'text-red-500/50'}`}>
+                    <span>
+                      {transaction.kind === 'expense' ? '−' : transaction.loan_id !== null ? '↔' : '+'}
                     </span>
                   </div>
                   <div className="finance-transaction-info">
@@ -410,7 +406,7 @@ export default function FinancesScreen() {
                       {' · '}{transaction.date}
                     </span>
                   </div>
-                  <span className={`finance-amount${transaction.kind === 'income' && transaction.loan_id === null ? ' finance-income' : ''}`}>
+                  <span className={`text-sm ${transaction.kind === 'income' && transaction.loan_id === null ? 'text-green-500/50' : 'text-red-500/50'}`}>
                     {transaction.kind === 'income' ? '+' : '−'}{money(transaction.amount)}
                   </span>
                 </button>
