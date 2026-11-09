@@ -522,11 +522,45 @@ export async function deleteBudgetTemplate(database: BrowserDatabase, templateId
   });
 }
 
+export async function canDeleteBudget(database: BrowserDatabase, budgetId: number) {
+  const result = await database.getFirstAsync<{ has_transactions: number }>(
+    `SELECT EXISTS (
+       SELECT 1
+       FROM transaction_allocations allocations
+       LEFT JOIN budget_items items ON items.id = allocations.budget_item_id
+       WHERE allocations.budget_id = ? OR items.budget_id = ?
+       UNION ALL
+       SELECT 1
+       FROM budget_item_refund_allocations refunds
+       JOIN budget_items items ON items.id = refunds.budget_item_id
+       WHERE items.budget_id = ?
+     ) AS has_transactions`,
+    budgetId,
+    budgetId,
+    budgetId,
+  );
+  return result?.has_transactions === 0;
+}
+
 export async function deleteBudget(database: BrowserDatabase, budgetId: number) {
   await database.withTransactionAsync(async () => {
+    const budget = await database.getFirstAsync<{ id: number }>(
+      'SELECT id FROM budgets WHERE id = ?',
+      budgetId,
+    );
+    if (!budget) throw new Error('This budget no longer exists.');
+    if (!(await canDeleteBudget(database, budgetId))) {
+      throw new Error('This budget has linked transactions and cannot be deleted. Close it instead to preserve its history.');
+    }
+
+    await database.runAsync(
+      `DELETE FROM legacy_budget_item_map
+       WHERE budget_item_id IN (SELECT id FROM budget_items WHERE budget_id = ?)`,
+      budgetId,
+    );
+    await database.runAsync('DELETE FROM budget_closures WHERE budget_id = ?', budgetId);
     await database.runAsync('DELETE FROM budget_items WHERE budget_id = ?', budgetId);
-    const result = await database.runAsync('DELETE FROM budgets WHERE id = ?', budgetId);
-    if (!result.changes) throw new Error('This budget no longer exists.');
+    await database.runAsync('DELETE FROM budgets WHERE id = ?', budgetId);
   });
 }
 

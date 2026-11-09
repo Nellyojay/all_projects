@@ -321,3 +321,20 @@ textarea::placeholder {
     font-size: 15px;
   }
 }
+
+.el-center {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.el-active {
+  color: #138e00;
+}
+
+.el-muted-small {
+  color: #a3a3a37a;
+  font-size: 10px;
+}

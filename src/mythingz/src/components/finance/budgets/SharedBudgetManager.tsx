@@ -3,7 +3,9 @@ import type { FormEvent } from 'react';
 import { useDatabase } from '../../../web/DatabaseProvider';
 import {
   adjustSharedBudgetItem,
+  canDeleteBudget,
   createNormalBudget,
+  deleteBudget as deleteBudgetById,
   getSharedBudgetItems,
   getSharedBudgets,
   getUnallocatedExpenses,
@@ -70,6 +72,7 @@ export function SharedBudgetManager({
   const [saving, setSaving] = useState(false);
   const [selectedBudgetId, setSelectedBudgetId] = useState<number | null>(null);
   const [selectedBudgetItems, setSelectedBudgetItems] = useState<{ budgetId: number; items: SharedBudgetItem[] } | null>(null);
+  const [budgetDeleteEligibility, setBudgetDeleteEligibility] = useState<{ budgetId: number; allowed: boolean } | null>(null);
   const [detailsError, setDetailsError] = useState<string | null>(null);
   const [allocationDrafts, setAllocationDrafts] = useState<Record<number, string>>({});
   const [pendingClose, setPendingClose] = useState<number | null>(null);
@@ -108,12 +111,20 @@ export function SharedBudgetManager({
       if (!active) return;
       setSelectedBudgetItems({ budgetId: selectedBudgetId, items });
       setAllocationDrafts(Object.fromEntries(items.map((item) => [item.id, String(item.allocated_amount)])));
-      setDetailsError(null);
     }).catch((reason: unknown) => {
       console.error('Unable to load shared budget items', reason);
       if (active) {
         setDetailsError('Budget items could not be loaded. Close and reopen this budget to try again.');
         setSelectedBudgetItems({ budgetId: selectedBudgetId, items: [] });
+      }
+    });
+    void canDeleteBudget(database, selectedBudgetId).then((allowed) => {
+      if (active) setBudgetDeleteEligibility({ budgetId: selectedBudgetId, allowed });
+    }).catch((reason: unknown) => {
+      console.error('Unable to check whether the budget can be deleted', reason);
+      if (active) {
+        setBudgetDeleteEligibility({ budgetId: selectedBudgetId, allowed: false });
+        setDetailsError('Delete availability could not be checked. Close and reopen this budget to try again.');
       }
     });
     return () => { active = false; };
@@ -219,6 +230,24 @@ export function SharedBudgetManager({
     }
   };
 
+  const deleteSelectedBudget = async () => {
+    if (!selectedBudget) return;
+    const confirmed = window.confirm(
+      `Permanently delete "${selectedBudget.name}"? This removes the budget and its history. Budgets with linked transactions cannot be deleted.`,
+    );
+    if (!confirmed) return;
+
+    setError(null);
+    try {
+      await deleteBudgetById(database, selectedBudget.id);
+      closeBudgetDetails();
+      await refresh();
+    } catch (reason) {
+      console.error('Unable to delete budget', reason);
+      setError(reason instanceof Error ? reason.message : 'The budget could not be deleted.');
+    }
+  };
+
   return (
     <div>
       {error ? (
@@ -229,8 +258,6 @@ export function SharedBudgetManager({
           </button>
         </div>
       ) : null}
-
-
 
       {createOpen ? (
         <BudgetCreationModal
@@ -345,26 +372,39 @@ export function SharedBudgetManager({
           label={`${selectedBudget.name} budget details`}
           title={selectedBudget.name}
           onClose={closeBudgetDetails}
+          action={budgetDeleteEligibility?.budgetId === selectedBudget.id && budgetDeleteEligibility.allowed
+            ? {
+              label: 'Delete',
+              onClick: () => void deleteSelectedBudget(),
+            }
+            : undefined}
         >
           <h1 className="normal-budget-details-title">Budget overview</h1>
           {error ? <p role="alert" className="normal-budget-inline-error">{error}</p> : null}
           {detailsError ? <p role="alert" className="normal-budget-inline-error">{detailsError}</p> : null}
           <div className="record-details-infoCard normal-budget-details-summary">
             {selectedBudget.start_date || selectedBudget.end_date ? (
-              <>
-                <span className="record-details-infoLabel">PERIOD</span>
+              <span className='el-center'>
+                <span className="record-details-infoLabel">PERIOD:</span>
                 <span className="record-details-infoValue">
                   {selectedBudget.start_date ?? 'No start date'} – {selectedBudget.end_date ?? 'No end date'}
                 </span>
-              </>
+              </span>
             ) : null}
-            <span className="record-details-infoLabel">STATUS</span>
-            <span className="record-details-infoValue">{statusLabel(selectedBudget.status)}</span>
-            <div className="normal-budget-summary-grid">
+            <span className='el-center mb-2'>
+              <span className="record-details-infoLabel">STATUS:</span>
+              <span className="el-active text-sm">{statusLabel(selectedBudget.status)}</span>
+            </span>
+            <div className="normal-budget-summary">
               <span>Allocated <strong>{money(selectedBudget.total_allocated)}</strong></span>
               <span>Actual expenses <strong>{money(selectedBudget.actual_amount)}</strong></span>
               <span>Remaining <strong>{money(selectedBudget.remaining_amount)}</strong></span>
             </div>
+            {budgetDeleteEligibility?.budgetId === selectedBudget.id && !budgetDeleteEligibility.allowed ? (
+              <p className="el-muted-small">
+                This budget has linked transactions, so it cannot be deleted. Close it to preserve its history.
+              </p>
+            ) : null}
           </div>
           {selectedBudget.description ? (
             <p className="normal-budget-muted normal-budget-details-description">{selectedBudget.description}</p>

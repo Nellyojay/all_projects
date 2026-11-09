@@ -8,7 +8,7 @@
 
 .normal-budget-muted {
   color: #a3a3a3;
-  font-size: 13px;
+  font-size: 10px;
 }
 
 .normal-budget-input {
@@ -58,10 +58,10 @@
   font-size: 13px;
 }
 
-.normal-budget-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+.normal-budget-summary {
+  display: block;
   gap: 8px;
+  margin-bottom: 10px;
   color: #a3a3a3;
   font-size: 13px;
 }
@@ -71,6 +71,22 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
+}
+
+.normal-budget-card-heading {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+}
+
+.normal-budget-card-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .normal-budget-details-title {

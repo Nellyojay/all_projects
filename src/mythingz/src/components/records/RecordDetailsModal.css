@@ -43,25 +43,12 @@
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.8px;
-  margin-top: 10px;
 }
 
 .record-details-infoValue {
   color: #F5F5F5;
   font-size: 13px;
   font-weight: 600;
-  margin-top: 5px;
-}
-
-.record-details-secondaryAction {
-  align-self: flex-start;
-  border-radius: 8px;
-  border-width: 1px;
-  border-color: #323232;
-  padding-block: 10px;
-  padding-inline: 14px;
-  margin-top: 16px;
-  border: 1px solid #323232;
 }
 
 .record-details-secondaryActionText {
