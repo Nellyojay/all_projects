@@ -29,6 +29,7 @@ import {
 import { NoteCard } from '../../components/notes/note';
 import './index.css';
 import { useMyThingsDb } from '../../services/readAPI';
+import { TransactionComponent } from '../../components/ui/transaction';
 
 const formatMoney = (amount: number) =>
   `UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(amount)}`;
@@ -448,31 +449,10 @@ export default function HomeScreen() {
         </div>
 
         <SectionTitle title="RECENT TRANSACTIONS" />
-        <div className="app-panel">
-          {transactions.length ? transactions.map((transaction) => (
-            <button
-              key={transaction.id}
-              type="button"
-              onClick={() => setSelectedTransaction(transaction)}
-              className="home-transactionRow"
-            >
-              <div className={`text-2xl ${transaction.kind === 'expense' ? 'text-red-500/50' : 'text-green-500/50'}`}>
-                {transaction.kind === 'expense'
-                  ? '−'
-                  : transaction.loan_id !== null ? '↔' : '+'}
-              </div>
-              <div className="home-previewText">
-                <span className="home-recordTitle">{transaction.title}</span>
-                <span className="home-muted">
-                  {transaction.loan_id !== null ? 'Loan proceeds' : transaction.category}
-                </span>
-              </div>
-              <span className={`home-recordTitle${transaction.kind === 'income' && transaction.loan_id === null ? ' home-income' : ''}`}>
-                {transaction.kind === 'expense' ? '−' : '+'}{formatMoney(transaction.amount)}
-              </span>
-            </button>
-          )) : <span className="home-muted">Add an expense or income to see transactions here.</span>}
-        </div>
+        {transactions.length
+          ? <TransactionComponent filteredTransactions={transactions} setSelectedTransaction={setSelectedTransaction} />
+          : <span className="home-muted">Add an expense or income to see transactions here.</span>
+        }
 
         <SectionTitle title="PERSONAL PROGRESS" action="Open tasks →" onAction={() => navigate('/organize', { state: { section: 'Tasks' } })} />
         <div className="app-panel home-metricGrid" >

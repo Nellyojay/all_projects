@@ -52,6 +52,7 @@
   flex-wrap: wrap;
   padding: 4px;
   border-radius: 10px;
+  border: 1px solid #323232;
   background: #202020d2;
 }
 
@@ -61,7 +62,6 @@
   align-items: center;
   justify-content: center;
   padding-block: 6px;
-  border: 1px solid #323232;
   border-radius: 7px;
 }
 

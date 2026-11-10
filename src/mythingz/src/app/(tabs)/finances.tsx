@@ -29,6 +29,7 @@ import {
   type Transfer,
   type Transaction,
 } from '../../services/database';
+import { TransactionComponent } from '../../components/ui/transaction';
 
 type FinanceSection = 'accounts' | 'transfers' | 'budgets' | 'loans' | 'transactions';
 
@@ -250,7 +251,8 @@ export default function FinancesScreen() {
               </span>
             </button>
           ))}
-        </div><div className="finance-toolbar">
+        </div>
+        <div className="finance-toolbar">
           <span className="finance-section-heading">
             YOUR {section === 'budgets' ? 'BUDGETS' : section.toUpperCase()}
           </span>
@@ -384,39 +386,10 @@ export default function FinancesScreen() {
           </>
         ) : null}
         {section === 'transactions' ? (
-          <>
-            <div className="app-panel">
-              {filteredTransactions.length ? filteredTransactions.map((transaction) => (
-                <button
-                  key={transaction.id}
-                  type="button"
-                  onClick={() => setSelectedTransaction(transaction)}
-                  className="finance-transaction finance-transaction--button"
-                >
-                  <div className={`text-2xl ${transaction.kind === 'income' && transaction.loan_id === null ? 'text-green-500/50' : 'text-red-500/50'}`}>
-                    <span>
-                      {transaction.kind === 'expense' ? '−' : transaction.loan_id !== null ? '↔' : '+'}
-                    </span>
-                  </div>
-                  <div className="finance-transaction-info">
-                    <span className="finance-title">{transaction.title}</span>
-                    <span className="finance-secondary">
-                      {transaction.loan_id !== null ? 'Loan proceeds' : transaction.category}
-                      {transaction.account_name ? ` · ${transaction.account_name}` : ''}
-                      {' · '}{transaction.date}
-                    </span>
-                  </div>
-                  <span className={`text-sm ${transaction.kind === 'income' && transaction.loan_id === null ? 'text-green-500/50' : 'text-red-500/50'}`}>
-                    {transaction.kind === 'income' ? '+' : '−'}{money(transaction.amount)}
-                  </span>
-                </button>
-              )) : (
-                <span className="finance-secondary">
-                  Add an expense or income here. Budget lists are plans; record actual expenses separately.
-                </span>
-              )}
-            </div>
-          </>
+          <TransactionComponent
+            filteredTransactions={filteredTransactions}
+            setSelectedTransaction={setSelectedTransaction}
+          />
         ) : null}
         <SectionTitle title="MORE FINANCE TOOLS" />
         <div className="finance-module-grid">
