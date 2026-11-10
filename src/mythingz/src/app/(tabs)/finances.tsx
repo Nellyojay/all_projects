@@ -10,7 +10,6 @@ import { RecordComposer } from '../../components/records/RecordComposer';
 import { ActionPopup } from '../../components/shared/ActionPopup';
 import { useModalBack } from '../../components/shared/ModalBackContext';
 import { ScreenHeader, SectionTitle } from '../../components/shared/ScreenHeader';
-import { colors } from '../../components/shared/theme';
 import '../../components/shared/theme.css';
 import './finances.css';
 import '../pages/RecurringBudgetsPage.css';
@@ -297,31 +296,11 @@ export default function FinancesScreen() {
           className="finance-search"
         />
         {section === 'transfers' ? (
-          <div className="app-panel">
-            {filteredTransfers.length ? filteredTransfers.map((transfer) => (
-              <button
-                key={transfer.id}
-                type="button"
-                onClick={() => setSelectedTransaction(transfer)}
-                className="finance-transaction finance-transaction--button"
-              >
-                <div className="finance-transaction-icon finance-transaction-icon--transfer">
-                  <span style={{ color: colors.green }}>↔</span>
-                </div>
-                <div className="finance-transaction-info">
-                  <span className="finance-title">
-                    {transfer.from_account_name} → {transfer.to_account_name}
-                  </span>
-                  <span className="finance-secondary">{transfer.date}</span>
-                </div>
-                <span className="finance-amount">{money(transfer.amount)}</span>
-              </button>
-            )) : (
-              <span className="finance-secondary">
-                Transfers between your accounts move money without changing your total balance.
-              </span>
-            )}
-          </div>
+          <TransactionComponent
+            filteredTransactions={filteredTransfers}
+            setSelectedTransaction={setSelectedTransaction}
+            emptyMessage="Transfers between your accounts move money without changing your total balance."
+          />
         ) : null}
         {section === 'budgets' ? (
           <>

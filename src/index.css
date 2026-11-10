@@ -331,7 +331,11 @@ textarea::placeholder {
 }
 
 .el-active {
-  color: #138e00;
+  color: rgb(0, 255, 0, .5);
+}
+
+.el-reddish {
+  color: rgb(255, 0, 0, .7);
 }
 
 .el-muted-small {
