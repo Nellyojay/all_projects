@@ -95,8 +95,6 @@ export function RecordComposer({
   const [fees, setFees] = useState(initialDraft?.fees?.toString() ?? '');
   const [dueDate, setDueDate] = useState(initialDraft?.dueDate ?? '');
   const [notes, setNotes] = useState(initialDraft?.notes ?? '');
-  const [budgetEnabled, setBudgetEnabled] = useState(initialDraft?.budgetEnabled ?? false);
-  const [eventId, setEventId] = useState<number | null>(initialDraft?.eventId ?? null);
   const [listItems, setListItems] = useState<ItemizedItem[]>(() => {
     const items = initialDraft?.listItems
       ?? initialDraft?.notes?.split(/\r?\n|,/).filter((item) => item.trim()).map((text) => ({
@@ -163,8 +161,6 @@ export function RecordComposer({
     setFees('');
     setDueDate('');
     setNotes('');
-    setBudgetEnabled(false);
-    setEventId(null);
     setListItems([{ text: '', done: false, price: '', quantity: '1' }]);
     onClose();
   }, [defaultDate, initialDraft, kind, navigate, onClose]);
@@ -276,8 +272,6 @@ export function RecordComposer({
           : undefined,
         fromAccountId: kind === 'transfer' ? fromAccountId ?? undefined : undefined,
         toAccountId: kind === 'transfer' ? toAccountId ?? undefined : undefined,
-        budgetEnabled: kind === 'list' ? budgetEnabled : undefined,
-        eventId: kind === 'list' ? eventId : undefined,
         listItems: kind === 'list' ? parsedListItems : undefined,
       });
       close();
@@ -292,7 +286,7 @@ export function RecordComposer({
   if (!kind) return null;
 
   return (
-    <section className="record-composer-page record-composer-backdrop"  aria-label={titles[kind]}>
+    <section className="record-composer-page record-composer-backdrop" aria-label={titles[kind]}>
       <div className="record-composer-sheet">
         <div className="record-composer-header">
           <h1 className="record-composer-heading">{titles[kind]}</h1>
@@ -333,19 +327,18 @@ export function RecordComposer({
             </>
           ) : kind === 'transfer' ? null : (
             <>
-              <span className="record-composer-label">
-                {kind === 'loan' ? 'LENDER / SOURCE' : kind === 'loan-repayment' ? 'PAYMENT' : 'TITLE'}
-              </span>
               <input
                 autoFocus
                 maxLength={MAX_TITLE_LENGTH}
                 value={title}
                 onChange={(event) => setTitle(event.currentTarget.value)}
-                placeholder={kind === 'loan' ? 'Bank, person, or source' : 'Give it a name'}
-                className="record-composer-input"
+                aria-label={kind === 'loan' ? 'Lender or source name' : kind === 'loan-repayment' ? 'Payment title' : 'List title or name'}
+                placeholder={kind === 'loan' ? 'LENDER NAME / SOURCE NAME' : kind === 'loan-repayment' ? 'PAYMENT TITLE' : kind === 'task' ? 'Name your task' : 'Name your list'}
+                className="title-input"
               />
             </>
           )}
+
           {kind === 'income' || kind === 'loan' || kind === 'loan-repayment' || kind === 'transfer' ? (
             <>
               <span className="record-composer-label">
@@ -416,6 +409,7 @@ export function RecordComposer({
               />
             </>
           ) : null}
+
           {kind === 'income' ? (
             <>
               <span className="record-composer-label">CATEGORY</span>
@@ -436,8 +430,7 @@ export function RecordComposer({
                 ))}
               </div>
             </>
-          ) : kind !== 'list' && kind !== 'loan' && kind !== 'loan-repayment' &&
-            kind !== 'transfer' && kind !== 'note' ? (
+          ) : kind !== 'list' && kind !== 'loan' && kind !== 'loan-repayment' && kind !== 'transfer' && kind !== 'note' ? (
             <>
               <span className="record-composer-label">
                 {kind === 'task' ? 'PRIORITY' : kind === 'event' ? 'EVENT TYPE' : 'CATEGORY'}
@@ -474,12 +467,6 @@ export function RecordComposer({
           ) : null}
           {kind === 'list' ? (
             <ListComposer
-              budgetEnabled={budgetEnabled}
-              onBudgetEnabledChange={setBudgetEnabled}
-              eventId={eventId}
-              onEventIdChange={setEventId}
-              notes={notes}
-              onNotesChange={setNotes}
               listItems={listItems}
               onListItemsChange={setListItems}
             />

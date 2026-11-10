@@ -51,126 +51,19 @@ const money = (amount: number) =>
   `UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(amount)}`;
 
 export function ListComposer({
-  budgetEnabled,
-  onBudgetEnabledChange,
-  eventId,
-  onEventIdChange,
-  notes,
-  onNotesChange,
   listItems,
   onListItemsChange,
 }: {
-  budgetEnabled: boolean;
-  onBudgetEnabledChange: (enabled: boolean) => void;
-  eventId: number | null;
-  onEventIdChange: (eventId: number | null) => void;
-  notes: string;
-  onNotesChange: (notes: string) => void;
   listItems: ItemizedItem[];
   onListItemsChange: Dispatch<SetStateAction<ItemizedItem[]>>;
 }) {
-  const database = useDatabase();
-  const [eventPickerVisible, setEventPickerVisible] = useState(false);
-  const [savedEvents, setSavedEvents] = useState<EventRecord[]>([]);
-
-  const openEventPicker = async () => {
-    try {
-      const events = await database.getAllAsync<EventRecord>(
-        `SELECT events.*,
-          (SELECT COUNT(*) FROM lists WHERE lists.event_id = events.id AND lists.budget_enabled = 1) AS budget_count
-         FROM events
-         ORDER BY date, id`,
-      );
-      setSavedEvents(events);
-      setEventPickerVisible((visible) => !visible);
-    } catch (error) {
-      console.error('Unable to load saved events for budget', error);
-      window.alert('Could not load events\n\nPlease try again.');
-    }
-  };
-
   return (
-    <>
-      <div className="list-composer-budget-option">
-        <div className="list-composer-budget-copy">
-          <span className="list-composer-budget-title">Add to budget</span>
-          <span className="list-composer-budget-description">Track item prices and total the list</span>
-        </div>
-        <input
-          type="checkbox"
-          checked={budgetEnabled}
-          onChange={(event) => onBudgetEnabledChange(event.currentTarget.checked)}
-        />
-      </div>
-      {budgetEnabled ? (
-        <div className="list-composer-event-budget-section">
-          <label className="list-composer-label" htmlFor="budget-list-notes">NOTES · OPTIONAL</label>
-          <textarea
-            id="budget-list-notes"
-            value={notes}
-            onChange={(event) => onNotesChange(event.currentTarget.value)}
-            placeholder="Add a note about this budget list"
-            rows={3}
-            className="list-composer-notes"
-          />
-          <span className="list-composer-label">EVENT</span>
-          <button
-            type="button" aria-expanded={eventPickerVisible}
-            onClick={() => void openEventPicker()}
-            className="list-composer-attach-event"
-          >
-            <span className="list-composer-attach-event-text">
-              {eventId === null ? '＋  Attach a saved event' : 'Change attached event'}
-            </span>
-          </button>
-          {eventId !== null ? (
-            <span className="list-composer-attached-event">
-              {savedEvents.find((event) => event.id === eventId)?.title ?? 'Saved event attached'}
-            </span>
-          ) : null}
-          {eventPickerVisible ? (
-            <div className="list-composer-event-options">
-              <button
-                type="button" aria-selected={eventId === null}
-                onClick={() => {
-                  onEventIdChange(null);
-                  setEventPickerVisible(false);
-                }}
-                className={`list-composer-event-option${eventId === null ? ' list-composer-event-option--selected' : ''}`}
-              >
-                <span className="list-composer-event-option-title">No event</span>
-              </button>
-              {savedEvents.map((event) => (
-                <button
-                  key={event.id}
-                  type="button" aria-selected={eventId === event.id}
-                  onClick={() => {
-                    onEventIdChange(event.id);
-                    setEventPickerVisible(false);
-                  }}
-                  className={`list-composer-event-option${eventId === event.id ? ' list-composer-event-option--selected' : ''}`}
-                >
-                  <span className="list-composer-event-option-title">{event.title}</span>
-                  <span className="list-composer-event-option-date">{event.date}</span>
-                </button>
-              ))}
-              {savedEvents.length === 0 ? (
-                <span className="list-composer-no-events">
-                  Create a calendar event first to attach it to this budget.
-                </span>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-      <ItemizedItemsEditor
-        items={listItems}
-        onItemsChange={onListItemsChange}
-        showPricing={budgetEnabled}
-        showTotal={budgetEnabled}
-        totalLabel="List total"
-      />
-    </>
+    <ItemizedItemsEditor
+      items={listItems}
+      onItemsChange={onListItemsChange}
+      showPricing={false}
+      showTotal={false}
+    />
   );
 }
 
@@ -507,7 +400,7 @@ export function EventBudgetPanel({
               <span className="list-event-budget-total">{formatCurrency(listTotal(items))}</span>
             </div>
             <span className="list-event-budget-message">
-                  {budget.finalized
+              {budget.finalized
                 ? 'Legacy expense recorded'
                 : `${items.filter((item) => item.done).length} of ${items.length} checked`}
               {' · '}{formatCurrency(listTotal(items, true))} checked
