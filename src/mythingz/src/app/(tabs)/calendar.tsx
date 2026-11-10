@@ -135,7 +135,7 @@ export default function CalendarScreen() {
         {visibleEvents.length ? visibleEvents.map((event) => (
           <button
             key={event.id}
-            onClick={() => navigate(`/space/records/event/${event.id}`, { state: { from: location.pathname } })}
+            onClick={() => navigate(`/records/event/${event.id}`, { state: { from: location.pathname } })}
             onContextMenu={(pointerEvent) => {
               pointerEvent.preventDefault();
               remove(event);
@@ -167,7 +167,7 @@ export default function CalendarScreen() {
               <UpcomingEventRow
                 key={event.id}
                 event={event}
-                onClick={() => navigate(`/space/records/event/${event.id}`, { state: { from: location.pathname } })}
+                onClick={() => navigate(`/records/event/${event.id}`, { state: { from: location.pathname } })}
               />
             ))
           ) : <span className="calendar-event-notes">Your upcoming events will appear here.</span>}

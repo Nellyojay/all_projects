@@ -90,6 +90,7 @@ export function RecordDetailsModalProvider({ children }: { children: ReactNode }
   const close = useCallback(() => {
     setTarget(null);
     setRecord(null);
+    setLoadError(null);
     setEditing(null);
   }, []);
   const closeEditor = useCallback(() => setEditing(null), []);

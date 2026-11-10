@@ -56,7 +56,7 @@ function Intro() {
         <header className="sticky top-0 z-10 border-b border-border py-2 backdrop-blur-3xl">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
             <a
-              href="#/"
+              href="#/intro"
               className="flex items-center gap-3"
               aria-label="Project index home"
             >
@@ -67,7 +67,7 @@ function Intro() {
             </a>
             <button
               type="button"
-              onClick={() => navigate('/space')}
+              onClick={() => navigate('/')}
               className="rounded-md text-xs border border-border-strong bg-surface px-2 py-2 font-mono font-semibold uppercase tracking-wider transition hover:border-primary-dark hover:bg-surface-hover"
             >
               Enter my space

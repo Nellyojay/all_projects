@@ -152,7 +152,7 @@ export default function SettingsScreen() {
           )}
         </div>
         <span className="settings-privacy">Your records are saved locally on this device. Cloud backup and synchronization are not enabled.</span>
-        <button onClick={() => navigate('/space')} className="settings-done">
+        <button onClick={() => navigate('/')} className="settings-done">
           <span className="settings-done-text">Done</span>
         </button>
       </div>

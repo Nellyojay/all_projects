@@ -164,7 +164,7 @@ export default function FinancesScreen() {
     await refresh();
   };
   const addAccount = () => {
-    navigate('/space/finances/accounts/new');
+    navigate('/finances/accounts/new');
   };
   const openBudgetExpense = async (transactionId: number) => {
     try {
@@ -271,7 +271,7 @@ export default function FinancesScreen() {
                 { label: 'Create normal budget', onSelect: () => setCreateBudgetRequested(true) },
                 {
                   label: 'Create recurring budget',
-                  onSelect: () => navigate('/space/finances/recurring-budgets'),
+                  onSelect: () => navigate('/finances/recurring-budgets'),
                 },
               ]}
             />
@@ -325,7 +325,7 @@ export default function FinancesScreen() {
           <>
             <button
               type="button"
-              onClick={() => navigate('/space/finances/recurring-budgets')}
+              onClick={() => navigate('/finances/recurring-budgets')}
               className="finance-recurring-budget-link"
             >
               <span className="finance-recurring-budget-title">Recurring budgets</span>

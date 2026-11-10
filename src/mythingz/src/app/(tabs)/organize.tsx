@@ -264,11 +264,11 @@ export default function OrganizeScreen() {
   const openCaptureDestination = (item: InboxItem) => {
     if (item.destination_id === null || item.destination_type === null) return;
     if (item.destination_type === 'reminder') {
-      navigate('/space/organize', {
+      navigate('/organize', {
         state: { section: 'Reminders', focusReminderId: item.destination_id },
       });
     } else if (item.destination_type === 'transaction') {
-      navigate('/space/finances', {
+      navigate('/finances', {
         state: {
           section: 'transactions',
           focusRecord: { kind: 'transaction', id: item.destination_id },
@@ -277,18 +277,18 @@ export default function OrganizeScreen() {
     } else if (item.destination_type !== 'inbox') {
       const recordType = item.destination_type === 'budget' ? 'list' : item.destination_type;
       if (recordType === 'list') openRecordDetails('list', item.destination_id);
-      else navigate(`/space/records/${recordType}/${item.destination_id}`, {
+      else navigate(`/records/${recordType}/${item.destination_id}`, {
         state: { from: location.pathname },
       });
     }
   };
   const openCaptureRecord = (record: RelatedRecord) => {
     if (record.type === 'reminder') {
-      navigate('/space/organize', {
+      navigate('/organize', {
         state: { section: 'Reminders', focusReminderId: record.id },
       });
     } else if (record.type === 'transaction') {
-      navigate('/space/finances', {
+      navigate('/finances', {
         state: {
           section: 'transactions',
           focusRecord: { kind: 'transaction', id: record.id },
@@ -297,7 +297,7 @@ export default function OrganizeScreen() {
     } else if (record.type !== 'inbox') {
       const recordType = record.type === 'budget' ? 'list' : record.type;
       if (recordType === 'list') openRecordDetails('list', record.id);
-      else navigate(`/space/records/${recordType}/${record.id}`, {
+      else navigate(`/records/${recordType}/${record.id}`, {
         state: { from: location.pathname },
       });
     }
@@ -367,18 +367,18 @@ export default function OrganizeScreen() {
   const openActivity = (activity: ActivityRecord) => {
     if (activity.record_id === null || activity.action === 'deleted') return;
     if (activity.module === 'events' || activity.module === 'tasks' || activity.module === 'notes') {
-      navigate(`/space/records/${activity.module.slice(0, -1)}/${activity.record_id}`, {
+      navigate(`/records/${activity.module.slice(0, -1)}/${activity.record_id}`, {
         state: { from: location.pathname },
       });
     } else if (activity.module === 'lists') {
       openRecordDetails('list', activity.record_id);
     } else if (activity.module === 'reminders') {
-      navigate('/space/organize', { state: { section: 'Reminders', focusReminderId: activity.record_id } });
+      navigate('/organize', { state: { section: 'Reminders', focusReminderId: activity.record_id } });
     } else if (activity.module === 'inbox') {
-      navigate('/space/organize', { state: { section: 'Inbox' } });
+      navigate('/organize', { state: { section: 'Inbox' } });
     } else if (activity.module === 'finances') {
       const kind = activity.description.includes('Transfer') ? 'transfer' : 'transaction';
-      navigate('/space/finances', {
+      navigate('/finances', {
         state: { section: kind === 'transfer' ? 'transfers' : 'transactions', focusRecord: { kind, id: activity.record_id } },
       });
     }
@@ -483,7 +483,7 @@ export default function OrganizeScreen() {
               </button>
               <button
                 style={{ flex: 1 }}
-                onClick={() => navigate(`/space/records/task/${task.id}`, { state: { from: location.pathname } })}
+                onClick={() => navigate(`/records/task/${task.id}`, { state: { from: location.pathname } })}
                 onContextMenu={(pointerEvent) => {
                   pointerEvent.preventDefault();
                   remove('tasks', task.id, task.title);

@@ -66,7 +66,7 @@ export function CreateAccountPage() {
     setSaving(true);
     try {
       await createAccount(database, { name, type, openingBalance: balance });
-      navigate('/space/finances', { state: { section: 'accounts' } });
+      navigate('/finances', { state: { section: 'accounts' } });
     } catch (error) {
       console.error('Unable to create account', error);
       window.alert(`Could not add account\n\n${error instanceof Error ? error.message : 'Please try again.'}`);

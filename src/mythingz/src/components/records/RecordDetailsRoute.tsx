@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { RecordComposer } from './RecordComposer';
 import { RecordDetailsModal, type SelectedRecord } from './RecordDetailsModal';
 import { useDatabase } from '../../web/DatabaseProvider';
@@ -26,7 +26,6 @@ function isDetailKind(kind: string | undefined): kind is DetailKind {
 
 export default function RecordDetailsRoute() {
   const { kind: rawKind, id: rawId } = useParams();
-  const location = useLocation();
   const navigate = useNavigate();
   const database = useDatabase();
   const recordKey = `${rawKind ?? ''}:${rawId ?? ''}`;
@@ -117,16 +116,7 @@ export default function RecordDetailsRoute() {
   }, [loadRecord, recordKey]);
 
   const closeDetails = () => {
-    const state = location.state;
-    const from = typeof state === 'object' && state !== null
-      && 'from' in state && typeof state.from === 'string'
-      ? state.from
-      : null;
-    if (from === '/space' || from?.startsWith('/space/')) {
-      navigate(-1);
-    } else {
-      navigate('/space', { replace: true });
-    }
+    navigate(-1);
   };
 
   const currentLoad = loadState?.key === recordKey ? loadState : null;

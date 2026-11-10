@@ -107,7 +107,6 @@ export function RecordDetailsModal({
     if (!selected) return;
     if (!window.confirm(`Delete ${recordLabels[selected.kind].toLowerCase()}?\n\n“${selected.record.title}” will be permanently removed.`)) return;
     void deleteRecord(database, recordTables[selected.kind], selected.record.id)
-      .then(onChanged)
       .then(close)
       .catch((error: unknown) => {
         console.error('Unable to delete record', error);

@@ -66,13 +66,13 @@ export default function SearchScreen() {
       return;
     }
     if (result.kind === 'reminder') {
-      navigate('/space/organize', {
+      navigate('/organize', {
         state: { section: 'Reminders', focusReminderId: result.id },
       });
       return;
     }
     if (result.module === 'Finances') {
-      navigate('/space/finances', {
+      navigate('/finances', {
         state: {
           section: result.kind === 'transfer' ? 'transfers' : 'transactions',
           focusRecord: { kind: result.kind, id: result.id },
@@ -94,8 +94,8 @@ export default function SearchScreen() {
       openRecordDetails('list', result.id);
       return;
     }
-    navigate(`/space/records/${kind}/${result.id}`, {
-      state: { from: '/space/search' },
+    navigate(`/records/${kind}/${result.id}`, {
+      state: { from: '/search' },
     });
   };
 

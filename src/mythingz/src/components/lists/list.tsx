@@ -366,7 +366,7 @@ export function ListDetails({
         <button
           type="button"
           className="list-detail-event-tag"
-          onClick={() => navigate(`/space/records/event/${list.event_id}`, {
+          onClick={() => navigate(`/records/event/${list.event_id}`, {
             state: { from: location.pathname },
           })}
         >

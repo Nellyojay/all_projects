@@ -203,28 +203,28 @@ export default function HomeScreen() {
   );
   const openScheduleItem = (item: ScheduleItem) => {
     if (item.kind === 'reminder') {
-      navigate('/space/organize', { state: { section: 'Reminders', focusReminderId: item.id } });
+      navigate('/organize', { state: { section: 'Reminders', focusReminderId: item.id } });
     } else if (item.kind === 'loan') {
-      navigate('/space/finances', { state: { section: 'loans' } });
+      navigate('/finances', { state: { section: 'loans' } });
     } else {
-      navigate(`/space/records/${item.kind}/${item.id}`, { state: { from: location.pathname } });
+      navigate(`/records/${item.kind}/${item.id}`, { state: { from: location.pathname } });
     }
   };
   const openActivity = (activity: ActivityRecord) => {
     if (activity.record_id === null) return;
     if (activity.module === 'events' || activity.module === 'tasks' || activity.module === 'notes') {
-      navigate(`/space/records/${activity.module.slice(0, -1)}/${activity.record_id}`, {
+      navigate(`/records/${activity.module.slice(0, -1)}/${activity.record_id}`, {
         state: { from: location.pathname },
       });
     } else if (activity.module === 'lists') {
       openRecordDetails('list', activity.record_id);
     } else if (activity.module === 'reminders') {
-      navigate('/space/organize', { state: { section: 'Reminders', focusReminderId: activity.record_id } });
+      navigate('/organize', { state: { section: 'Reminders', focusReminderId: activity.record_id } });
     } else if (activity.module === 'inbox') {
-      navigate('/space/organize', { state: { section: 'Inbox' } });
+      navigate('/organize', { state: { section: 'Inbox' } });
     } else if (activity.module === 'finances') {
       const kind = activity.description.includes('Transfer') ? 'transfer' : 'transaction';
-      navigate('/space/finances', {
+      navigate('/finances', {
         state: { section: kind === 'transfer' ? 'transfers' : 'transactions', focusRecord: { kind, id: activity.record_id } },
       });
     }
@@ -253,7 +253,7 @@ export default function HomeScreen() {
                 if (kind === 'budget-list') {
                   addBudgetList();
                 } else if (kind === 'inbox') {
-                  navigate('/space/organize', { state: { section: 'Inbox' } });
+                  navigate('/organize', { state: { section: 'Inbox' } });
                 } else if (kind === 'expense') {
                   setExpenseComposerOpen(true);
                 } else {
@@ -268,7 +268,7 @@ export default function HomeScreen() {
           ))}
         </div>
 
-        <SectionTitle title="FINANCIAL OVERVIEW" action="Open finances →" onAction={() => navigate('/space/finances')} />
+        <SectionTitle title="FINANCIAL OVERVIEW" action="Open finances →" onAction={() => navigate('/finances')} />
         <div className="app-panel home-financeCard" >
           <div className="home-metricGrid">
             {[
@@ -307,13 +307,13 @@ export default function HomeScreen() {
           )}
         </div>
 
-        <SectionTitle title="TODAY'S OVERVIEW" action="See all" onAction={() => navigate('/space/organize')} />
+        <SectionTitle title="TODAY'S OVERVIEW" action="See all" onAction={() => navigate('/organize')} />
         <div className="app-panel">
           <span className="home-cardKicker">TASKS DUE TODAY</span>
           {dueTodayTasks.length ? dueTodayTasks.map((task) => (
             <button
               key={task.id}
-              onClick={() => navigate(`/space/records/task/${task.id}`, { state: { from: location.pathname } })}
+              onClick={() => navigate(`/records/task/${task.id}`, { state: { from: location.pathname } })}
             >
               <span className="home-listLine">○  {task.title}</span>
             </button>
@@ -325,7 +325,7 @@ export default function HomeScreen() {
                 <button
                   key={task.id}
                   type="button"
-                  onClick={() => navigate(`/space/records/task/${task.id}`, { state: { from: location.pathname } })}
+                  onClick={() => navigate(`/records/task/${task.id}`, { state: { from: location.pathname } })}
                   className="home-attentionButton"
                 >
                   {task.title} · due {task.date}
@@ -339,7 +339,7 @@ export default function HomeScreen() {
               <button
                 key={event.id}
                 type="button"
-                onClick={() => navigate(`/space/records/event/${event.id}`, { state: { from: location.pathname } })}
+                onClick={() => navigate(`/records/event/${event.id}`, { state: { from: location.pathname } })}
                 className="home-attentionButton"
               >
                 {event.title}
@@ -353,7 +353,7 @@ export default function HomeScreen() {
                 <button
                   key={reminder.id}
                   type="button"
-                  onClick={() => navigate('/space/organize', {
+                  onClick={() => navigate('/organize', {
                     state: { section: 'Reminders', focusReminderId: reminder.id },
                   })}
                   className="home-attentionButton"
@@ -365,7 +365,7 @@ export default function HomeScreen() {
           )}
         </div>
 
-        <SectionTitle title="NEEDS ATTENTION" action="Open reminders →" onAction={() => navigate('/space/organize', { state: { section: 'Reminders' } })} />
+        <SectionTitle title="NEEDS ATTENTION" action="Open reminders →" onAction={() => navigate('/organize', { state: { section: 'Reminders' } })} />
         <div className="app-panel">
           {overdueTasks.length === 0 && remindersDue.length === 0 && budgetAttention.length === 0
             && eventPreparation.length === 0
@@ -376,7 +376,7 @@ export default function HomeScreen() {
             <button
               key={`task-${task.id}`}
               type="button"
-              onClick={() => navigate(`/space/records/task/${task.id}`, { state: { from: location.pathname } })}
+              onClick={() => navigate(`/records/task/${task.id}`, { state: { from: location.pathname } })}
               className="home-attentionButton"
             >
               Overdue task: {task.title}
@@ -396,7 +396,7 @@ export default function HomeScreen() {
             <button
               key={`event-${event.id}`}
               type="button"
-              onClick={() => navigate(`/space/records/event/${event.id}`, { state: { from: location.pathname } })}
+              onClick={() => navigate(`/records/event/${event.id}`, { state: { from: location.pathname } })}
               className="home-attentionButton"
             >
               Event needs preparation: {event.title} · {event.tasks} incomplete tasks
@@ -406,7 +406,7 @@ export default function HomeScreen() {
             <button
               key={`loan-${loan.id}`}
               type="button"
-              onClick={() => navigate('/space/finances', { state: { section: 'loans' } })}
+              onClick={() => navigate('/finances', { state: { section: 'loans' } })}
               className="home-attentionButton"
             >
               Overdue loan repayment: {loan.lender} · {loan.due_date}
@@ -416,7 +416,7 @@ export default function HomeScreen() {
             <button
               key={`reminder-${reminder.id}`}
               type="button"
-              onClick={() => navigate('/space/organize', { state: { section: 'Reminders', focusReminderId: reminder.id } })}
+              onClick={() => navigate('/organize', { state: { section: 'Reminders', focusReminderId: reminder.id } })}
               className="home-attentionButton"
             >
               Reminder due: {reminder.title}
@@ -424,7 +424,7 @@ export default function HomeScreen() {
           ))}
         </div>
 
-        <SectionTitle title="UPCOMING SCHEDULE" action="Open calendar →" onAction={() => navigate('/space/calendar')} />
+        <SectionTitle title="UPCOMING SCHEDULE" action="Open calendar →" onAction={() => navigate('/calendar')} />
         <div className="app-panel">
           {upcomingSchedule.length ? upcomingSchedule.map((item) => (
             <button
@@ -440,7 +440,7 @@ export default function HomeScreen() {
           )) : <span className="home-muted">Nothing scheduled soon.</span>}
         </div>
 
-        <SectionTitle title="RECENT NOTES" action="Open organize →" onAction={() => navigate('/space/organize')} />
+        <SectionTitle title="RECENT NOTES" action="Open organize →" onAction={() => navigate('/organize')} />
         <div className="app-panel-grid">
           {notes.length ? notes.map((note) => (
             <NoteCard key={note.id} note={note} remove={removeNote} />
@@ -474,7 +474,7 @@ export default function HomeScreen() {
           )) : <span className="home-muted">Add an expense or income to see transactions here.</span>}
         </div>
 
-        <SectionTitle title="PERSONAL PROGRESS" action="Open tasks →" onAction={() => navigate('/space/organize', { state: { section: 'Tasks' } })} />
+        <SectionTitle title="PERSONAL PROGRESS" action="Open tasks →" onAction={() => navigate('/organize', { state: { section: 'Tasks' } })} />
         <div className="app-panel home-metricGrid" >
           <div className="home-metric">
             <span className="home-cardKicker">TASKS COMPLETED · 7 DAYS</span>
@@ -500,7 +500,7 @@ export default function HomeScreen() {
         <SectionTitle
           title="RECENT ACTIVITY"
           action="View all"
-          onAction={() => navigate('/space/organize', { state: { section: 'Activity' } })}
+          onAction={() => navigate('/organize', { state: { section: 'Activity' } })}
         />
         <div className="app-panel">
           {activities.length ? activities.map((activity) => (

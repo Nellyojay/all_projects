@@ -19,7 +19,7 @@ export const NoteCard = ({ note, remove }: NoteProps) => {
   return (
     <button
       key={note.id}
-      onClick={() => navigate(`/space/records/note/${note.id}`, { state: { from: location.pathname } })}
+      onClick={() => navigate(`/records/note/${note.id}`, { state: { from: location.pathname } })}
       onContextMenu={(pointerEvent) => {
         pointerEvent.preventDefault();
         if (!remove) return;

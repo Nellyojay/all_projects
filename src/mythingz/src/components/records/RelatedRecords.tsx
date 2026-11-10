@@ -113,7 +113,7 @@ export function RelatedRecords({
 
   const openRelated = (item: RelatedRecordType) => {
     if (item.type === 'transaction') {
-      navigate('/space/finances', {
+      navigate('/finances', {
         state: {
           section: 'transactions',
           focusRecord: { kind: 'transaction', id: item.id },
@@ -122,11 +122,11 @@ export function RelatedRecords({
       return;
     }
     if (item.type === 'reminder') {
-      navigate('/space/organize', { state: { section: 'Reminders', focusReminderId: item.id } });
+      navigate('/organize', { state: { section: 'Reminders', focusReminderId: item.id } });
       return;
     }
     if (item.type === 'inbox') {
-      navigate('/space/organize', { state: { section: 'Inbox' } });
+      navigate('/organize', { state: { section: 'Inbox' } });
       return;
     }
     const kind = item.type === 'budget' || item.type === 'list' ? 'list' : item.type;
@@ -134,7 +134,7 @@ export function RelatedRecords({
       openRecordDetails('list', item.id);
       return;
     }
-    navigate(`/space/records/${kind}/${item.id}`, { state: { from: location.pathname } });
+    navigate(`/records/${kind}/${item.id}`, { state: { from: location.pathname } });
   };
 
   return (

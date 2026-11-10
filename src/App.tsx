@@ -15,11 +15,11 @@ import { ModalBackProvider } from './mythingz/src/components/shared/ModalBackPro
 import Intro from './components/intro';
 
 const sections = [
-  { path: 'space', route: 'home', label: 'Home', icon: '⌂' },
-  { path: 'space/finances', route: 'finances', label: 'Finances', icon: '◉' },
-  { path: 'space/calendar', route: 'calendar', label: 'Calendar', icon: '▦' },
-  { path: 'space/organize', route: 'organize', label: 'Organize', icon: '▤' },
-  { path: 'space/search', route: 'search', label: 'Search', icon: '⌕' },
+  { path: '', route: 'home', label: 'Home', icon: '⌂' },
+  { path: 'finances', route: 'finances', label: 'Finances', icon: '◉' },
+  { path: 'calendar', route: 'calendar', label: 'Calendar', icon: '▦' },
+  { path: 'organize', route: 'organize', label: 'Organize', icon: '▤' },
+  { path: 'search', route: 'search', label: 'Search', icon: '⌕' },
 ] as const;
 
 function WorkspaceRoute() {
@@ -40,23 +40,23 @@ function WorkspaceLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const locationState = location.state;
-  const sourcePath = location.pathname.startsWith('/space/records/')
+  const sourcePath = location.pathname.startsWith('/records/')
     && typeof locationState === 'object' && locationState !== null
     && 'from' in locationState && typeof locationState.from === 'string'
     ? locationState.from
     : location.pathname;
   const activeSection = sections.find((section) =>
     sourcePath === `/${section.path}`
-    || (section.route === 'finances' && sourcePath.startsWith('/space/finances/')),
+    || (section.route === 'finances' && sourcePath.startsWith('/finances/')),
   );
-  const isRecurringBudgetsPage = location.pathname.startsWith('/space/finances/recurring-budgets');
+  const isRecurringBudgetsPage = location.pathname.startsWith('/finances/recurring-budgets');
 
   return (
     <div className="app-shell">
       <aside className="app-sidebar">
         <a className="app-brand" href="#/" onClick={(event) => {
           event.preventDefault();
-          navigate('/space');
+          navigate('/');
         }}>
           <span className="brand-mark">M</span>
           <span>
@@ -112,7 +112,7 @@ function NotFound() {
   return (
     <main className="database-error" role="status">
       <h1>Page not found</h1>
-      <button type="button" onClick={() => navigate('/')}>Return to the intro page</button>
+      <button type="button" onClick={() => navigate('/')}>Return to the workspace</button>
     </main>
   );
 }
@@ -120,10 +120,6 @@ function NotFound() {
 const router = createHashRouter([
   {
     path: '/',
-    Component: Intro,
-  },
-  {
-    path: '/space',
     Component: WorkspaceRoute,
     children: [
       { index: true, Component: HomeScreen },
@@ -136,6 +132,10 @@ const router = createHashRouter([
       { path: 'settings', Component: SettingsScreen },
       { path: 'records/:kind/:id', Component: RecordDetailsRoute },
     ],
+  },
+  {
+    path: '/intro',
+    Component: Intro,
   },
   {
     path: '*',

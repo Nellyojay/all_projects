@@ -29,7 +29,7 @@ export function ScreenHeader({ title, subtitle, profile, action }: Props) {
       ) : profile ? (
         <button
           type="button" aria-label="Open profile and settings"
-          onClick={() => navigate('/space/settings')}
+          onClick={() => navigate('/settings')}
           className="screen-header-avatar"
         >
           <span className="screen-header-avatar-text">M</span>
