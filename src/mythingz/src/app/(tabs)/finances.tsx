@@ -31,6 +31,7 @@ import {
 import { TransactionComponent } from '../../components/ui/transaction';
 
 type FinanceSection = 'accounts' | 'transfers' | 'budgets' | 'loans' | 'transactions';
+const TRANSACTION_PAGE_SIZE = 10;
 
 const money = (value: number) =>
   `UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(value)}`;
@@ -53,6 +54,8 @@ export default function FinancesScreen() {
   const [composer, setComposer] = useState<RecordKind | null>(null);
   const [expenseComposerOpen, setExpenseComposerOpen] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactionLimit, setTransactionLimit] = useState(TRANSACTION_PAGE_SIZE);
+  const [hasMoreTransactions, setHasMoreTransactions] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<(Transaction | Transfer) | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transfers, setTransfers] = useState<Transfer[]>([]);
@@ -79,7 +82,8 @@ export default function FinancesScreen() {
       database.getAllAsync<Transaction>(
         `SELECT transactions.*, accounts.name AS account_name
          FROM transactions LEFT JOIN accounts ON accounts.id = transactions.account_id
-         ORDER BY transactions.date DESC, transactions.id DESC LIMIT 20`,
+         ORDER BY transactions.date DESC, transactions.id DESC LIMIT ?`,
+        transactionLimit + 1,
       ),
       database.getAllAsync<Loan>(
         `SELECT loans.*,
@@ -102,14 +106,15 @@ export default function FinancesScreen() {
       getAccounts(database),
       getTransfers(database),
     ]);
-    setTransactions(transactionRows);
+    setHasMoreTransactions(transactionRows.length > transactionLimit);
+    setTransactions(transactionRows.slice(0, transactionLimit));
     setAccounts(accountRows);
     setTransfers(transferRows);
     setLoans(loanRows);
     setIncome(incomeTotal?.total ?? 0);
     setExpenses(expenseTotal?.total ?? 0);
     setAvailableBalance(accountRows.reduce((total, account) => total + account.balance, 0));
-  }, [database]);
+  }, [database, transactionLimit]);
 
   useEffect(() => {
     void refresh().catch((error: unknown) => {
@@ -365,10 +370,25 @@ export default function FinancesScreen() {
           </>
         ) : null}
         {section === 'transactions' ? (
-          <TransactionComponent
-            filteredTransactions={filteredTransactions}
-            setSelectedTransaction={setSelectedTransaction}
-          />
+          <>
+            <TransactionComponent
+              filteredTransactions={filteredTransactions}
+              setSelectedTransaction={setSelectedTransaction}
+            />
+            {hasMoreTransactions || transactionLimit > TRANSACTION_PAGE_SIZE ? (
+              <button
+                type="button"
+                onClick={() => setTransactionLimit((limit) => (
+                  hasMoreTransactions ? limit + TRANSACTION_PAGE_SIZE : TRANSACTION_PAGE_SIZE
+                ))}
+                className="finance-view-more-button"
+              >
+                <span>
+                  {hasMoreTransactions ? 'View more transactions' : 'View less'}
+                </span>
+              </button>
+            ) : null}
+          </>
         ) : null}
         <SectionTitle title="MORE FINANCE TOOLS" />
         <div className="finance-module-grid">

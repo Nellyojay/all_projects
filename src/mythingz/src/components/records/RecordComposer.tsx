@@ -333,7 +333,7 @@ export function RecordComposer({
                 value={title}
                 onChange={(event) => setTitle(event.currentTarget.value)}
                 aria-label={kind === 'loan' ? 'Lender or source name' : kind === 'loan-repayment' ? 'Payment title' : 'List title or name'}
-                placeholder={kind === 'loan' ? 'LENDER NAME / SOURCE NAME' : kind === 'loan-repayment' ? 'PAYMENT TITLE' : kind === 'task' ? 'Name your task' : 'Name your list'}
+                placeholder={kind === 'loan' ? 'LENDER NAME / SOURCE NAME' : kind === 'loan-repayment' ? 'PAYMENT TITLE' : kind === 'task' ? 'Name your task' : 'Name your record'}
                 className="title-input"
               />
             </>
