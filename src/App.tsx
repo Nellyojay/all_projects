@@ -1,4 +1,7 @@
 import { createHashRouter, Outlet, RouterProvider, useLocation, useNavigate } from 'react-router-dom';
+import { useSupabaseAuth } from './auth/SupabaseAuthContext';
+import { SupabaseAuthProvider } from './auth/SupabaseAuthProvider';
+import { AuthScreen } from './auth/AuthScreen';
 import CalendarScreen from './mythingz/src/app/(tabs)/calendar';
 import FinancesScreen from './mythingz/src/app/(tabs)/finances';
 import HomeScreen from './mythingz/src/app/(tabs)/index';
@@ -23,6 +26,10 @@ const sections = [
 ] as const;
 
 function WorkspaceRoute() {
+  const { configured, isLoading, user } = useSupabaseAuth();
+  if (!configured) return <AuthScreen />;
+  if (isLoading) return <main className="database-loading" role="status">Checking your Supabase session…</main>;
+  if (!user) return <AuthScreen />;
   return (
     <DatabaseProvider>
       <ModalBackProvider>
@@ -79,14 +86,12 @@ function WorkspaceLayout() {
         </nav>
         <div className="sidebar-footnote">
           <span className="local-indicator" />
-          Saved privately on this device
+          Sample data · not saved
         </div>
       </aside>
 
       <div className={`app-main${isRecurringBudgetsPage ? ' without-mobile-nav' : ''}`}>
-        <main className="app-content">
-          <Outlet />
-        </main>
+        <main className="app-content"><Outlet /></main>
         {!isRecurringBudgetsPage ? (
           <nav className="mobile-nav" aria-label="Main navigation">
             {sections.map((section) => (
@@ -133,16 +138,14 @@ const router = createHashRouter([
       { path: 'records/:kind/:id', Component: RecordDetailsRoute },
     ],
   },
-  {
-    path: '/intro',
-    Component: Intro,
-  },
-  {
-    path: '*',
-    Component: NotFound,
-  },
+  { path: '/intro', Component: Intro },
+  { path: '*', Component: NotFound },
 ]);
 
 export default function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <SupabaseAuthProvider>
+      <RouterProvider router={router} />
+    </SupabaseAuthProvider>
+  );
 }

@@ -5,10 +5,6 @@ import * as listOperations from './list_database';
 import * as noteOperations from './note_database';
 import * as recordOperations from './record_database';
 import * as recordsOperations from './records_database';
-import {
-  exportMyThingsData,
-  refreshJsonBackupSnapshotIfDue,
-} from './json_data';
 import type { BrowserDatabase, SqlParameter } from '../web/database';
 
 const tableDefinitions = {
@@ -442,13 +438,6 @@ export function createDatabaseApi(database: BrowserDatabase) {
     recordEditor: bindOperations(database, recordOperations),
     lists: bindOperations(database, listOperations),
     notes: bindOperations(database, noteOperations),
-    backups: {
-      exportSqlite: () => database.exportDatabaseAsync(),
-      restoreSqlite: (bytes: Uint8Array) => database.restoreDatabaseAsync(bytes),
-      exportJson: () => exportMyThingsData(database),
-      refreshJsonSnapshot: () => refreshJsonBackupSnapshotIfDue(database),
-      getJsonSnapshot: () => database.getJsonBackupSnapshotAsync(),
-    },
     transaction: (task: () => Promise<void>) => database.withTransactionAsync(task),
   };
 }

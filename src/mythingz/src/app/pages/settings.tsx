@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScreenHeader } from '../../components/shared/ScreenHeader';
-import { refreshJsonBackupSnapshotIfDue } from '../../services/json_data';
-import { useDatabase } from '../../web/DatabaseProvider';
+import { exportSampleData, restoreSampleData } from '../../web/database';
 import '../../components/shared/theme.css';
 import './settings.css';
 
@@ -16,7 +15,6 @@ const settings = [
 
 export default function SettingsScreen() {
   const navigate = useNavigate();
-  const database = useDatabase();
   const [backupStatus, setBackupStatus] = useState('');
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -25,17 +23,16 @@ export default function SettingsScreen() {
     setIsBackingUp(true);
     setBackupStatus('');
     try {
-      const bytes = await database.exportDatabaseAsync();
-      const file = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/x-sqlite3' });
+      const file = new Blob([exportSampleData()], { type: 'application/json' });
       const url = URL.createObjectURL(file);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `mine-backup-${new Date().toISOString().slice(0, 10)}.db`;
+      link.download = `mine-sample-data-${new Date().toISOString().slice(0, 10)}.json`;
       document.body.append(link);
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setBackupStatus('Backup downloaded. Keep the .db file somewhere safe.');
+      setBackupStatus('Sample data downloaded. This preview does not save workspace changes.');
     } catch (error) {
       console.error('Unable to download the database backup', error);
       setBackupStatus(error instanceof Error ? `Backup failed: ${error.message}` : 'Backup failed. Please try again.');
@@ -48,17 +45,16 @@ export default function SettingsScreen() {
     setIsBackingUp(true);
     setBackupStatus('');
     try {
-      const snapshot = await refreshJsonBackupSnapshotIfDue(database);
-      const file = new Blob([snapshot.data], { type: 'application/json' });
+      const file = new Blob([exportSampleData()], { type: 'application/json' });
       const url = URL.createObjectURL(file);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `mine-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      link.download = `mine-sample-data-${new Date().toISOString().slice(0, 10)}.json`;
       document.body.append(link);
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setBackupStatus('JSON backup downloaded. Keep the .json file somewhere safe.');
+      setBackupStatus('Sample data downloaded. This preview does not save workspace changes.');
     } catch (error) {
       console.error('Unable to download the JSON database backup', error);
       setBackupStatus(error instanceof Error ? `JSON backup failed: ${error.message}` : 'JSON backup failed. Please try again.');
@@ -68,19 +64,16 @@ export default function SettingsScreen() {
   };
 
   const restoreBackup = async (file: File) => {
-    if (!window.confirm(
-      `Restore "${file.name}"? This will replace all data currently stored in this app.`,
-    )) return;
-
+    if (!window.confirm(`Load sample data from "${file.name}" for this browser session?`)) return;
     setIsRestoring(true);
     setBackupStatus('');
     try {
-      await database.restoreDatabaseAsync(new Uint8Array(await file.arrayBuffer()));
-      setBackupStatus('Backup restored. Reloading your workspace…');
-      window.setTimeout(() => window.location.reload(), 1200);
+      restoreSampleData(await file.text());
+      setBackupStatus('Sample data loaded for this browser session. It will reset when the page reloads.');
     } catch (error) {
-      console.error('Unable to restore the database backup', error);
-      setBackupStatus(error instanceof Error ? `Restore failed: ${error.message}` : 'Restore failed. Please try again.');
+      console.error('Unable to load sample data', error);
+      setBackupStatus(error instanceof Error ? `Could not load sample data: ${error.message}` : 'Could not load sample data.');
+    } finally {
       setIsRestoring(false);
     }
   };
@@ -112,7 +105,7 @@ export default function SettingsScreen() {
           <div className="settings-row settings-backup-row">
             <div className="settings-backup-copy">
               <span className="settings-title">Data & backup</span>
-              <span className="settings-detail">A JSON snapshot refreshes every 24 hours while Mine is open. Download it here, or make a .db backup.</span>
+              <span className="settings-detail">Export this sample workspace as JSON, or load a sample file for this browser session.</span>
             </div>
             <div className="settings-backup-actions">
               <button
@@ -136,7 +129,7 @@ export default function SettingsScreen() {
                 <input
                   className="settings-restore-input"
                   type="file"
-                  accept=".db,application/x-sqlite3"
+                  accept=".json,application/json"
                   disabled={isRestoring || isBackingUp}
                   onChange={(event) => {
                     const file = event.currentTarget.files?.[0];
@@ -151,7 +144,7 @@ export default function SettingsScreen() {
             <span className="settings-backup-status" role="status">{backupStatus}</span>
           )}
         </div>
-        <span className="settings-privacy">Your records are saved locally on this device. Cloud backup and synchronization are not enabled.</span>
+        <span className="settings-privacy">This sample workspace is temporary. Changes are not saved to this device or synchronized.</span>
         <button onClick={() => navigate('/')} className="settings-done">
           <span className="settings-done-text">Done</span>
         </button>

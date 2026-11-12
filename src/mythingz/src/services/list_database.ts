@@ -4,7 +4,6 @@ import {
   type ListRecord,
   type RecordDraft,
 } from './database_types';
-import { ensureListNotesColumn } from './schema_database';
 
 // Create or update a list while preserving item completion and event links.
 export async function saveList(
@@ -23,7 +22,6 @@ export async function saveList(
       quantity: Number.isInteger(item.quantity) && item.quantity > 0 ? item.quantity : 1,
     }))
     .filter((item) => item.text.length > 0);
-  await ensureListNotesColumn(database);
   if (draft.id) {
     const listId = draft.id;
     await database.withTransactionAsync(async () => {

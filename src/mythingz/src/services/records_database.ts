@@ -14,7 +14,6 @@ import {
   type UniversalSearchResult,
 } from './database_types';
 import { today } from './budget_database';
-import { ensureListNotesColumn } from './schema_database';
 
 const linkedRecordQueries = {
   event: 'SELECT id FROM events WHERE id = ?',
@@ -360,7 +359,6 @@ export async function convertInboxItem(
   destination: 'note' | 'task' | 'event' | 'list' | 'reminder',
   dueAt?: string,
 ) {
-  if (destination === 'list') await ensureListNotesColumn(database);
   if (destination === 'reminder' && (!dueAt || Number.isNaN(Date.parse(dueAt)))) {
     throw new Error('Choose a valid date and time for this reminder.');
   }
