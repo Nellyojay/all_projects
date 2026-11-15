@@ -58,9 +58,9 @@ export type RecordDraft = {
   fees?: number;
   dueDate?: string;
   loanId?: number;
-  accountId?: number;
-  fromAccountId?: number;
-  toAccountId?: number;
+  accountId?: string;
+  fromAccountId?: string;
+  toAccountId?: string;
   budgetEnabled?: boolean;
   eventId?: number | null;
   listItems?: ListItem[];
@@ -77,7 +77,7 @@ export type ExpenseDraft = {
   title: string;
   category: string;
   notes: string;
-  accountId: number;
+  accountId: string;
   items: ListItem[];
   budgetAllocations?: { budgetItemId: number; amount: number }[];
 };
@@ -189,13 +189,13 @@ export type Transaction = {
   date: string;
   notes: string;
   loan_id: number | null;
-  account_id: number | null;
+  account_id: string | null;
   refund_of_transaction_id: number | null;
   account_name?: string | null;
 };
 
 export type Account = {
-  id: number;
+  id: string;
   name: string;
   type: string;
   opening_balance: number;
@@ -203,10 +203,17 @@ export type Account = {
   balance: number;
 };
 
+export function parseAccountId(value: string | undefined, errorMessage: string): string {
+  if (!value) {
+    throw new Error(errorMessage);
+  }
+  return value;
+}
+
 export type Transfer = {
   id: number;
-  from_account_id: number;
-  to_account_id: number;
+  from_account_id: string;
+  to_account_id: string;
   amount: number;
   date: string;
   notes: string;

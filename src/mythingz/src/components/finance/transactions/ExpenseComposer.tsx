@@ -37,7 +37,7 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
   const [category, setCategory] = useState<string>(EXPENSE_CATEGORIES[0]);
   const [notes, setNotes] = useState('');
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [accountId, setAccountId] = useState<number | null>(null);
+  const [accountId, setAccountId] = useState<string | null>(null);
   const [items, setItems] = useState<ItemizedItem[]>([createEmptyItemizedItem()]);
   const [budgetItems, setBudgetItems] = useState<(BudgetPeriodItem & {
     budget_type: 'normal' | 'recurring';
@@ -65,9 +65,9 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
         if (!active) return;
         setAccounts(rows);
         setAccountId((current) =>
-          current !== null && rows.some((account) => account.id === current)
+          current !== null && rows.some((account) => String(account.id) === current)
             ? current
-            : rows[0]?.id ?? null,
+            : rows[0] ? String(rows[0].id) : null,
         );
       })
       .catch((error: unknown) => {

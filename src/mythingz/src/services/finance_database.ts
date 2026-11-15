@@ -4,6 +4,7 @@ import {
   type Account,
   type ExpenseDraft,
   InsufficientBalanceError,
+  parseAccountId,
   type Transfer,
 } from './database_types';
 import { allocateTransactionToBudgets, today } from './budget_database';
@@ -11,7 +12,7 @@ import { accountsApi } from '../../../api/finance.api';
 
 // Fetch account balances using transactions and transfers through today.
 export async function getAccounts(database: BrowserDatabase) {
-  return database.getAllAsync<Account>(
+  const accounts = await database.getAllAsync<Omit<Account, 'id'> & { id: number }>(
     `SELECT accounts.*,
       accounts.opening_balance
         + COALESCE((SELECT SUM(CASE WHEN transactions.kind = 'income' THEN transactions.amount ELSE -transactions.amount END)
@@ -23,6 +24,7 @@ export async function getAccounts(database: BrowserDatabase) {
     today(),
     today(),
   );
+  return accounts.map((account) => ({ ...account, id: String(account.id) }));
 }
 
 export async function createAccount(
@@ -41,9 +43,9 @@ export async function createAccount(
   });
 }
 
-export async function ensureAccountBalance(database: BrowserDatabase, accountId: number, amount: number) {
+export async function ensureAccountBalance(database: BrowserDatabase, accountId: string, amount: number) {
   const accounts = await getAccounts(database);
-  const account = accounts.find((item) => item.id === accountId);
+  const account = accounts.find((item) => item.id === String(accountId));
   if (!account) throw new Error('Choose a valid account.');
   if (account.balance < amount) {
     throw new InsufficientBalanceError(amount - account.balance);
@@ -58,7 +60,7 @@ export async function saveExpense(database: BrowserDatabase, draft: ExpenseDraft
   if (!EXPENSE_CATEGORIES.some((expenseCategory) => expenseCategory === category)) {
     throw new Error('Choose a valid expense category.');
   }
-  if (!draft.accountId) throw new Error('Choose the account paying for this expense.');
+  const accountId = parseAccountId(draft.accountId, 'Choose the account paying for this expense.');
   if (!draft.items.length || draft.items.some((item) =>
     !item.text.trim()
     || !Number.isFinite(item.price)
@@ -80,7 +82,7 @@ export async function saveExpense(database: BrowserDatabase, draft: ExpenseDraft
   const date = today();
 
   await database.withTransactionAsync(async () => {
-    await ensureAccountBalance(database, draft.accountId, amount);
+    await ensureAccountBalance(database, accountId, amount);
     const transaction = await database.runAsync(
       'INSERT INTO transactions (kind, title, category, amount, date, notes, account_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
       'expense',
@@ -89,7 +91,7 @@ export async function saveExpense(database: BrowserDatabase, draft: ExpenseDraft
       amount,
       date,
       transactionNotes,
-      draft.accountId,
+      accountId,
     );
     await allocateTransactionToBudgets(
       database,
@@ -100,7 +102,10 @@ export async function saveExpense(database: BrowserDatabase, draft: ExpenseDraft
   });
 }
 
-type TransferRow = Omit<Transfer, 'charges'>;
+type TransferRow = Omit<Transfer, 'charges' | 'from_account_id' | 'to_account_id'> & {
+  from_account_id: number;
+  to_account_id: number;
+};
 
 async function attachTransferCharges(database: BrowserDatabase, transfers: TransferRow[]) {
   if (!transfers.length) return [];
@@ -125,6 +130,8 @@ async function attachTransferCharges(database: BrowserDatabase, transfers: Trans
   }
   return transfers.map((transfer) => ({
     ...transfer,
+    from_account_id: String(transfer.from_account_id),
+    to_account_id: String(transfer.to_account_id),
     charges: chargesByTransfer.get(transfer.id) ?? [],
   }));
 }

@@ -106,12 +106,12 @@ export default function HomeScreen() {
       }),
       mythingsdb.tables.finance.accounts.list<{ id: number; name: string }>(),
     ]);
-    const accountNames = new Map(transactionAccounts.map((account) => [account.id, account.name]));
+    const accountNames = new Map(transactionAccounts.map((account) => [String(account.id), account.name]));
     const transactions = recentTransactions.map((transaction) => ({
       ...transaction,
       account_name: transaction.account_id === null
         ? null
-        : accountNames.get(transaction.account_id) ?? null,
+        : accountNames.get(String(transaction.account_id)) ?? null,
     }));
     const data = await mythingsdb.home.getDashboardData(month, today, transactions);
     setTransactions(data.transactions);

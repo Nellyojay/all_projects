@@ -67,7 +67,7 @@ export function FinanceDataProvider({ children }: { children: ReactNode }) {
       transactionsApi.list(),
     ]).then(([accountRows, loanRows, transferRows, transactionRows]) => {
       if (!active) return;
-      const accountsById = new Map(accountRows.map((account) => [account.id, account]));
+      const accountsById = new Map(accountRows.map((account) => [String(account.id), account]));
       const month = new Date().toISOString().slice(0, 7);
       const transactions: Transaction[] = latestFirst(transactionRows.map((transaction) => ({
         ...transaction,
@@ -77,16 +77,16 @@ export function FinanceDataProvider({ children }: { children: ReactNode }) {
       })));
       const accounts: Account[] = accountRows.map((account) => {
         const transactionBalance = transactionRows.reduce((total, transaction) => {
-          if (transaction.account_id !== account.id) return total;
+          if (transaction.account_id !== String(account.id)) return total;
           return total + (transaction.kind === 'income' ? transaction.amount : -transaction.amount);
         }, 0);
         const transferBalance = transferRows.reduce((total, transfer) => {
-          if (transfer.to_account_id === account.id) return total + transfer.amount;
-          if (transfer.from_account_id === account.id) return total - transfer.amount;
+          if (transfer.to_account_id === String(account.id)) return total + transfer.amount;
+          if (transfer.from_account_id === String(account.id)) return total - transfer.amount;
           return total;
         }, 0);
         return {
-          id: account.id,
+          id: String(account.id),
           name: account.name,
           type: account.type,
           opening_balance: account.opening_balance,

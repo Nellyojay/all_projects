@@ -22,8 +22,8 @@ export function AccountPicker({
   showBalance = true,
 }: {
   accounts: Account[];
-  value: number | null;
-  onChange: (id: number) => void;
+  value: string | null;
+  onChange: (id: string) => void;
   label: string;
   loading?: boolean;
   showBalance?: boolean;
@@ -36,7 +36,15 @@ export function AccountPicker({
       <select
         id={`account-${label.replace(/\W/g, '-')}`}
         value={value ?? ''}
-        onChange={(event) => onChange(Number(event.currentTarget.value))}
+        onChange={(event) => {
+          const rawValue = event.currentTarget.value;
+          const id = String(rawValue);
+          if (accounts.some((account) => String(account.id) === id)) {
+            onChange(id);
+          } else {
+            return window.alert('Choose a valid account from the list.');
+          }
+        }}
         className="account-picker-select"
         required
         disabled={loading}
@@ -45,7 +53,7 @@ export function AccountPicker({
           {loading ? 'Loading accounts…' : accounts.length ? 'Select an account' : 'No accounts available'}
         </option>
         {accounts.map((account) => (
-          <option key={account.id} value={account.id}>
+          <option key={account.id} value={String(account.id)}>
             {showBalance ? `${account.name} · ${money(account.balance)}` : account.name}
           </option>
         ))}

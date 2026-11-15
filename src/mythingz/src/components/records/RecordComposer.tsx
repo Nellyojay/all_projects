@@ -89,9 +89,9 @@ export function RecordComposer({
   const [amount, setAmount] = useState(initialDraft?.amount?.toString() ?? '');
   const [accountRows, setAccountRows] = useState<Awaited<ReturnType<typeof accountsApi.list>>>([]);
   const [loadedAccountKind, setLoadedAccountKind] = useState<RecordKind | null>(null);
-  const [accountId, setAccountId] = useState<number | null>(initialDraft?.accountId ?? null);
-  const [fromAccountId, setFromAccountId] = useState<number | null>(initialDraft?.fromAccountId ?? null);
-  const [toAccountId, setToAccountId] = useState<number | null>(initialDraft?.toAccountId ?? null);
+  const [accountId, setAccountId] = useState<string | null>(initialDraft?.accountId ?? null);
+  const [fromAccountId, setFromAccountId] = useState<string | null>(initialDraft?.fromAccountId ?? null);
+  const [toAccountId, setToAccountId] = useState<string | null>(initialDraft?.toAccountId ?? null);
   const [date, setDate] = useState(initialDraft?.date || defaultDate || localDateKey());
   const [fees, setFees] = useState(initialDraft?.fees?.toString() ?? '');
   const [dueDate, setDueDate] = useState(initialDraft?.dueDate ?? '');
@@ -114,29 +114,20 @@ export function RecordComposer({
   });
   const financeAccountsById = new Map(financeAccounts.map((account) => [account.id, account]));
   const accounts: Account[] = accountRows.map((account) => ({
-    id: account.id,
+    id: String(account.id),
     name: account.name,
     type: account.type,
     opening_balance: account.opening_balance,
     is_default: Number(account.is_default),
-    balance: financeAccountsById.get(account.id)?.balance ?? account.opening_balance,
+    balance: financeAccountsById.get(String(account.id))?.balance ?? account.opening_balance,
   })).sort((a, b) => b.is_default - a.is_default || a.name.localeCompare(b.name));
   const selectableAccounts = financeAccounts.length
     ? accounts.filter((account) => financeAccountsById.has(account.id))
     : accounts;
-  const validAccountIds = new Set(selectableAccounts.map((account) => account.id));
-  const defaultAccountId = selectableAccounts[0]?.id ?? null;
-  const selectedAccountId = accountId !== null && validAccountIds.has(accountId)
-    ? accountId
-    : defaultAccountId;
-  const selectedFromAccountId = fromAccountId !== null && validAccountIds.has(fromAccountId)
-    ? fromAccountId
-    : defaultAccountId;
-  const selectedToAccountId = toAccountId !== null
-    && toAccountId !== selectedFromAccountId
-    && validAccountIds.has(toAccountId)
-    ? toAccountId
-    : selectableAccounts.find((account) => account.id !== selectedFromAccountId)?.id ?? null;
+  const validAccountIds = new Set(selectableAccounts.map((account) => String(account.id)));
+  const selectedAccountId = accountId;
+  const selectedFromAccountId = fromAccountId;
+  const selectedToAccountId = toAccountId;
   const accountBalancesAvailable = selectableAccounts.length > 0
     && selectableAccounts.every((account) => financeAccountsById.has(account.id));
   const accountsLoading = Boolean(
@@ -144,8 +135,8 @@ export function RecordComposer({
   );
   const transferCharges = kind === 'transfer'
     ? getTransferCharges(
-      selectableAccounts.find((account) => account.id === selectedFromAccountId)?.type ?? '',
-      selectableAccounts.find((account) => account.id === selectedToAccountId)?.type ?? '',
+      selectableAccounts.find((account) => String(account.id) === selectedFromAccountId)?.type ?? '',
+      selectableAccounts.find((account) => String(account.id) === selectedToAccountId)?.type ?? '',
     )
     : [];
   const transferChargeTotal = transferCharges.reduce((total, charge) => total + charge.amount, 0);
@@ -163,6 +154,14 @@ export function RecordComposer({
         );
         setAccountRows(sortedRows);
         setLoadedAccountKind(requestedKind);
+        const defaultId = sortedRows[0] ? String(sortedRows[0].id) : null;
+        setAccountId((current) => current ?? defaultId);
+        setFromAccountId((current) => current ?? defaultId);
+        setToAccountId((current) => {
+          if (current) return current;
+          const otherAccount = sortedRows.find((account) => String(account.id) !== defaultId);
+          return otherAccount ? String(otherAccount.id) : null;
+        });
       })
       .catch((error: unknown) => {
         console.error('Unable to load accounts for finance record', error);
@@ -173,6 +172,15 @@ export function RecordComposer({
       });
     return () => { active = false; };
   }, [kind]);
+
+  useEffect(() => {
+    console.log('[RecordComposer] account selection state', {
+      kind,
+      accountId,
+      fromAccountId,
+      toAccountId,
+    });
+  }, [accountId, fromAccountId, kind, toAccountId]);
 
   const close = useCallback(() => {
     if (historyEntryId.current) {
@@ -258,8 +266,8 @@ export function RecordComposer({
       window.alert('Check the amount\n\nEnter an amount greater than zero.');
       return;
     }
-    if ((kind === 'income' || kind === 'loan' || kind === 'loan-repayment') && selectedAccountId === null) {
-      console.log('No account selected for income/loan/loan-repayment', { kind, accountId: selectedAccountId });
+    if ((kind === 'income' || kind === 'loan' || kind === 'loan-repayment') &&
+      (selectedAccountId === null || !validAccountIds.has(selectedAccountId))) {
       window.alert('Choose an account\n\nSelect the account for this transaction.');
       return;
     }
@@ -267,6 +275,8 @@ export function RecordComposer({
       selectedFromAccountId === null
       || selectedToAccountId === null
       || selectedFromAccountId === selectedToAccountId
+      || !validAccountIds.has(selectedFromAccountId)
+      || !validAccountIds.has(selectedToAccountId)
     )) {
       window.alert('Choose accounts\n\nSelect two different accounts for this transfer.');
       return;
@@ -317,7 +327,7 @@ export function RecordComposer({
       close();
     } catch (error) {
       console.error('Unable to save record', error);
-      window.alert(`${error instanceof InsufficientBalanceError ? 'Not enough available funds' : 'Could not save'}\n\n${error instanceof InsufficientBalanceError ? error.message : 'Please try again.'}`);
+      window.alert(`${error instanceof InsufficientBalanceError ? 'Not enough available funds' : 'Could not save this record'}\n\n${error instanceof InsufficientBalanceError ? error.message : 'Please try again.'}`);
     } finally {
       setSaving(false);
     }
@@ -398,7 +408,14 @@ export function RecordComposer({
             <AccountPicker
               accounts={selectableAccounts}
               value={selectedAccountId}
-              onChange={setAccountId}
+              onChange={(id) => {
+                console.log('[RecordComposer] account selection changed', {
+                  kind,
+                  previousId: accountId,
+                  nextId: id,
+                });
+                setAccountId(id);
+              }}
               label={kind === 'income' || kind === 'loan' ? 'RECEIVED INTO · ACCOUNT' : 'PAID FROM · ACCOUNT'}
               loading={accountsLoading}
               showBalance={accountBalancesAvailable}
@@ -410,9 +427,14 @@ export function RecordComposer({
                 accounts={selectableAccounts}
                 value={selectedFromAccountId}
                 onChange={(id) => {
+                  console.log('[RecordComposer] transfer source changed', {
+                    previousId: fromAccountId,
+                    nextId: id,
+                  });
                   setFromAccountId(id);
                   if (id === selectedToAccountId) {
-                    setToAccountId(selectableAccounts.find((account) => account.id !== id)?.id ?? null);
+                    const otherAccount = selectableAccounts.find((account) => String(account.id) !== id);
+                    setToAccountId(otherAccount ? String(otherAccount.id) : null);
                   }
                 }}
                 label="FROM ACCOUNT"
@@ -420,9 +442,15 @@ export function RecordComposer({
                 showBalance={accountBalancesAvailable}
               />
               <AccountPicker
-                accounts={selectableAccounts.filter((account) => account.id !== selectedFromAccountId)}
+                accounts={selectableAccounts.filter((account) => String(account.id) !== selectedFromAccountId)}
                 value={selectedToAccountId}
-                onChange={setToAccountId}
+                onChange={(id) => {
+                  console.log('[RecordComposer] transfer destination changed', {
+                    previousId: toAccountId,
+                    nextId: id,
+                  });
+                  setToAccountId(id);
+                }}
                 label="TO ACCOUNT"
                 loading={accountsLoading}
                 showBalance={accountBalancesAvailable}

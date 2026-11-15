@@ -4,6 +4,7 @@ import {
   currentTimestamp,
   getTransferCharges,
   InsufficientBalanceError,
+  parseAccountId,
   ugxFormatter,
   type LinkedRecordType,
   type ListItem,
@@ -38,9 +39,9 @@ async function getFinanceSnapshot() {
 
 function getAccountBalance(
   snapshot: Awaited<ReturnType<typeof getFinanceSnapshot>>,
-  accountId: number,
+  accountId: string,
 ) {
-  const account = snapshot.accounts.find((row) => row.id === accountId);
+  const account = snapshot.accounts.find((row) => String(row.id) === accountId);
   if (!account) throw new Error('Choose a valid account.');
   const asOf = today();
   const transactionBalance = snapshot.transactions.reduce((total, transaction) => {
@@ -58,7 +59,7 @@ function getAccountBalance(
 
 function ensureRemoteAccountBalance(
   snapshot: Awaited<ReturnType<typeof getFinanceSnapshot>>,
-  accountId: number,
+  accountId: string,
   amount: number,
 ) {
   const balance = getAccountBalance(snapshot, accountId);
@@ -224,15 +225,14 @@ export async function saveRecord(
     if (!INCOME_CATEGORIES.some((incomeCategory) => incomeCategory === category)) {
       throw new Error('Choose a valid income category.');
     }
-    const accountId = draft.accountId;
-    if (!accountId) throw new Error('Choose the account receiving this income.');
+    const accountId = parseAccountId(draft.accountId, 'Choose the account receiving this income.');
     const amount = draft.amount ?? 0;
     if (!Number.isFinite(amount) || amount <= 0) throw new Error('Enter an income amount greater than zero.');
     if (draft.id) {
       const snapshot = await getFinanceSnapshot();
       const current = snapshot.transactions.find((transaction) => transaction.id === draft.id && transaction.kind === kind);
       if (!current) throw new Error('This income record no longer exists.');
-      if (!snapshot.accounts.some((account) => account.id === accountId)) {
+      if (!snapshot.accounts.some((account) => String(account.id) === accountId)) {
         throw new Error('Choose a valid account.');
       }
       if (current.account_id === accountId && current.amount > amount) {
@@ -252,7 +252,7 @@ export async function saveRecord(
       }
       return;
     }
-    if (!(await accountsApi.list()).some((account) => account.id === accountId)) {
+    if (!(await accountsApi.list()).some((account) => String(account.id) === accountId)) {
       throw new Error('Choose a valid account.');
     }
     await transactionsApi.create({
@@ -272,15 +272,14 @@ export async function saveRecord(
   if (kind === 'loan') {
     const principal = draft.amount ?? 0;
     const fees = draft.fees ?? 0;
-    const accountId = draft.accountId;
-    if (!accountId) throw new Error('Choose the account receiving the loan proceeds.');
+    const accountId = parseAccountId(draft.accountId, 'Choose the account receiving the loan proceeds.');
     if (!Number.isFinite(principal) || principal <= 0) {
       throw new Error('Loan principal must be greater than zero.');
     }
     if (!Number.isFinite(fees) || fees < 0) {
       throw new Error('Loan interest or fees cannot be negative.');
     }
-    if (!(await accountsApi.list()).some((account) => account.id === accountId)) {
+    if (!(await accountsApi.list()).some((account) => String(account.id) === accountId)) {
       throw new Error('Choose a valid account.');
     }
     const loan = await loansApi.create({
@@ -316,10 +315,10 @@ export async function saveRecord(
   if (kind === 'loan-repayment') {
     const amount = draft.amount ?? 0;
     const loanId = draft.loanId;
-    const accountId = draft.accountId;
-    if (!loanId || !accountId || !Number.isFinite(amount) || amount <= 0) {
+    if (!loanId || !Number.isFinite(amount) || amount <= 0) {
       throw new Error('Choose a loan and enter a repayment greater than zero.');
     }
+    const accountId = parseAccountId(draft.accountId, 'Choose a loan and enter a repayment greater than zero.');
     const snapshot = await getFinanceSnapshot();
     const loan = snapshot.loans.find((row) => row.id === loanId);
     if (!loan) throw new Error('This loan no longer exists.');
@@ -349,15 +348,15 @@ export async function saveRecord(
 
   if (kind === 'transfer') {
     const amount = draft.amount ?? 0;
-    const fromAccountId = draft.fromAccountId;
-    const toAccountId = draft.toAccountId;
     if (!Number.isFinite(amount) || amount <= 0) throw new Error('Enter a transfer amount greater than zero.');
-    if (!fromAccountId || !toAccountId || fromAccountId === toAccountId) {
+    const fromAccountId = parseAccountId(draft.fromAccountId, 'Choose two different accounts for this transfer.');
+    const toAccountId = parseAccountId(draft.toAccountId, 'Choose two different accounts for this transfer.');
+    if (fromAccountId === toAccountId) {
       throw new Error('Choose two different accounts for this transfer.');
     }
     const snapshot = await getFinanceSnapshot();
-    const source = snapshot.accounts.find((account) => account.id === fromAccountId);
-    const destination = snapshot.accounts.find((account) => account.id === toAccountId);
+    const source = snapshot.accounts.find((account) => String(account.id) === fromAccountId);
+    const destination = snapshot.accounts.find((account) => String(account.id) === toAccountId);
     if (!source || !destination) throw new Error('Choose valid source and destination accounts.');
     const charges = getTransferCharges(source.type, destination.type);
     const chargeTotal = charges.reduce((total, charge) => total + charge.amount, 0);
@@ -517,7 +516,7 @@ export async function deleteRecord(
         throw new Error('Reopen the closed budget period before deleting this expense so its history is corrected intentionally.');
       }
       if (transaction?.kind === 'income' && transaction.account_id !== null) {
-        await ensureAccountBalance(database, transaction.account_id, transaction.amount);
+        await ensureAccountBalance(database, String(transaction.account_id), transaction.amount);
       }
       await detachReferences('transaction', id);
       await database.runAsync('DELETE FROM transaction_allocations WHERE transaction_id = ?', id);

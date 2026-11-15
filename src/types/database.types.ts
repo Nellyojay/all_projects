@@ -33,8 +33,8 @@ export type Database = {
         notes: string;
       }, 'user_id' | 'lender' | 'principal'>;
       transfers: Table<OwnedId & {
-        from_account_id: number;
-        to_account_id: number;
+        from_account_id: string;
+        to_account_id: string;
         amount: number;
         date: string;
         created_at: string;
@@ -49,7 +49,7 @@ export type Database = {
         created_at: string;
         notes: string;
         loan_id: number | null;
-        account_id: number | null;
+        account_id: string | null;
         transfer_id: number | null;
         refund_of_transaction_id: number | null;
       }, 'user_id' | 'kind' | 'title' | 'category' | 'amount'>;
