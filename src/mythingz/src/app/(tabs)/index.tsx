@@ -152,8 +152,8 @@ export default function HomeScreen() {
     return () => { active = false; };
   }, [refresh]);
 
-  const onSave = async (kind: RecordKind, draft: Parameters<typeof saveRecord>[2]) => {
-    await saveRecord(database, kind, draft);
+  const onSave = async (kind: RecordKind, draft: Parameters<typeof saveRecord>[1]) => {
+    await saveRecord(kind, draft);
     await refresh();
   };
   const onSaveExpense = async (draft: ExpenseDraft) => {

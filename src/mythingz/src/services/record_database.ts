@@ -3,19 +3,216 @@ import { INCOME_CATEGORIES } from '../constants/finance';
 import {
   currentTimestamp,
   getTransferCharges,
+  InsufficientBalanceError,
   ugxFormatter,
   type LinkedRecordType,
+  type ListItem,
   type RecordDraft,
   type RecordKind,
 } from './database_types';
 import { today } from './budget_database';
 import { ensureAccountBalance } from './finance_database';
-import { saveList } from './list_database';
-import { saveNote } from './note_database';
+import {
+  accountsApi,
+  loansApi,
+  transactionsApi,
+  transfersApi,
+} from '../../../api/finance.api';
+import {
+  eventsApi,
+  listItemsApi,
+  listsApi,
+  notesApi,
+  tasksApi,
+} from '../../../api/records.api';
+
+async function getFinanceSnapshot() {
+  const [accounts, loans, transactions, transfers] = await Promise.all([
+    accountsApi.list(),
+    loansApi.list(),
+    transactionsApi.list(),
+    transfersApi.list(),
+  ]);
+  return { accounts, loans, transactions, transfers };
+}
+
+function getAccountBalance(
+  snapshot: Awaited<ReturnType<typeof getFinanceSnapshot>>,
+  accountId: number,
+) {
+  const account = snapshot.accounts.find((row) => row.id === accountId);
+  if (!account) throw new Error('Choose a valid account.');
+  const asOf = today();
+  const transactionBalance = snapshot.transactions.reduce((total, transaction) => {
+    if (transaction.account_id !== accountId || transaction.date > asOf) return total;
+    return total + (transaction.kind === 'income' ? transaction.amount : -transaction.amount);
+  }, 0);
+  const transferBalance = snapshot.transfers.reduce((total, transfer) => {
+    if (transfer.date > asOf) return total;
+    if (transfer.to_account_id === accountId) return total + transfer.amount;
+    if (transfer.from_account_id === accountId) return total - transfer.amount;
+    return total;
+  }, 0);
+  return account.opening_balance + transactionBalance + transferBalance;
+}
+
+function ensureRemoteAccountBalance(
+  snapshot: Awaited<ReturnType<typeof getFinanceSnapshot>>,
+  accountId: number,
+  amount: number,
+) {
+  const balance = getAccountBalance(snapshot, accountId);
+  if (balance < amount) throw new InsufficientBalanceError(amount - balance);
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Unknown error.';
+}
+
+async function rollbackTransfer(transferId: number, transactionIds: number[], cause: unknown): Promise<never> {
+  const rollbackErrors: string[] = [];
+  for (const transactionId of transactionIds.reverse()) {
+    try {
+      if (!await transactionsApi.delete(transactionId)) {
+        rollbackErrors.push(`Could not remove transfer charge ${transactionId}.`);
+      }
+    } catch (error) {
+      rollbackErrors.push(errorMessage(error));
+    }
+  }
+  try {
+    if (!await transfersApi.delete(transferId)) rollbackErrors.push('Could not remove the incomplete transfer.');
+  } catch (error) {
+    rollbackErrors.push(errorMessage(error));
+  }
+  if (rollbackErrors.length) {
+    throw new Error(`Could not finish the transfer: ${errorMessage(cause)} Rollback failed: ${rollbackErrors.join(' ')}`);
+  }
+  throw cause;
+}
+
+function normalizeListItems(draft: RecordDraft, notes: string): ListItem[] {
+  return (draft.listItems ?? notes
+    .split(/\r?\n|,/)
+    .map((text) => ({ text, done: false, price: 0, quantity: 1 })))
+    .map((item) => ({
+      text: item.text.trim(),
+      done: item.done,
+      price: Number.isFinite(item.price) && item.price >= 0 ? item.price : 0,
+      quantity: Number.isInteger(item.quantity) && item.quantity > 0 ? item.quantity : 1,
+    }))
+    .filter((item) => item.text.length > 0);
+}
+
+async function replaceListItems(
+  listId: number,
+  items: Array<ListItem & { position: number }>,
+) {
+  const existingItems = (await listItemsApi.list()).filter((item) => item.list_id === listId);
+  for (const item of existingItems) {
+    if (!await listItemsApi.delete({ list_id: listId, position: item.position })) {
+      throw new Error('The list items changed before they could be saved.');
+    }
+  }
+  for (const item of items) {
+    await listItemsApi.create({
+      list_id: listId,
+      position: item.position,
+      text: item.text,
+      done: item.done,
+      price: item.price,
+      quantity: item.quantity,
+    });
+  }
+}
+
+async function saveListRecord(draft: RecordDraft, title: string, notes: string) {
+  const items = normalizeListItems(draft, notes);
+  const [listRows, allItems, eventRows] = await Promise.all([
+    listsApi.list(),
+    listItemsApi.list(),
+    eventsApi.list(),
+  ]);
+  const previous = draft.id ? listRows.find((list) => list.id === draft.id) : undefined;
+
+  if (draft.id && !previous) throw new Error('The list no longer exists.');
+  if (previous?.finalized) throw new Error('Reopen the list before editing it.');
+
+  const previousItems = previous
+    ? allItems
+      .filter((item) => item.list_id === previous.id)
+      .sort((a, b) => a.position - b.position)
+      .map((item) => ({
+        position: item.position,
+        text: item.text,
+        done: item.done,
+        price: item.price,
+        quantity: item.quantity,
+      }))
+    : [];
+  const completionByText = new Map(previousItems.map((item) => [item.text, item.done]));
+  const savedItems = items.map((item, position) => ({
+    ...item,
+    position,
+    done: draft.listItems ? item.done : completionByText.get(item.text) ?? false,
+  }));
+  const budgetEnabled = Boolean(draft.budgetEnabled ?? previous?.budget_enabled ?? false);
+  const eventId = budgetEnabled
+    ? draft.eventId === undefined ? previous?.event_id ?? null : draft.eventId
+    : null;
+  if (eventId !== null && !eventRows.some((event) => event.id === eventId)) {
+    throw new Error('The selected event no longer exists.');
+  }
+
+  const listNotes = draft.notes?.trim() ?? previous?.notes ?? '';
+  if (!previous) {
+    const created = await listsApi.create({
+      title,
+      notes: listNotes,
+      budget_enabled: budgetEnabled,
+      event_id: eventId,
+    });
+    try {
+      await replaceListItems(created.id, savedItems);
+    } catch (error) {
+      try {
+        if (!await listsApi.delete(created.id)) throw new Error('Could not remove the incomplete list.');
+      } catch (rollbackError) {
+        throw new Error(`Could not save list items: ${errorMessage(error)} Rollback failed: ${errorMessage(rollbackError)}`);
+      }
+      throw error;
+    }
+    return;
+  }
+
+  const updated = await listsApi.update(previous.id, {
+    title,
+    notes: listNotes,
+    budget_enabled: budgetEnabled,
+    event_id: eventId,
+  });
+  if (!updated) throw new Error('The list no longer exists.');
+  try {
+    await replaceListItems(previous.id, savedItems);
+  } catch (error) {
+    try {
+      const restored = await listsApi.update(previous.id, {
+        title: previous.title,
+        notes: previous.notes,
+        budget_enabled: previous.budget_enabled,
+        event_id: previous.event_id,
+      });
+      if (!restored) throw new Error('Could not restore the previous list.');
+      await replaceListItems(previous.id, previousItems);
+    } catch (rollbackError) {
+      throw new Error(`Could not save list items: ${errorMessage(error)} Rollback failed: ${errorMessage(rollbackError)}`);
+    }
+    throw error;
+  }
+}
 
 // Save the requested record kind while keeping its domain-specific checks intact.
 export async function saveRecord(
-  database: BrowserDatabase,
   kind: RecordKind,
   draft: RecordDraft,
 ) {
@@ -29,45 +226,46 @@ export async function saveRecord(
     }
     const accountId = draft.accountId;
     if (!accountId) throw new Error('Choose the account receiving this income.');
+    const amount = draft.amount ?? 0;
+    if (!Number.isFinite(amount) || amount <= 0) throw new Error('Enter an income amount greater than zero.');
     if (draft.id) {
-      const id = draft.id;
-      const amount = draft.amount ?? 0;
-      await database.withTransactionAsync(async () => {
-        const current = await database.getFirstAsync<{ amount: number; account_id: number | null }>(
-          'SELECT amount, account_id FROM transactions WHERE id = ? AND kind = ?',
-          id,
-          kind,
-        );
-        if (current && current.account_id === accountId && current.amount > amount) {
-          await ensureAccountBalance(database, accountId, current.amount - amount);
-        } else if (current && current.account_id !== accountId) {
-          if (current.account_id !== null) await ensureAccountBalance(database, current.account_id, current.amount);
-          await ensureAccountBalance(database, accountId, 0);
-        }
-        await database.runAsync(
-          'UPDATE transactions SET title = ?, category = ?, amount = ?, date = ?, notes = ?, account_id = ? WHERE id = ? AND kind = ?',
-          title,
-          category,
-          amount,
-          today(),
-          notes,
-          accountId,
-          id,
-          kind,
-        );
-      });
+      const snapshot = await getFinanceSnapshot();
+      const current = snapshot.transactions.find((transaction) => transaction.id === draft.id && transaction.kind === kind);
+      if (!current) throw new Error('This income record no longer exists.');
+      if (!snapshot.accounts.some((account) => account.id === accountId)) {
+        throw new Error('Choose a valid account.');
+      }
+      if (current.account_id === accountId && current.amount > amount) {
+        ensureRemoteAccountBalance(snapshot, accountId, current.amount - amount);
+      } else if (current.account_id !== accountId) {
+        if (current.account_id !== null) ensureRemoteAccountBalance(snapshot, current.account_id, current.amount);
+      }
+      if (!await transactionsApi.update(draft.id, {
+        title,
+        category,
+        amount,
+        date: today(),
+        notes,
+        account_id: accountId,
+      })) {
+        throw new Error('This income record no longer exists.');
+      }
       return;
     }
-    await database.runAsync(
-      'INSERT INTO transactions (kind, title, category, amount, date, notes, account_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    if (!(await accountsApi.list()).some((account) => account.id === accountId)) {
+      throw new Error('Choose a valid account.');
+    }
+    await transactionsApi.create({
       kind,
       title,
       category,
-      draft.amount ?? 0,
-      today(),
+      amount,
       notes,
-      accountId,
-    );
+      loan_id: null,
+      account_id: accountId,
+      transfer_id: null,
+      refund_of_transaction_id: null,
+    });
     return;
   }
 
@@ -82,28 +280,36 @@ export async function saveRecord(
     if (!Number.isFinite(fees) || fees < 0) {
       throw new Error('Loan interest or fees cannot be negative.');
     }
-    await database.withTransactionAsync(async () => {
-      const loan = await database.runAsync(
-        'INSERT INTO loans (lender, principal, fees, due_date, notes, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-        title,
-        principal,
-        fees,
-        draft.dueDate || '',
-        notes,
-        today(),
-      );
-      await database.runAsync(
-        'INSERT INTO transactions (kind, title, category, amount, date, notes, loan_id, account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        'income',
-        `Loan from ${title}`,
-        'Loan',
-        principal,
-        today(),
-        notes || `Principal received from ${title}`,
-        loan.lastInsertRowId,
-        accountId,
-      );
+    if (!(await accountsApi.list()).some((account) => account.id === accountId)) {
+      throw new Error('Choose a valid account.');
+    }
+    const loan = await loansApi.create({
+      lender: title,
+      principal,
+      fees,
+      due_date: draft.dueDate || '',
+      notes,
     });
+    try {
+      await transactionsApi.create({
+        kind: 'income',
+        title: `Loan from ${title}`,
+        category: 'Loan',
+        amount: principal,
+        notes: notes || `Principal received from ${title}`,
+        loan_id: loan.id,
+        account_id: accountId,
+        transfer_id: null,
+        refund_of_transaction_id: null,
+      });
+    } catch (error) {
+      try {
+        if (!await loansApi.delete(loan.id)) throw new Error('Could not remove the incomplete loan.');
+      } catch (rollbackError) {
+        throw new Error(`Could not record loan proceeds: ${errorMessage(error)} Rollback failed: ${errorMessage(rollbackError)}`);
+      }
+      throw error;
+    }
     return;
   }
 
@@ -114,32 +320,29 @@ export async function saveRecord(
     if (!loanId || !accountId || !Number.isFinite(amount) || amount <= 0) {
       throw new Error('Choose a loan and enter a repayment greater than zero.');
     }
-    await database.withTransactionAsync(async () => {
-      const loan = await database.getFirstAsync<{ lender: string; principal: number; fees: number }>(
-        'SELECT lender, principal, fees FROM loans WHERE id = ?',
-        loanId,
-      );
-      if (!loan) throw new Error('This loan no longer exists.');
-      await ensureAccountBalance(database, accountId, amount);
-      const repayments = await database.getFirstAsync<{ total: number }>(
-        "SELECT COALESCE(SUM(amount), 0) AS total FROM transactions WHERE loan_id = ? AND kind = 'expense'",
-        loanId,
-      );
-      const outstanding = loan.principal + loan.fees - (repayments?.total ?? 0);
-      if (amount > outstanding) {
-        throw new Error(`Repayment cannot exceed the outstanding ${ugxFormatter.format(outstanding)} UGX.`);
-      }
-      await database.runAsync(
-        'INSERT INTO transactions (kind, title, category, amount, date, notes, loan_id, account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        'expense',
-        `Loan repayment · ${loan.lender}`,
-        'Loan repayment',
-        amount,
-        today(),
-        notes,
-        loanId,
-        accountId,
-      );
+    const snapshot = await getFinanceSnapshot();
+    const loan = snapshot.loans.find((row) => row.id === loanId);
+    if (!loan) throw new Error('This loan no longer exists.');
+    ensureRemoteAccountBalance(snapshot, accountId, amount);
+    const repaid = snapshot.transactions.reduce((total, transaction) =>
+      transaction.loan_id === loanId && transaction.kind === 'expense'
+        ? total + transaction.amount
+        : total,
+      0);
+    const outstanding = loan.principal + loan.fees - repaid;
+    if (amount > outstanding) {
+      throw new Error(`Repayment cannot exceed the outstanding ${ugxFormatter.format(outstanding)} UGX.`);
+    }
+    await transactionsApi.create({
+      kind: 'expense',
+      title: `Loan repayment · ${loan.lender}`,
+      category: 'Loan repayment',
+      amount,
+      notes,
+      loan_id: loanId,
+      account_id: accountId,
+      transfer_id: null,
+      refund_of_transaction_id: null,
     });
     return;
   }
@@ -152,94 +355,80 @@ export async function saveRecord(
     if (!fromAccountId || !toAccountId || fromAccountId === toAccountId) {
       throw new Error('Choose two different accounts for this transfer.');
     }
-    await database.withTransactionAsync(async () => {
-      const source = await database.getFirstAsync<{ name: string; type: string }>(
-        'SELECT name, type FROM accounts WHERE id = ?',
-        fromAccountId,
-      );
-      const destination = await database.getFirstAsync<{ name: string; type: string }>(
-        'SELECT name, type FROM accounts WHERE id = ?',
-        toAccountId,
-      );
-      if (!source || !destination) throw new Error('Choose valid source and destination accounts.');
-      const charges = getTransferCharges(source.type, destination.type);
-      const chargeTotal = charges.reduce((total, charge) => total + charge.amount, 0);
-      await ensureAccountBalance(database, fromAccountId, amount + chargeTotal);
-      const transfer = await database.runAsync(
-        'INSERT INTO transfers (from_account_id, to_account_id, amount, date, notes) VALUES (?, ?, ?, ?, ?)',
-        fromAccountId,
-        toAccountId,
-        amount,
-        today(),
-        notes,
-      );
-      for (const charge of charges) {
-        await database.runAsync(
-          'INSERT INTO transactions (kind, title, category, amount, date, notes, account_id, transfer_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-          'expense',
-          `${charge.label}`,
-          'Fees and charges',
-          charge.amount,
-          today(),
-          `${source.name} to ${destination.name} transfer.`,
-          fromAccountId,
-          transfer.lastInsertRowId,
-        );
-      }
+    const snapshot = await getFinanceSnapshot();
+    const source = snapshot.accounts.find((account) => account.id === fromAccountId);
+    const destination = snapshot.accounts.find((account) => account.id === toAccountId);
+    if (!source || !destination) throw new Error('Choose valid source and destination accounts.');
+    const charges = getTransferCharges(source.type, destination.type);
+    const chargeTotal = charges.reduce((total, charge) => total + charge.amount, 0);
+    ensureRemoteAccountBalance(snapshot, fromAccountId, amount + chargeTotal);
+
+    const transfer = await transfersApi.create({
+      from_account_id: fromAccountId,
+      to_account_id: toAccountId,
+      amount,
+      notes,
     });
+    const createdChargeIds: number[] = [];
+    try {
+      for (const charge of charges) {
+        const transaction = await transactionsApi.create({
+          kind: 'expense',
+          title: charge.label,
+          category: 'Fees and charges',
+          amount: charge.amount,
+          notes: `${source.name} to ${destination.name} transfer.`,
+          loan_id: null,
+          account_id: fromAccountId,
+          transfer_id: transfer.id,
+          refund_of_transaction_id: null,
+        });
+        createdChargeIds.push(transaction.id);
+      }
+    } catch (error) {
+      await rollbackTransfer(transfer.id, createdChargeIds, error);
+    }
     return;
   }
 
   if (kind === 'event') {
     if (draft.id) {
-      await database.runAsync(
-        'UPDATE events SET title = ?, category = ?, date = ?, notes = ? WHERE id = ?',
-        title,
-        category,
-        draft.date || today(),
-        notes,
-        draft.id,
-      );
+      if (!await eventsApi.update(draft.id, { title, category, date: draft.date || today(), notes })) {
+        throw new Error('This event no longer exists.');
+      }
       return;
     }
-    await database.runAsync(
-      'INSERT INTO events (title, category, date, notes) VALUES (?, ?, ?, ?)',
-      title,
-      category,
-      draft.date || today(),
-      notes,
-    );
+    await eventsApi.create({ title, category, date: draft.date || today(), notes });
     return;
   }
 
   if (kind === 'task') {
     if (draft.id) {
-      await database.runAsync(
-        'UPDATE tasks SET title = ?, category = ?, date = ?, notes = ? WHERE id = ?',
-        title,
-        category,
-        draft.date || today(),
-        notes,
-        draft.id,
-      );
+      if (!await tasksApi.update(draft.id, { title, category, date: draft.date || today(), notes })) {
+        throw new Error('This task no longer exists.');
+      }
       return;
     }
-    await database.runAsync(
-      'INSERT INTO tasks (title, category, date, notes) VALUES (?, ?, ?, ?)',
-      title,
-      category,
-      draft.date || today(),
-      notes,
-    );
+    await tasksApi.create({ title, category, date: draft.date || today(), notes });
     return;
   }
 
   if (kind === 'note') {
-    await saveNote(database, { id: draft.id, title, category, content: notes });
+    const note = {
+      title,
+      category,
+      notes,
+      updated_at: currentTimestamp(),
+    };
+    if (draft.id) {
+      if (!await notesApi.update(draft.id, note)) throw new Error('This note no longer exists.');
+    } else {
+      await notesApi.create(note);
+    }
     return;
   }
 
-  await saveList(database, draft, title, notes);
+  await saveListRecord(draft, title, notes);
 }
 
 export async function deleteRecord(

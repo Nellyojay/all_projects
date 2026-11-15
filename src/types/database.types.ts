@@ -31,7 +31,7 @@ export type Database = {
         fees: number;
         due_date: string;
         notes: string;
-      }, 'user_id' | 'lender' | 'principal' | 'created_at'>;
+      }, 'user_id' | 'lender' | 'principal'>;
       transfers: Table<OwnedId & {
         from_account_id: number;
         to_account_id: number;
@@ -39,7 +39,7 @@ export type Database = {
         date: string;
         created_at: string;
         notes: string;
-      }, 'user_id' | 'from_account_id' | 'to_account_id' | 'amount' | 'date' | 'created_at'>;
+      }, 'user_id' | 'from_account_id' | 'to_account_id' | 'amount'>;
       transactions: Table<OwnedId & {
         kind: 'expense' | 'income';
         title: string;
@@ -52,7 +52,7 @@ export type Database = {
         account_id: number | null;
         transfer_id: number | null;
         refund_of_transaction_id: number | null;
-      }, 'user_id' | 'kind' | 'title' | 'category' | 'amount' | 'date'>;
+      }, 'user_id' | 'kind' | 'title' | 'category' | 'amount'>;
       events: Table<OwnedId & {
         title: string;
         category: string;

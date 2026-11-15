@@ -68,8 +68,8 @@ export default function CalendarScreen() {
     setSelectedDate(dateKey(firstDay));
   };
 
-  const create = async (kind: RecordKind, draft: Parameters<typeof saveRecord>[2]) => {
-    await saveRecord(database, kind, draft);
+  const create = async (kind: RecordKind, draft: Parameters<typeof saveRecord>[1]) => {
+    await saveRecord(kind, draft);
     setSelectedDate(draft.date || selectedDate);
     await refresh();
   };

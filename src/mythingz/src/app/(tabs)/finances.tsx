@@ -126,8 +126,8 @@ export default function FinancesScreen() {
     return () => { active = false; };
   }, [database, location.pathname, location.state, navigate]);
 
-  const create = async (kind: RecordKind, draft: Parameters<typeof saveRecord>[2]) => {
-    await saveRecord(database, kind, draft);
+  const create = async (kind: RecordKind, draft: Parameters<typeof saveRecord>[1]) => {
+    await saveRecord(kind, draft);
     await refresh();
   };
   const createExpense = async (draft: ExpenseDraft) => {

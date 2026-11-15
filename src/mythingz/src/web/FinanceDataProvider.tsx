@@ -115,7 +115,7 @@ export function FinanceDataProvider({ children }: { children: ReactNode }) {
             transaction.loan_id === loan.id && transaction.kind === 'expense'
               ? total + transaction.amount
               : total,
-          0),
+            0),
         }))
         .sort((a, b) => b.id - a.id);
 
@@ -131,15 +131,15 @@ export function FinanceDataProvider({ children }: { children: ReactNode }) {
             transaction.kind === 'income'
               && transaction.loan_id === null
               && transaction.refund_of_transaction_id === null
-              && transaction.date.slice(0, 7) === month
+              && transaction.created_at.slice(0, 7) === month
               ? total + transaction.amount
               : total,
-          0),
+            0),
           expenses: transactionRows.reduce((total, transaction) =>
             transaction.kind === 'expense' && transaction.date.slice(0, 7) === month
               ? total + transaction.amount
               : total,
-          0),
+            0),
           availableBalance: accounts.reduce((total, account) => total + account.balance, 0),
         },
         error: null,

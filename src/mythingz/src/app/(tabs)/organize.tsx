@@ -214,8 +214,8 @@ export default function OrganizeScreen() {
       .toLowerCase().includes(query.toLowerCase()),
   ), [reminders, query]);
   const composerKind = sectionKinds[section];
-  const create = async (kind: RecordKind, draft: Parameters<typeof saveRecord>[2]) => {
-    await saveRecord(database, kind, draft);
+  const create = async (kind: RecordKind, draft: Parameters<typeof saveRecord>[1]) => {
+    await saveRecord(kind, draft);
     await refresh();
   };
   const remove = (table: 'notes' | 'tasks', id: number, title: string) => {

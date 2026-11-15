@@ -166,7 +166,7 @@ export function NoteDetails({
     if (saving.current) return false;
     saving.current = true;
     try {
-      await saveRecord(database, 'note', {
+      await saveRecord('note', {
         id: pending.id,
         title,
         category: pending.category,

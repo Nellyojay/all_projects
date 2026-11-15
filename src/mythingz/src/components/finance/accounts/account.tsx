@@ -18,11 +18,15 @@ export function AccountPicker({
   value,
   onChange,
   label,
+  loading = false,
+  showBalance = true,
 }: {
   accounts: Account[];
   value: number | null;
   onChange: (id: number) => void;
   label: string;
+  loading?: boolean;
+  showBalance?: boolean;
 }) {
   return (
     <div style={{ marginTop: 12 }}>
@@ -35,11 +39,14 @@ export function AccountPicker({
         onChange={(event) => onChange(Number(event.currentTarget.value))}
         className="account-picker-select"
         required
+        disabled={loading}
       >
-        <option value="" disabled>Select an account</option>
+        <option value="" disabled>
+          {loading ? 'Loading accounts…' : accounts.length ? 'Select an account' : 'No accounts available'}
+        </option>
         {accounts.map((account) => (
           <option key={account.id} value={account.id}>
-            {account.name} · {money(account.balance)}
+            {showBalance ? `${account.name} · ${money(account.balance)}` : account.name}
           </option>
         ))}
       </select>

@@ -136,7 +136,7 @@ export function RecordDetailsModalProvider({ children }: { children: ReactNode }
         initialDraft={editing?.draft}
         onClose={() => setEditing(null)}
         onSave={async (kind, draft) => {
-          await saveRecord(database, kind, draft);
+          await saveRecord(kind, draft);
           setEditing(null);
           await refreshRecord();
         }}

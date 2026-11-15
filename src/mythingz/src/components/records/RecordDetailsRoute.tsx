@@ -151,7 +151,7 @@ export default function RecordDetailsRoute() {
         initialDraft={editing?.draft}
         onClose={() => setEditing(null)}
         onSave={async (kind, draft) => {
-          await saveRecord(database, kind, draft);
+          await saveRecord(kind, draft);
           await refreshRecord();
         }}
       />
