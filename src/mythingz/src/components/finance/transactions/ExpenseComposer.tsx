@@ -1,16 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useDatabase } from '../../../web/DatabaseProvider';
 import {
   EXPENSE_CATEGORIES,
-  getAccounts,
-  getAllocatableBudgetItems,
+  getSupabaseAllocatableBudgetItems,
   InsufficientBalanceError,
-  type Account,
   type ExpenseDraft,
-  type BudgetPeriodItem,
+  type SupabaseAllocatableBudgetItem,
 } from '../../../services/database';
+import { useFinanceData } from '../../../web/FinanceDataProvider';
 import { AccountPicker } from '../accounts/account';
 import { ItemizedItemsEditor } from '../../lists/itemizedItems';
 import './ExpenseComposer.css';
@@ -28,7 +26,7 @@ type ExpenseComposerProps = {
 let nextExpenseComposerEntryId = 0;
 
 export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
-  const database = useDatabase();
+  const { accounts, isLoading: accountsLoading } = useFinanceData();
   const location = useLocation();
   const navigate = useNavigate();
   const historyEntryId = useRef<string | null>(null);
@@ -36,15 +34,9 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<string>(EXPENSE_CATEGORIES[0]);
   const [notes, setNotes] = useState('');
-  const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [items, setItems] = useState<ItemizedItem[]>([createEmptyItemizedItem()]);
-  const [budgetItems, setBudgetItems] = useState<(BudgetPeriodItem & {
-    budget_type: 'normal' | 'recurring';
-    template_name: string;
-    start_date: string | null;
-    end_date: string | null;
-  })[]>([]);
+  const [budgetItems, setBudgetItems] = useState<SupabaseAllocatableBudgetItem[]>([]);
   const [selectedBudgetItemId, setSelectedBudgetItemId] = useState('');
   const [budgetAllocationAmount, setBudgetAllocationAmount] = useState('');
   const [budgetAllocations, setBudgetAllocations] = useState<NonNullable<ExpenseDraft['budgetAllocations']>>([]);
@@ -59,34 +51,23 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
   console.log("Budget items:", budgetItems);
 
   useEffect(() => {
-    let active = true;
-    void getAccounts(database)
-      .then((rows) => {
-        if (!active) return;
-        setAccounts(rows);
-        setAccountId((current) =>
-          current !== null && rows.some((account) => String(account.id) === current)
-            ? current
-            : rows[0] ? String(rows[0].id) : null,
-        );
-      })
-      .catch((error: unknown) => {
-        console.error('Unable to load accounts for expense', error);
-        window.alert('Could not load accounts\n\nPlease try again.');
-      });
-    return () => { active = false; };
-  }, [database]);
+    setAccountId((current) =>
+      current !== null && accounts.some((account) => account.id === current)
+        ? current
+        : accounts[0]?.id ?? null,
+    );
+  }, [accounts]);
 
   useEffect(() => {
     let active = true;
-    void getAllocatableBudgetItems(database)
+    void getSupabaseAllocatableBudgetItems()
       .then((rows) => { if (active) setBudgetItems(rows); })
       .catch((error: unknown) => {
         console.error('Unable to load budget items', error);
-        if (active) window.alert('Could not load budgets\n\nPlease try again.');
+        if (active) window.alert(`Could not load budgets\n\n${error instanceof Error ? error.message : 'Please try again.'}`);
       });
     return () => { active = false; };
-  }, [database]);
+  }, []);
 
   const close = useCallback(() => {
     if (historyEntryId.current) {
@@ -225,6 +206,7 @@ export function ExpenseComposer({ onClose, onSave }: ExpenseComposerProps) {
             value={accountId}
             onChange={setAccountId}
             label="PAID FROM · ACCOUNT"
+            loading={accountsLoading}
           />
           <ItemizedItemsEditor
             items={items}

@@ -40,7 +40,7 @@ export async function listOwnedRows<Name extends TableName>(table: Name): Promis
     .from(table as TableName)
     .select('*')
     .eq('user_id' as never, userId as never);
-  if (error) throw new Error(`Could not load ${table}: ${error.message}`);
+  if (error) return [];
   return (data ?? []) as unknown as TableRow<Name>[];
 }
 

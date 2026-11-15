@@ -120,7 +120,7 @@ export default function FinancesScreen() {
     await refresh();
   };
   const createExpense = async (draft: ExpenseDraft) => {
-    await saveExpense(database, draft);
+    await saveExpense(draft);
     await refresh();
   };
   const addAccount = () => {

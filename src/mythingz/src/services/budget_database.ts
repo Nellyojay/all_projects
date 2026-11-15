@@ -903,7 +903,7 @@ export async function getAllocatableBudgetItems(database: BrowserDatabase, date 
   return getBudgetItemsForExpenseDate(database, date);
 }
 
-function budgetCoversDate(
+export function budgetCoversDate(
   type: string,
   startDate: string | null,
   endDate: string | null,

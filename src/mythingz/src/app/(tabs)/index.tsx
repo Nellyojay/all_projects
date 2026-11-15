@@ -30,6 +30,7 @@ import { NoteCard } from '../../components/notes/note';
 import './index.css';
 import { useMyThingsDb } from '../../services/readAPI';
 import { TransactionComponent } from '../../components/ui/transaction';
+import { useFinanceData } from '../../web/FinanceDataProvider';
 
 const formatMoney = (amount: number) =>
   `UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(amount)}`;
@@ -65,6 +66,7 @@ export default function HomeScreen() {
   const navigate = useNavigate();
   const { openRecordDetails } = useRecordDetailsModal();
   const database = useDatabase();
+  const { refresh: refreshFinanceData } = useFinanceData();
   const [composer, setComposer] = useState<RecordKind | null>(null);
   const [expenseComposerOpen, setExpenseComposerOpen] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -157,7 +159,8 @@ export default function HomeScreen() {
     await refresh();
   };
   const onSaveExpense = async (draft: ExpenseDraft) => {
-    await saveExpense(database, draft);
+    await saveExpense(draft);
+    refreshFinanceData();
     await refresh();
   };
   const addBudgetList = () => {
