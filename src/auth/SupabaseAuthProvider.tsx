@@ -5,7 +5,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { AuthContext, type AuthContextValue } from './SupabaseAuthContext';
 
 export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
@@ -17,7 +17,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured) return undefined;
 
     let active = true;
-    const client = getSupabaseClient();
+    const client = supabase;
     const { data: { subscription } } = client.auth.onAuthStateChange((_event, nextSession) => {
       if (active) {
         setSession(nextSession);
@@ -51,7 +51,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     clearError: () => setError(null),
     signIn: async (email, password) => {
       setError(null);
-      const { error: signInError } = await getSupabaseClient().auth.signInWithPassword({ email, password });
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
       if (signInError) {
         setError(signInError.message);
         throw signInError;
@@ -59,7 +59,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     },
     signUp: async (email, password) => {
       setError(null);
-      const { data, error: signUpError } = await getSupabaseClient().auth.signUp({ email, password });
+      const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
       if (signUpError) {
         setError(signUpError.message);
         throw signUpError;
@@ -68,7 +68,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     },
     signOut: async () => {
       setError(null);
-      const { error: signOutError } = await getSupabaseClient().auth.signOut();
+      const { error: signOutError } = await supabase.auth.signOut();
       if (signOutError) {
         setError(signOutError.message);
         throw signOutError;

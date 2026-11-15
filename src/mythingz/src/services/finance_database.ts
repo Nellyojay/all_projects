@@ -7,6 +7,7 @@ import {
   type Transfer,
 } from './database_types';
 import { allocateTransactionToBudgets, today } from './budget_database';
+import { accountsApi } from '../../../api/finance.api';
 
 // Fetch account balances using transactions and transfers through today.
 export async function getAccounts(database: BrowserDatabase) {
@@ -25,20 +26,19 @@ export async function getAccounts(database: BrowserDatabase) {
 }
 
 export async function createAccount(
-  database: BrowserDatabase,
-  account: { name: string; type: string; openingBalance: number },
+  account: { name: string; type: string; openingBalance: number; userId: string },
 ) {
   const name = account.name.trim();
   if (!name) throw new Error('Enter an account name.');
   if (!Number.isFinite(account.openingBalance) || account.openingBalance < 0) {
     throw new Error('Opening balance must be zero or more.');
   }
-  await database.runAsync(
-    'INSERT INTO accounts (name, type, opening_balance) VALUES (?, ?, ?)',
+
+  await accountsApi.create({
     name,
-    account.type,
-    account.openingBalance,
-  );
+    type: account.type,
+    opening_balance: account.openingBalance,
+  });
 }
 
 export async function ensureAccountBalance(database: BrowserDatabase, accountId: number, amount: number) {

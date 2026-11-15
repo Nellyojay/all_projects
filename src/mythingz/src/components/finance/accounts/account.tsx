@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDatabase } from '../../../web/DatabaseProvider';
 import { ACCOUNT_TYPES } from '../../../constants/finance';
 import { createAccount } from '../../../services/database';
 import type { Account } from '../../../services/database';
 import { ScreenHeader } from '../../shared/ScreenHeader';
 import '../../shared/theme.css';
 import './account.css';
+import { useUserData } from '../../../web/UserDataProvider';
 
 const money = (amount: number) =>
   `UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(amount)}`;
@@ -47,8 +47,8 @@ export function AccountPicker({
 }
 
 export function CreateAccountPage() {
-  const database = useDatabase();
   const navigate = useNavigate();
+  const { userData } = useUserData();
   const [name, setName] = useState('');
   const [type, setType] = useState<string>(ACCOUNT_TYPES[0]);
   const [openingBalance, setOpeningBalance] = useState('');
@@ -63,9 +63,14 @@ export function CreateAccountPage() {
       return;
     }
 
+    if (!userData) {
+      window.alert('You must be signed in to create an account.');
+      return;
+    }
+
     setSaving(true);
     try {
-      await createAccount(database, { name, type, openingBalance: balance });
+      await createAccount({ name, type, openingBalance: balance, userId: userData.id });
       navigate('/finances', { state: { section: 'accounts' } });
     } catch (error) {
       console.error('Unable to create account', error);

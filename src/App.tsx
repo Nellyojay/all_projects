@@ -13,6 +13,7 @@ import { CreateAccountPage } from './mythingz/src/components/finance/accounts/ac
 import SettingsScreen from './mythingz/src/app/pages/settings';
 import RecurringBudgetsPage from './mythingz/src/app/pages/RecurringBudgetsPage';
 import { DatabaseProvider } from './mythingz/src/web/DatabaseProvider';
+import { UserDataProvider } from './mythingz/src/web/UserDataProvider';
 import { TransactionReceiptProvider } from './mythingz/src/components/finance/transactions/TransactionReceiptProvider';
 import { ModalBackProvider } from './mythingz/src/components/shared/ModalBackProvider';
 import Intro from './components/intro';
@@ -32,13 +33,15 @@ function WorkspaceRoute() {
   if (!user) return <AuthScreen />;
   return (
     <DatabaseProvider>
-      <ModalBackProvider>
-        <TransactionReceiptProvider>
-          <RecordDetailsModalProvider>
-            <WorkspaceLayout />
-          </RecordDetailsModalProvider>
-        </TransactionReceiptProvider>
-      </ModalBackProvider>
+      <UserDataProvider>
+        <ModalBackProvider>
+          <TransactionReceiptProvider>
+            <RecordDetailsModalProvider>
+              <WorkspaceLayout />
+            </RecordDetailsModalProvider>
+          </TransactionReceiptProvider>
+        </ModalBackProvider>
+      </UserDataProvider>
     </DatabaseProvider>
   );
 }
