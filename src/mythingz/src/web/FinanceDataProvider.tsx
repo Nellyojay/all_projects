@@ -43,12 +43,8 @@ const EMPTY_FINANCE_DATA: FinanceData = {
 
 const FinanceDataContext = createContext<FinanceDataContextValue | null>(null);
 
-function latestFirst<T extends { id: number; date: string }>(rows: T[]) {
-  return rows.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
-}
-
-function localDateKey(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+function latestFirst<T extends { id: number; created_at: string }>(rows: T[]) {
+  return rows.sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id - a.id);
 }
 
 export function FinanceDataProvider({ children }: { children: ReactNode }) {
@@ -72,8 +68,7 @@ export function FinanceDataProvider({ children }: { children: ReactNode }) {
     ]).then(([accountRows, loanRows, transferRows, transactionRows]) => {
       if (!active) return;
       const accountsById = new Map(accountRows.map((account) => [account.id, account]));
-      const today = localDateKey(new Date());
-      const month = today.slice(0, 7);
+      const month = new Date().toISOString().slice(0, 7);
       const transactions: Transaction[] = latestFirst(transactionRows.map((transaction) => ({
         ...transaction,
         account_name: transaction.account_id === null
@@ -82,11 +77,10 @@ export function FinanceDataProvider({ children }: { children: ReactNode }) {
       })));
       const accounts: Account[] = accountRows.map((account) => {
         const transactionBalance = transactionRows.reduce((total, transaction) => {
-          if (transaction.account_id !== account.id || transaction.date > today) return total;
+          if (transaction.account_id !== account.id) return total;
           return total + (transaction.kind === 'income' ? transaction.amount : -transaction.amount);
         }, 0);
         const transferBalance = transferRows.reduce((total, transfer) => {
-          if (transfer.date > today) return total;
           if (transfer.to_account_id === account.id) return total + transfer.amount;
           if (transfer.from_account_id === account.id) return total - transfer.amount;
           return total;
@@ -136,7 +130,7 @@ export function FinanceDataProvider({ children }: { children: ReactNode }) {
               : total,
             0),
           expenses: transactionRows.reduce((total, transaction) =>
-            transaction.kind === 'expense' && transaction.date.slice(0, 7) === month
+            transaction.kind === 'expense' && transaction.created_at.slice(0, 7) === month
               ? total + transaction.amount
               : total,
             0),

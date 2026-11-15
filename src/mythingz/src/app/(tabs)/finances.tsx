@@ -15,7 +15,6 @@ import './finances.css';
 import '../pages/RecurringBudgetsPage.css';
 import {
   localDateKey,
-  getTransferById,
   saveExpense,
   saveRecord,
   type ExpenseDraft,
@@ -40,6 +39,7 @@ export default function FinancesScreen() {
   const location = useLocation();
   const {
     accounts,
+    transactions: financeTransactions,
     transfers,
     loans,
     income,
@@ -47,6 +47,7 @@ export default function FinancesScreen() {
     availableBalance,
     isLoading: financeDataLoading,
     error: financeDataError,
+    refresh: refreshFinanceData,
   } = useFinanceData();
   const [section, setSection] = useState<FinanceSection>(() => {
     const state = location.state;
@@ -61,9 +62,12 @@ export default function FinancesScreen() {
   const [query, setQuery] = useState('');
   const [composer, setComposer] = useState<RecordKind | null>(null);
   const [expenseComposerOpen, setExpenseComposerOpen] = useState(false);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [transactionLimit, setTransactionLimit] = useState(TRANSACTION_PAGE_SIZE);
-  const [hasMoreTransactions, setHasMoreTransactions] = useState(false);
+  const transactions = useMemo(
+    () => financeTransactions.slice(0, transactionLimit),
+    [financeTransactions, transactionLimit],
+  );
+  const hasMoreTransactions = financeTransactions.length > transactionLimit;
   const [selectedTransaction, setSelectedTransaction] = useState<(Transaction | Transfer) | null>(null);
   const [showBalance, setShowBalance] = useState(false);
   const [editingRecord, setEditingRecord] = useState<{ kind: RecordKind; draft: RecordDraft } | null>(null);
@@ -72,22 +76,8 @@ export default function FinancesScreen() {
   useModalBack(selectedTransaction !== null, closeSelectedTransaction);
 
   const refresh = useCallback(async () => {
-    const transactionRows = await database.getAllAsync<Transaction>(
-      `SELECT transactions.*, accounts.name AS account_name
-       FROM transactions LEFT JOIN accounts ON accounts.id = transactions.account_id
-       ORDER BY transactions.date DESC, transactions.id DESC LIMIT ?`,
-      transactionLimit + 1,
-    );
-    setHasMoreTransactions(transactionRows.length > transactionLimit);
-    setTransactions(transactionRows.slice(0, transactionLimit));
-  }, [database, transactionLimit]);
-
-  useEffect(() => {
-    void refresh().catch((error: unknown) => {
-      console.error('Unable to load finances', error);
-      window.alert('Unable to load\n\nYour finance summary could not be opened.');
-    });
-  }, [refresh]);
+    refreshFinanceData();
+  }, [refreshFinanceData]);
 
   useEffect(() => {
     const state = location.state;
@@ -99,32 +89,31 @@ export default function FinancesScreen() {
       || target.id < 1
       || (target.kind !== 'transaction' && target.kind !== 'transfer')) return;
 
-    let active = true;
-    void (async () => {
-      if (target.kind === 'transfer') return getTransferById(database, target.id);
-      return database.getFirstAsync<Transaction>(
-        `SELECT transactions.*, accounts.name AS account_name
-         FROM transactions LEFT JOIN accounts ON accounts.id = transactions.account_id
-         WHERE transactions.id = ?`,
-        target.id,
-      );
-    })().then((record) => {
-      if (!active) return;
-      if (record) {
-        setSelectedTransaction(record);
-      } else {
-        window.alert('Record not found\n\nThis finance record may have been deleted.');
-      }
+    if (financeDataLoading) return;
+    if (financeDataError) {
+      window.alert(`Could not load record\n\n${financeDataError}`);
       navigate(location.pathname, { replace: true, state: null });
-    }).catch((error: unknown) => {
-      console.error('Unable to open searched finance record', error);
-      if (active) {
-        window.alert('Could not open record\n\nPlease try again.');
-        navigate(location.pathname, { replace: true, state: null });
-      }
-    });
-    return () => { active = false; };
-  }, [database, location.pathname, location.state, navigate]);
+      return;
+    }
+
+    const record = target.kind === 'transfer'
+      ? transfers.find((transfer) => transfer.id === target.id)
+      : financeTransactions.find((transaction) => transaction.id === target.id);
+    if (record) {
+      setSelectedTransaction(record);
+    } else {
+      window.alert('Record not found\n\nThis finance record may have been deleted.');
+    }
+    navigate(location.pathname, { replace: true, state: null });
+  }, [
+    financeDataError,
+    financeDataLoading,
+    financeTransactions,
+    location.pathname,
+    location.state,
+    navigate,
+    transfers,
+  ]);
 
   const create = async (kind: RecordKind, draft: Parameters<typeof saveRecord>[1]) => {
     await saveRecord(kind, draft);
