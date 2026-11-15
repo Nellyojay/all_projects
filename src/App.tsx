@@ -14,6 +14,7 @@ import SettingsScreen from './mythingz/src/app/pages/settings';
 import RecurringBudgetsPage from './mythingz/src/app/pages/RecurringBudgetsPage';
 import { DatabaseProvider } from './mythingz/src/web/DatabaseProvider';
 import { UserDataProvider } from './mythingz/src/web/UserDataProvider';
+import { FinanceDataProvider } from './mythingz/src/web/FinanceDataProvider';
 import { TransactionReceiptProvider } from './mythingz/src/components/finance/transactions/TransactionReceiptProvider';
 import { ModalBackProvider } from './mythingz/src/components/shared/ModalBackProvider';
 import Intro from './components/intro';
@@ -34,13 +35,15 @@ function WorkspaceRoute() {
   return (
     <DatabaseProvider>
       <UserDataProvider>
-        <ModalBackProvider>
-          <TransactionReceiptProvider>
-            <RecordDetailsModalProvider>
-              <WorkspaceLayout />
-            </RecordDetailsModalProvider>
-          </TransactionReceiptProvider>
-        </ModalBackProvider>
+        <FinanceDataProvider>
+          <ModalBackProvider>
+            <TransactionReceiptProvider>
+              <RecordDetailsModalProvider>
+                <WorkspaceLayout />
+              </RecordDetailsModalProvider>
+            </TransactionReceiptProvider>
+          </ModalBackProvider>
+        </FinanceDataProvider>
       </UserDataProvider>
     </DatabaseProvider>
   );

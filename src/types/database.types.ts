@@ -37,14 +37,16 @@ export type Database = {
         to_account_id: number;
         amount: number;
         date: string;
+        created_at: string;
         notes: string;
-      }, 'user_id' | 'from_account_id' | 'to_account_id' | 'amount' | 'date'>;
+      }, 'user_id' | 'from_account_id' | 'to_account_id' | 'amount' | 'date' | 'created_at'>;
       transactions: Table<OwnedId & {
         kind: 'expense' | 'income';
         title: string;
         category: string;
         amount: number;
         date: string;
+        created_at: string;
         notes: string;
         loan_id: number | null;
         account_id: number | null;

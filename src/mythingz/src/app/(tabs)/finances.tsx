@@ -15,12 +15,9 @@ import './finances.css';
 import '../pages/RecurringBudgetsPage.css';
 import {
   localDateKey,
-  getAccounts,
   getTransferById,
-  getTransfers,
   saveExpense,
   saveRecord,
-  type Account,
   type ExpenseDraft,
   type Loan,
   type RecordDraft,
@@ -29,6 +26,7 @@ import {
   type Transaction,
 } from '../../services/database';
 import { TransactionComponent } from '../../components/ui/transaction';
+import { useFinanceData } from '../../web/FinanceDataProvider';
 
 type FinanceSection = 'accounts' | 'transfers' | 'budgets' | 'loans' | 'transactions';
 const TRANSACTION_PAGE_SIZE = 10;
@@ -40,6 +38,16 @@ export default function FinancesScreen() {
   const database = useDatabase();
   const navigate = useNavigate();
   const location = useLocation();
+  const {
+    accounts,
+    transfers,
+    loans,
+    income,
+    expenses,
+    availableBalance,
+    isLoading: financeDataLoading,
+    error: financeDataError,
+  } = useFinanceData();
   const [section, setSection] = useState<FinanceSection>(() => {
     const state = location.state;
     const requested = typeof state === 'object' && state !== null && 'section' in state
@@ -57,12 +65,6 @@ export default function FinancesScreen() {
   const [transactionLimit, setTransactionLimit] = useState(TRANSACTION_PAGE_SIZE);
   const [hasMoreTransactions, setHasMoreTransactions] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<(Transaction | Transfer) | null>(null);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [transfers, setTransfers] = useState<Transfer[]>([]);
-  const [loans, setLoans] = useState<Loan[]>([]);
-  const [income, setIncome] = useState(0);
-  const [expenses, setExpenses] = useState(0);
-  const [availableBalance, setAvailableBalance] = useState(0);
   const [showBalance, setShowBalance] = useState(false);
   const [editingRecord, setEditingRecord] = useState<{ kind: RecordKind; draft: RecordDraft } | null>(null);
   const [createBudgetRequested, setCreateBudgetRequested] = useState(false);
@@ -70,50 +72,14 @@ export default function FinancesScreen() {
   useModalBack(selectedTransaction !== null, closeSelectedTransaction);
 
   const refresh = useCallback(async () => {
-    const month = localDateKey().slice(0, 7);
-    const [
-      transactionRows,
-      loanRows,
-      incomeTotal,
-      expenseTotal,
-      accountRows,
-      transferRows,
-    ] = await Promise.all([
-      database.getAllAsync<Transaction>(
-        `SELECT transactions.*, accounts.name AS account_name
-         FROM transactions LEFT JOIN accounts ON accounts.id = transactions.account_id
-         ORDER BY transactions.date DESC, transactions.id DESC LIMIT ?`,
-        transactionLimit + 1,
-      ),
-      database.getAllAsync<Loan>(
-        `SELECT loans.*,
-          COALESCE(SUM(CASE WHEN transactions.kind = 'expense' THEN transactions.amount ELSE 0 END), 0) AS repaid
-         FROM loans
-         LEFT JOIN transactions ON transactions.loan_id = loans.id
-         GROUP BY loans.id
-         ORDER BY loans.id DESC`,
-      ),
-      database.getFirstAsync<{ total: number }>(
-        `SELECT COALESCE(SUM(amount), 0) AS total FROM transactions
-         WHERE kind = 'income' AND loan_id IS NULL AND refund_of_transaction_id IS NULL
-           AND substr(date, 1, 7) = ?`,
-        month,
-      ),
-      database.getFirstAsync<{ total: number }>(
-        "SELECT COALESCE(SUM(amount), 0) AS total FROM transactions WHERE kind = 'expense' AND substr(date, 1, 7) = ?",
-        month,
-      ),
-      getAccounts(database),
-      getTransfers(database),
-    ]);
+    const transactionRows = await database.getAllAsync<Transaction>(
+      `SELECT transactions.*, accounts.name AS account_name
+       FROM transactions LEFT JOIN accounts ON accounts.id = transactions.account_id
+       ORDER BY transactions.date DESC, transactions.id DESC LIMIT ?`,
+      transactionLimit + 1,
+    );
     setHasMoreTransactions(transactionRows.length > transactionLimit);
     setTransactions(transactionRows.slice(0, transactionLimit));
-    setAccounts(accountRows);
-    setTransfers(transferRows);
-    setLoans(loanRows);
-    setIncome(incomeTotal?.total ?? 0);
-    setExpenses(expenseTotal?.total ?? 0);
-    setAvailableBalance(accountRows.reduce((total, account) => total + account.balance, 0));
   }, [database, transactionLimit]);
 
   useEffect(() => {
@@ -226,6 +192,8 @@ export default function FinancesScreen() {
           title="Finances"
           subtitle={new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
         />
+        {financeDataLoading ? <p role="status">Loading finance data…</p> : null}
+        {financeDataError ? <p role="alert">{financeDataError}</p> : null}
         <FinanceBalanceCard
           accounts={accounts}
           availableBalance={availableBalance}

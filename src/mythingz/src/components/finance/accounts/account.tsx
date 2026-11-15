@@ -8,6 +8,7 @@ import { ScreenHeader } from '../../shared/ScreenHeader';
 import '../../shared/theme.css';
 import './account.css';
 import { useUserData } from '../../../web/UserDataProvider';
+import { useFinanceData } from '../../../web/FinanceDataProvider';
 
 const money = (amount: number) =>
   `UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(amount)}`;
@@ -49,6 +50,7 @@ export function AccountPicker({
 export function CreateAccountPage() {
   const navigate = useNavigate();
   const { userData } = useUserData();
+  const { refresh: refreshFinanceData } = useFinanceData();
   const [name, setName] = useState('');
   const [type, setType] = useState<string>(ACCOUNT_TYPES[0]);
   const [openingBalance, setOpeningBalance] = useState('');
@@ -71,6 +73,7 @@ export function CreateAccountPage() {
     setSaving(true);
     try {
       await createAccount({ name, type, openingBalance: balance, userId: userData.id });
+      refreshFinanceData();
       navigate('/finances', { state: { section: 'accounts' } });
     } catch (error) {
       console.error('Unable to create account', error);
