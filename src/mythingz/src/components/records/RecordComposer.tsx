@@ -173,15 +173,6 @@ export function RecordComposer({
     return () => { active = false; };
   }, [kind]);
 
-  useEffect(() => {
-    console.log('[RecordComposer] account selection state', {
-      kind,
-      accountId,
-      fromAccountId,
-      toAccountId,
-    });
-  }, [accountId, fromAccountId, kind, toAccountId]);
-
   const close = useCallback(() => {
     if (historyEntryId.current) {
       historyEntryId.current = null;

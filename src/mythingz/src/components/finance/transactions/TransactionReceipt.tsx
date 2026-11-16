@@ -11,6 +11,7 @@ import {
 import type { BudgetPeriodItem, Transaction, Transfer } from '../../../services/database';
 import '../../shared/theme.css';
 import './TransactionReceipt.css';
+import { formattedDate, formattedDateTime } from '../../../../../utils/formatDate';
 
 type ReceiptRecord = Transaction | Transfer;
 type ReceiptItem = { name: string; quantity: number; unitPrice: number };
@@ -34,21 +35,9 @@ type TransactionReceiptProps = {
 const money = (amount: number) =>
   `UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(amount)}`;
 
-function formattedDate(date: string) {
-  const parsed = new Date(`${date}T12:00:00`);
-  return Number.isNaN(parsed.getTime())
-    ? date
-    : parsed.toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-}
-
 function referenceFor(record: ReceiptRecord) {
-  const date = record.date.replace(/\D/g, '');
   const id = String(record.id).padStart(5, '0');
-  return `MT-${date}-${'from_account_id' in record ? 'T' : ''}${id}`;
+  return `MT-${'from_account_id' in record ? 'T' : ''}${id}`;
 }
 
 function expenseReceiptNotes(notes: string): { description: string; items: ReceiptItem[] } {
@@ -230,7 +219,7 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
         if (active) setRefundError('Refund availability could not be loaded.');
       });
     void Promise.all([
-      getBudgetItemsForExpenseDate(database, transaction.date),
+      getBudgetItemsForExpenseDate(database, transaction.created_at),
       getTransactionBudgetAllocations(database, transaction.id),
     ])
       .then(([options, allocations]) => {
@@ -253,7 +242,7 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
         if (active) setAllocationLoading(false);
       });
     return () => { active = false; };
-  }, [database, isExpense, transaction.id, transaction.date]);
+  }, [database, isExpense, transaction.id]);
 
   const submitBudgetAllocations = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -332,7 +321,7 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
   };
 
   return (
-    <div  className="receipt-modal transaction-receipt-backdrop" onClick={onClose}>
+    <div className="receipt-modal transaction-receipt-backdrop" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
@@ -356,14 +345,14 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
               Transaction Receipt
             </span>
           </header>
-          <div  className="receipt-divider transaction-receipt-divider" />
-          <div  className="receipt-hero transaction-receipt-hero">
+          <div className="receipt-divider transaction-receipt-divider" />
+          <div className="receipt-hero transaction-receipt-hero">
             <span className="transaction-receipt-type">{type.toUpperCase()}</span>
             <h1 className="transaction-receipt-amount">
               UGX {Math.abs(transaction.amount).toLocaleString('en-UG')}
             </h1>
           </div>
-          <div  className="receipt-divider transaction-receipt-divider" />
+          <div className="receipt-divider transaction-receipt-divider" />
 
           <div className="transaction-receipt-details">
             <ReceiptRow
@@ -381,12 +370,12 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
             ) : (
               <ReceiptRow label="Account:" value={transaction.account_name || 'Not specified'} />
             )}
-            <ReceiptRow label="Date:" value={formattedDate(transaction.date)} />
-            <ReceiptRow label="Time:" value="Not recorded" />
+            <ReceiptRow label="Date:" value={formattedDate(transaction.created_at)} />
+            <ReceiptRow label="Time:" value={formattedDateTime(transaction.created_at)} />
           </div>
 
           {!isTransfer && transaction.loan_id !== null ? (
-            <div  className="receipt-fees transaction-receipt-loanDetails">
+            <div className="receipt-fees transaction-receipt-loanDetails">
               {loanDetails ? (
                 <>
                   <ReceiptRow label="Loan principal:" value={money(loanDetails.principal)} />
@@ -403,7 +392,7 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
             </div>
           ) : null}
           {isTransfer && transaction.charges.length ? (
-            <div  className="receipt-fees transaction-receipt-loanDetails">
+            <div className="receipt-fees transaction-receipt-loanDetails">
               <strong>Transfer charges:</strong>
               {transaction.charges.map((charge, index) => (
                 <ReceiptRow
@@ -419,19 +408,19 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
             </div>
           ) : null}
 
-          <div  className="receipt-divider transaction-receipt-divider" />
+          <div className="receipt-divider transaction-receipt-divider" />
           {expenseNotes?.items.length ? (
-            <div  className="receipt-item-list transaction-receipt-itemList">
+            <div className="receipt-item-list transaction-receipt-itemList">
               <strong>Items:</strong>
               <div className="transaction-receipt-itemTable">
-                <div  className="receipt-item-header transaction-receipt-itemHeader">
+                <div className="receipt-item-header transaction-receipt-itemHeader">
                   <span>Item</span>
                   <span className="transaction-receipt-itemNumeric">Qty</span>
                   <span className="transaction-receipt-itemNumeric">Unit price</span>
                   <span className="transaction-receipt-itemNumeric">Total</span>
                 </div>
                 {expenseNotes.items.map((item, index) => (
-                  <div key={`${item.name}-${index}`}  className="receipt-item-row transaction-receipt-itemRow">
+                  <div key={`${item.name}-${index}`} className="receipt-item-row transaction-receipt-itemRow">
                     <span className="transaction-receipt-itemName">{item.name}</span>
                     <span className="transaction-receipt-itemNumeric">{item.quantity}</span>
                     <span className="transaction-receipt-itemNumeric">{money(item.unitPrice)}</span>
@@ -442,23 +431,23 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
             </div>
           ) : null}
           {(expenseNotes?.description || (!isExpense && transaction.notes.trim())) ? (
-            <div  className="receipt-description transaction-receipt-description">
+            <div className="receipt-description transaction-receipt-description">
               <strong>Description:</strong>
               <span style={{ whiteSpace: 'pre-line' }}>
                 {expenseNotes?.description || transaction.notes}
               </span>
             </div>
           ) : null}
-          <div  className="receipt-divider transaction-receipt-divider" />
+          <div className="receipt-divider transaction-receipt-divider" />
           <div className="transaction-receipt-reference">
             <strong>Transaction Reference:</strong>
             <strong>{reference}</strong>
           </div>
-          <div  className="receipt-divider transaction-receipt-divider" />
+          <div className="receipt-divider transaction-receipt-divider" />
 
-          <div  className="receipt-divider transaction-receipt-divider" />
+          <div className="receipt-divider transaction-receipt-divider" />
           <footer className="transaction-receipt-footer">Thank you for using myThings!</footer>
-          <p  className="receipt-secondary transaction-receipt-disclaimer">
+          <p className="receipt-secondary transaction-receipt-disclaimer">
             Personal transaction record; not verified by a bank or mobile-money provider.
           </p>
           <button
@@ -610,7 +599,7 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
 
 function ReceiptRow({ label, value }: { label: string; value: string }) {
   return (
-    <div  className="receipt-row transaction-receipt-row">
+    <div className="receipt-row transaction-receipt-row">
       <span className="transaction-receipt-rowLabel">{label}</span>
       <span className="transaction-receipt-rowValue">{value}</span>
     </div>

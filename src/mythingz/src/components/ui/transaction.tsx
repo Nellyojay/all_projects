@@ -1,5 +1,6 @@
 import { money } from "../finance/budgets/recurringBudgets/RecurringBudgetUtils";
 import type { Transaction, Transfer } from '../../services/database';
+import { formattedDate } from "../../../../utils/formatDate";
 
 type TransactionProps = {
   filteredTransactions: (Transaction | Transfer)[];
@@ -31,7 +32,7 @@ export const TransactionComponent = ({
               {'from_account_id' in transaction
                 ? transaction.notes || 'Transfer'
                 : `${transaction.loan_id !== null ? 'Loan proceeds' : transaction.category}${transaction.account_name ? ` · ${transaction.account_name}` : ''}`}
-              {' · '}{transaction.date}
+              {' · '}{formattedDate(transaction.created_at)}{' '}
             </span>
           </div>
           <span className={`text-sm ${'from_account_id' in transaction || (transaction.kind === 'income' && transaction.loan_id === null) ? 'el-active' : 'el-reddish'}`}>

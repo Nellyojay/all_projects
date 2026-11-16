@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useDatabase } from '../../web/DatabaseProvider';
 import { ExpenseComposer } from '../../components/finance/transactions/ExpenseComposer';
 import { FinanceBalanceCard } from '../../components/finance/FinanceBalanceCard';
 import { RecurringBudgetManager } from '../../components/finance/budgets/RecurringBudgetManager';
@@ -34,7 +33,6 @@ const money = (value: number) =>
   `UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(value)}`;
 
 export default function FinancesScreen() {
-  const database = useDatabase();
   const navigate = useNavigate();
   const location = useLocation();
   const {
@@ -69,6 +67,7 @@ export default function FinancesScreen() {
   );
   const hasMoreTransactions = financeTransactions.length > transactionLimit;
   const [selectedTransaction, setSelectedTransaction] = useState<(Transaction | Transfer) | null>(null);
+  console.log("Selleceted transaction", selectedTransaction);
   const [showBalance, setShowBalance] = useState(false);
   const [editingRecord, setEditingRecord] = useState<{ kind: RecordKind; draft: RecordDraft } | null>(null);
   const [createBudgetRequested, setCreateBudgetRequested] = useState(false);
@@ -128,12 +127,7 @@ export default function FinancesScreen() {
   };
   const openBudgetExpense = async (transactionId: number) => {
     try {
-      const transaction = await database.getFirstAsync<Transaction>(
-        `SELECT transactions.*, accounts.name AS account_name
-         FROM transactions LEFT JOIN accounts ON accounts.id = transactions.account_id
-         WHERE transactions.id = ?`,
-        transactionId,
-      );
+      const transaction = financeTransactions.find((t) => t.id === transactionId);
       if (!transaction) throw new Error('This expense could not be found.');
       setSelectedTransaction(transaction);
     } catch (error) {
@@ -167,13 +161,14 @@ export default function FinancesScreen() {
     `${loan.lender} ${loan.notes ?? ''} ${loan.due_date ?? ''}`.toLowerCase().includes(query.toLowerCase()),
   ), [loans, query]);
   const filteredTransactions = useMemo(() => transactions.filter((transaction) =>
-    `${transaction.title} ${transaction.category} ${transaction.date} ${transaction.account_name ?? ''} ${transaction.loan_id !== null ? 'loan proceeds' : ''}`
+    `${transaction.title} ${transaction.category} ${transaction.created_at} ${transaction.account_name ?? ''} ${transaction.loan_id !== null ? 'loan proceeds' : ''}`
       .toLowerCase().includes(query.toLowerCase()),
   ), [transactions, query]);
   const filteredTransfers = useMemo(() => transfers.filter((transfer) =>
-    `${transfer.from_account_name ?? ''} ${transfer.to_account_name ?? ''} ${transfer.date} ${transfer.notes}`
+    `${transfer.from_account_name ?? ''} ${transfer.to_account_name ?? ''} ${transfer.created_at} ${transfer.notes}`
       .toLowerCase().includes(query.toLowerCase()),
   ), [transfers, query]);
+
   return (
     <div className="app-screen">
       <div className="app-scroll-content">
