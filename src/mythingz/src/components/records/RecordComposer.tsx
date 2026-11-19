@@ -113,14 +113,19 @@ export function RecordComposer({
       : [{ text: '', done: false, price: '', quantity: '1' }];
   });
   const financeAccountsById = new Map(financeAccounts.map((account) => [account.id, account]));
-  const accounts: Account[] = accountRows.map((account) => ({
-    id: String(account.id),
-    name: account.name,
-    type: account.type,
-    opening_balance: account.opening_balance,
-    is_default: Number(account.is_default),
-    balance: financeAccountsById.get(String(account.id))?.balance ?? account.opening_balance,
-  })).sort((a, b) => b.is_default - a.is_default || a.name.localeCompare(b.name));
+  const accounts: Account[] = accountRows.map((account) => {
+    const currentBalance = financeAccountsById.get(String(account.id))?.current_balance
+      ?? account.current_balance;
+    return {
+      id: String(account.id),
+      name: account.name,
+      type: account.type,
+      opening_balance: account.opening_balance,
+      is_default: Number(account.is_default),
+      current_balance: currentBalance,
+      balance: account.opening_balance + currentBalance,
+    };
+  }).sort((a, b) => b.is_default - a.is_default || a.name.localeCompare(b.name));
   const selectableAccounts = financeAccounts.length
     ? accounts.filter((account) => financeAccountsById.has(account.id))
     : accounts;

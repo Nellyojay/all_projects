@@ -10,18 +10,34 @@ import {
 } from './database_types';
 import { budgetCoversDate, today } from './budget_database';
 import { budgetsApi } from '../../../api/budgets.api';
-import { accountsApi, transactionsApi, transfersApi } from '../../../api/finance.api';
+import { accountsApi, transactionsApi } from '../../../api/finance.api';
 
 // Fetch account balances using transactions and transfers through today.
 export async function getAccounts(database: BrowserDatabase) {
   const accounts = await database.getAllAsync<Omit<Account, 'id'> & { id: number }>(
     `SELECT accounts.*,
-      accounts.opening_balance
-        + COALESCE((SELECT SUM(CASE WHEN transactions.kind = 'income' THEN transactions.amount ELSE -transactions.amount END)
-          FROM transactions WHERE transactions.account_id = accounts.id AND transactions.date <= ?), 0)
-        + COALESCE((SELECT SUM(transfers.amount) FROM transfers WHERE transfers.to_account_id = accounts.id AND transfers.date <= ?), 0)
-        - COALESCE((SELECT SUM(transfers.amount) FROM transfers WHERE transfers.from_account_id = accounts.id AND transfers.date <= ?), 0) AS balance
-     FROM accounts ORDER BY is_default DESC, name COLLATE NOCASE`,
+        COALESCE(transaction_balances.amount, 0) + COALESCE(transfer_balances.amount, 0) AS current_balance,
+        accounts.opening_balance
+          + COALESCE(transaction_balances.amount, 0)
+          + COALESCE(transfer_balances.amount, 0) AS balance
+     FROM accounts
+     LEFT JOIN (
+       SELECT account_id,
+         SUM(CASE WHEN kind = 'income' THEN amount ELSE -amount END) AS amount
+       FROM transactions
+       WHERE date <= ?
+       GROUP BY account_id
+     ) AS transaction_balances ON transaction_balances.account_id = accounts.id
+     LEFT JOIN (
+       SELECT account_id, SUM(amount) AS amount
+       FROM (
+         SELECT to_account_id AS account_id, amount FROM transfers WHERE date <= ?
+         UNION ALL
+         SELECT from_account_id AS account_id, -amount AS amount FROM transfers WHERE date <= ?
+       ) AS transfer_movements
+       GROUP BY account_id
+     ) AS transfer_balances ON transfer_balances.account_id = accounts.id
+     ORDER BY is_default DESC, name COLLATE NOCASE`,
     today(),
     today(),
     today(),
@@ -42,6 +58,7 @@ export async function createAccount(
     name,
     type: account.type,
     opening_balance: account.openingBalance,
+    current_balance: 0,
   });
 }
 
@@ -172,29 +189,6 @@ export async function saveExpense(draft: ExpenseDraft) {
     }
   }
 
-  const [accounts, transactions, transfers] = await Promise.all([
-    accountsApi.list(),
-    transactionsApi.list(),
-    transfersApi.list(),
-  ]);
-  const account = accounts.find((row) => String(row.id) === accountId);
-  if (!account) throw new Error('Choose a valid account.');
-  const asOf = today();
-  const transactionBalance = transactions.reduce((total, transaction) => {
-    if (transaction.account_id !== accountId || transaction.date > asOf) return total;
-    return total + (transaction.kind === 'income' ? transaction.amount : -transaction.amount);
-  }, 0);
-  const transferBalance = transfers.reduce((total, transfer) => {
-    if (transfer.date > asOf) return total;
-    if (transfer.to_account_id === accountId) return total + transfer.amount;
-    if (transfer.from_account_id === accountId) return total - transfer.amount;
-    return total;
-  }, 0);
-  const availableBalance = account.opening_balance + transactionBalance + transferBalance;
-  if (availableBalance < amount) {
-    throw new InsufficientBalanceError(amount - availableBalance);
-  }
-
   const itemDetails = draft.items.map((item) =>
     `${item.quantity} × ${item.text.trim()} · UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(item.price)} each`,
   ).join('\n');
@@ -205,10 +199,7 @@ export async function saveExpense(draft: ExpenseDraft) {
     category,
     amount,
     notes: transactionNotes,
-    loan_id: null,
     account_id: accountId,
-    transfer_id: null,
-    refund_of_transaction_id: null,
   });
   const createdAllocationIds: number[] = [];
   try {

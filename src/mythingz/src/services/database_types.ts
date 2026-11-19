@@ -200,6 +200,7 @@ export type Account = {
   type: string;
   opening_balance: number;
   is_default: number;
+  current_balance: number;
   balance: number;
 };
 

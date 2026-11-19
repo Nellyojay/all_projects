@@ -11,7 +11,7 @@ const tableDefinitions = {
   finance: {
     accounts: {
       table: 'accounts',
-      columns: ['id', 'name', 'type', 'opening_balance', 'is_default'],
+      columns: ['id', 'name', 'type', 'opening_balance', 'is_default', 'current_balance'],
     },
     transactions: {
       table: 'transactions',

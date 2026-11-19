@@ -75,25 +75,21 @@ export function FinanceDataProvider({ children }: { children: ReactNode }) {
           ? null
           : accountsById.get(transaction.account_id)?.name ?? null,
       })));
+
+      // Use the database-maintained balance for each account.
       const accounts: Account[] = accountRows.map((account) => {
-        const transactionBalance = transactionRows.reduce((total, transaction) => {
-          if (transaction.account_id !== String(account.id)) return total;
-          return total + (transaction.kind === 'income' ? transaction.amount : -transaction.amount);
-        }, 0);
-        const transferBalance = transferRows.reduce((total, transfer) => {
-          if (transfer.to_account_id === String(account.id)) return total + transfer.amount;
-          if (transfer.from_account_id === String(account.id)) return total - transfer.amount;
-          return total;
-        }, 0);
         return {
           id: String(account.id),
           name: account.name,
           type: account.type,
           opening_balance: account.opening_balance,
+          current_balance: account.current_balance,
           is_default: Number(account.is_default),
-          balance: account.opening_balance + transactionBalance + transferBalance,
+          balance: account.opening_balance + account.current_balance,
         };
-      }).sort((a, b) => b.is_default - a.is_default || a.name.localeCompare(b.name));
+      }).sort((a, b) => b.is_default - a.is_default || a.name.localeCompare(b.name)); // sort by default first, then by name alphabetically.
+
+      // Calculate charges for each transfer and include account names
       const transfers: Transfer[] = latestFirst(transferRows.map((transfer) => ({
         ...transfer,
         charges: transactionRows
@@ -102,6 +98,8 @@ export function FinanceDataProvider({ children }: { children: ReactNode }) {
         from_account_name: accountsById.get(transfer.from_account_id)?.name,
         to_account_name: accountsById.get(transfer.to_account_id)?.name,
       })));
+
+      // Calculate loan repayment status
       const loans: Loan[] = loanRows
         .map((loan) => ({
           ...loan,

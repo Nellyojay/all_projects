@@ -150,7 +150,12 @@ function enrichRows(table: string, rows: Row[]) {
         sum + (transaction.kind === 'income' ? Number(transaction.amount) : -Number(transaction.amount)), 0);
       const transferBalance = accountTransfers.reduce((sum, transfer) =>
         sum + (transfer.to_account_id === row.id ? Number(transfer.amount) : -Number(transfer.amount)), 0);
-      return { ...row, balance: Number(row.opening_balance ?? 0) + income + transferBalance };
+      const current_balance = income + transferBalance;
+      return {
+        ...row,
+        current_balance,
+        balance: Number(row.opening_balance ?? 0) + current_balance,
+      };
     });
   }
   if (table === 'transfers') {

@@ -1,5 +1,4 @@
 import type { BrowserDatabase } from '../web/database';
-import { INCOME_CATEGORIES } from '../constants/finance';
 import {
   currentTimestamp,
   getTransferCharges,
@@ -222,51 +221,18 @@ export async function saveRecord(
   const notes = draft.notes?.trim() ?? '';
 
   if (kind === 'income') {
-    if (!INCOME_CATEGORIES.some((incomeCategory) => incomeCategory === category)) {
-      throw new Error('Choose a valid income category.');
-    }
-    const accountId = parseAccountId(draft.accountId, 'Choose the account receiving this income.');
-    const amount = draft.amount ?? 0;
-    if (!Number.isFinite(amount) || amount <= 0) throw new Error('Enter an income amount greater than zero.');
-    if (draft.id) {
-      const snapshot = await getFinanceSnapshot();
-      const current = snapshot.transactions.find((transaction) => transaction.id === draft.id && transaction.kind === kind);
-      if (!current) throw new Error('This income record no longer exists.');
-      if (!snapshot.accounts.some((account) => String(account.id) === accountId)) {
-        throw new Error('Choose a valid account.');
-      }
-      if (current.account_id === accountId && current.amount > amount) {
-        ensureRemoteAccountBalance(snapshot, accountId, current.amount - amount);
-      } else if (current.account_id !== accountId) {
-        if (current.account_id !== null) ensureRemoteAccountBalance(snapshot, current.account_id, current.amount);
-      }
-      if (!await transactionsApi.update(draft.id, {
-        title,
-        category,
-        amount,
-        date: today(),
-        notes,
-        account_id: accountId,
-      })) {
-        throw new Error('This income record no longer exists.');
-      }
-      return;
-    }
-    if (!(await accountsApi.list()).some((account) => String(account.id) === accountId)) {
-      throw new Error('Choose a valid account.');
-    }
-    await transactionsApi.create({
+
+    const result = await transactionsApi.create({
       kind,
       title,
       category,
-      amount,
+      amount: Number(draft.amount),
       notes,
-      loan_id: null,
-      account_id: accountId,
-      transfer_id: null,
-      refund_of_transaction_id: null,
+      account_id: String(draft.accountId),
+    }).then((result) => {
+      console.log(result)
     });
-    return;
+    return result;
   }
 
   if (kind === 'loan') {

@@ -23,6 +23,7 @@ export type Database = {
         name: string;
         type: string;
         opening_balance: number;
+        current_balance: number;
         is_default: boolean;
       }, 'user_id' | 'name' | 'type'>;
       loans: Table<OwnedId & TimestampColumns & {
