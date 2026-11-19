@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MAX_TITLE_LENGTH } from '../records/RecordComposer';
 import { useBackButtonBlocker } from '../../constants/backButtonBlocker';
-import { useDatabase } from '../../web/DatabaseProvider';
 import '../shared/theme.css';
 import { saveRecord } from '../../services/database';
 import type { NoteRecord } from '../../services/database';
@@ -134,7 +133,6 @@ export function NoteDetails({
   note: NoteRecord;
   onChanged: () => Promise<void>;
 }) {
-  const database = useDatabase();
   const [editingTitleId, setEditingTitleId] = useState<number | null>(null);
   const [editingBodyId, setEditingBodyId] = useState<number | null>(null);
   const [titleDraft, setTitleDraft] = useState('');
@@ -184,7 +182,7 @@ export function NoteDetails({
     } finally {
       saving.current = false;
     }
-  }, [database, onChanged]);
+  }, [onChanged]);
 
   useEffect(() => () => {
     void persistPending(false).catch((error: unknown) => {

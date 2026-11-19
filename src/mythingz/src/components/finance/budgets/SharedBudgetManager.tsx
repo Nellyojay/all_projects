@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { useDatabase } from '../../../web/DatabaseProvider';
 import {
   adjustSharedBudgetItem,
   canDeleteBudget,
@@ -59,7 +58,6 @@ export function SharedBudgetManager({
   onCreateHandled,
   onOpenExpense,
 }: SharedBudgetManagerProps) {
-  const database = useDatabase();
   const [budgets, setBudgets] = useState<SharedBudget[]>([]);
   const [unallocated, setUnallocated] = useState<UnallocatedExpense[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -86,8 +84,8 @@ export function SharedBudgetManager({
   const refresh = useCallback(async () => {
     try {
       const [budgetRows, expenses] = await Promise.all([
-        getSharedBudgets(database, 'normal'),
-        getUnallocatedExpenses(database),
+        getSharedBudgets('normal'),
+        getUnallocatedExpenses(),
       ]);
       setBudgets(budgetRows);
       setUnallocated(expenses as UnallocatedExpense[]);
@@ -98,7 +96,7 @@ export function SharedBudgetManager({
     } finally {
       setLoaded(true);
     }
-  }, [database]);
+  }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -107,7 +105,7 @@ export function SharedBudgetManager({
   useEffect(() => {
     if (selectedBudgetId === null) return;
     let active = true;
-    void getSharedBudgetItems(database, selectedBudgetId).then((items) => {
+    void getSharedBudgetItems(selectedBudgetId).then((items) => {
       if (!active) return;
       setSelectedBudgetItems({ budgetId: selectedBudgetId, items });
       setAllocationDrafts(Object.fromEntries(items.map((item) => [item.id, String(item.allocated_amount)])));
@@ -118,7 +116,7 @@ export function SharedBudgetManager({
         setSelectedBudgetItems({ budgetId: selectedBudgetId, items: [] });
       }
     });
-    void canDeleteBudget(database, selectedBudgetId).then((allowed) => {
+    void canDeleteBudget(selectedBudgetId).then((allowed) => {
       if (active) setBudgetDeleteEligibility({ budgetId: selectedBudgetId, allowed });
     }).catch((reason: unknown) => {
       console.error('Unable to check whether the budget can be deleted', reason);
@@ -128,7 +126,7 @@ export function SharedBudgetManager({
       }
     });
     return () => { active = false; };
-  }, [database, selectedBudgetId]);
+  }, [selectedBudgetId]);
 
   const visibleBudgets = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -155,7 +153,7 @@ export function SharedBudgetManager({
     setSaving(true);
     setError(null);
     try {
-      await createNormalBudget(database, {
+      await createNormalBudget({
         name,
         description,
         startDate,
@@ -183,22 +181,22 @@ export function SharedBudgetManager({
       return;
     }
     try {
-      await adjustSharedBudgetItem(database, item.id, amount, 'Allocation updated');
+      await adjustSharedBudgetItem(item.id, amount, 'Allocation updated');
       setError(null);
       await refresh();
       if (selectedBudgetId !== null) {
-        const items = await getSharedBudgetItems(database, selectedBudgetId);
+        const items = await getSharedBudgetItems(selectedBudgetId);
         setSelectedBudgetItems({ budgetId: selectedBudgetId, items });
       }
     } catch (reason) {
       if (reason instanceof Error && reason.message.includes('below current spending')
         && window.confirm(`${reason.message}\n\nDo you want to confirm this allocation reduction?`)) {
         try {
-          await adjustSharedBudgetItem(database, item.id, amount, 'Confirmed allocation reduction', true);
+          await adjustSharedBudgetItem(item.id, amount, 'Confirmed allocation reduction', true);
           setError(null);
           await refresh();
           if (selectedBudgetId !== null) {
-            const items = await getSharedBudgetItems(database, selectedBudgetId);
+            const items = await getSharedBudgetItems(selectedBudgetId);
             setSelectedBudgetItems({ budgetId: selectedBudgetId, items });
           }
           return;
@@ -216,7 +214,6 @@ export function SharedBudgetManager({
   const changeStatus = async (budget: SharedBudget, closed: boolean) => {
     try {
       await setSharedBudgetClosed(
-        database,
         budget.id,
         closed,
         closed ? 'Closed after reviewing actual spending and unallocated expenses' : 'Budget reopened',
@@ -239,7 +236,7 @@ export function SharedBudgetManager({
 
     setError(null);
     try {
-      await deleteBudgetById(database, selectedBudget.id);
+      await deleteBudgetById(selectedBudget.id);
       closeBudgetDetails();
       await refresh();
     } catch (reason) {

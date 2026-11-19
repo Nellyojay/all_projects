@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useDatabase } from '../../web/DatabaseProvider';
 import { UpcomingEventRow } from '../../components/calendar/UpcomingEventRow';
 import { RecordComposer } from '../../components/records/RecordComposer';
 import { ScreenHeader, SectionTitle } from '../../components/shared/ScreenHeader';
@@ -13,6 +12,7 @@ import {
   type RecordDraft,
   type RecordKind,
 } from '../../services/database';
+import { eventsApi, listsApi } from '../../../../api/records.api';
 
 const dateKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -20,7 +20,6 @@ const dateKey = (date: Date) =>
 export default function CalendarScreen() {
   const location = useLocation();
   const navigate = useNavigate();
-  const database = useDatabase();
   const [composer, setComposer] = useState<RecordKind | null>(null);
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [editingDraft, setEditingDraft] = useState<RecordDraft | null>(null);
@@ -34,14 +33,18 @@ export default function CalendarScreen() {
   }, [monthOffset]);
 
   const refresh = useCallback(async () => {
-    const rows = await database.getAllAsync<EventRecord>(
-      `SELECT events.*,
-        (SELECT COUNT(*) FROM lists WHERE lists.event_id = events.id AND lists.budget_enabled = 1) AS budget_count
-       FROM events
-       ORDER BY date, id`,
-    );
+    const [eventRows, listRows] = await Promise.all([eventsApi.list(), listsApi.list()]);
+    const budgetCountByEvent = new Map<number, number>();
+    for (const list of listRows) {
+      if (list.budget_enabled && list.event_id !== null) {
+        budgetCountByEvent.set(list.event_id, (budgetCountByEvent.get(list.event_id) ?? 0) + 1);
+      }
+    }
+    const rows: EventRecord[] = eventRows
+      .sort((left, right) => left.date.localeCompare(right.date) || left.id - right.id)
+      .map((event) => ({ ...event, budget_count: budgetCountByEvent.get(event.id) ?? 0 }));
     setEvents(rows);
-  }, [database]);
+  }, []);
   useEffect(() => {
     void refresh().catch((error: unknown) => {
       console.error('Unable to load calendar', error);
@@ -75,7 +78,7 @@ export default function CalendarScreen() {
   };
   const remove = (event: EventRecord) => {
     if (!window.confirm(`Delete event?\n\nRemove “${event.title}”?`)) return;
-    void deleteRecord(database, 'events', event.id).then(refresh).catch((error: unknown) => {
+    void deleteRecord('events', event.id).then(refresh).catch((error: unknown) => {
       console.error('Unable to delete event', error);
       window.alert('Could not delete\n\nPlease try again.');
     });

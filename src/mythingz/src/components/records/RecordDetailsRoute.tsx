@@ -2,16 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { RecordComposer } from './RecordComposer';
 import { RecordDetailsModal, type SelectedRecord } from './RecordDetailsModal';
-import { useDatabase } from '../../web/DatabaseProvider';
 import {
   saveRecord,
-  type EventRecord,
-  type ListRecord,
-  type NoteRecord,
   type RecordDraft,
   type RecordKind,
-  type TaskRecord,
 } from '../../services/database';
+import { getEventRecord, getListRecord, getNoteRecord, getTaskRecord } from '../../services/record_queries';
 
 type DetailKind = SelectedRecord['kind'];
 type RecordLoadState = {
@@ -27,7 +23,6 @@ function isDetailKind(kind: string | undefined): kind is DetailKind {
 export default function RecordDetailsRoute() {
   const { kind: rawKind, id: rawId } = useParams();
   const navigate = useNavigate();
-  const database = useDatabase();
   const recordKey = `${rawKind ?? ''}:${rawId ?? ''}`;
   const [loadState, setLoadState] = useState<RecordLoadState | null>(null);
   const [editing, setEditing] = useState<{ kind: RecordKind; draft: RecordDraft } | null>(null);
@@ -43,46 +38,28 @@ export default function RecordDetailsRoute() {
 
     switch (rawKind) {
       case 'event': {
-        const record = await database.getFirstAsync<EventRecord>(
-          `SELECT events.*,
-            (SELECT COUNT(*) FROM lists WHERE lists.event_id = events.id AND lists.budget_enabled = 1) AS budget_count
-           FROM events
-           WHERE events.id = ?`,
-          id,
-        );
+        const record = await getEventRecord(id);
         if (record) return { kind: 'event', record };
         break;
       }
       case 'list': {
-        const record = await database.getFirstAsync<ListRecord>(
-          `SELECT lists.*, events.title AS event_title
-           FROM lists
-           LEFT JOIN events ON events.id = lists.event_id
-           WHERE lists.id = ?`,
-          id,
-        );
+        const record = await getListRecord(id);
         if (record) return { kind: 'list', record };
         break;
       }
       case 'note': {
-        const record = await database.getFirstAsync<NoteRecord>(
-          'SELECT * FROM notes WHERE id = ?',
-          id,
-        );
+        const record = await getNoteRecord(id);
         if (record) return { kind: 'note', record };
         break;
       }
       case 'task': {
-        const record = await database.getFirstAsync<TaskRecord>(
-          'SELECT * FROM tasks WHERE id = ?',
-          id,
-        );
+        const record = await getTaskRecord(id);
         if (record) return { kind: 'task', record };
         break;
       }
     }
     return null;
-  }, [database, rawId, rawKind]);
+  }, [rawId, rawKind]);
 
   useEffect(() => {
     let active = true;

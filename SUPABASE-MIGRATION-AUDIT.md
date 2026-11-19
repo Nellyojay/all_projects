@@ -1,5 +1,7 @@
 # myThings Supabase migration audit
 
+> Runtime note: the architecture and inventory sections below document the legacy design and migration background. The active app now uses Supabase-backed APIs for workspace reads and writes; the temporary sample database/provider and sample backup controls have been removed.
+
 ## Scope and original architecture
 
 The app is a React 19, TypeScript, and Vite project. Before the sample-preview rewrite, its myThings workspace used `sql.js` (SQLite compiled to WebAssembly) and persisted the exported SQLite file in browser IndexedDB. Data was private to the browser origin/profile; it was not synchronized to a server. The workspace is deployed as a static GitHub Pages site.
@@ -106,16 +108,14 @@ GitHub Pages is the deployment target. The workflow must receive the public Vite
 - The first schema migration keeps the known entities and legacy/history rows, preserves integer IDs as `BIGINT`, normalizes list items, uses `NUMERIC` for finance values and `BIGINT` for whole-number budget amounts, and adds owner-scoped composite keys and RLS policies.
 - The migration includes relational constraints/indexes, activity logging, and shared-budget compatibility triggers. Polymorphic record, reminder, and inbox links remain service-validated because they target multiple entity tables.
 - `src/lib/supabase.ts` lazily initializes one typed client from the public Vite URL and publishable key. The frontend supports Supabase email/password sign-up, sign-in, session restoration and sign-out, and gates the workspace on a session.
-- Data transfer is aborted per the owner's request. No import runs, and neither local browser data nor cloud records have been changed by the current workspace shell.
-- Typed, owner-scoped table API modules have been scaffolded in `src/api/` for finance, budgets and records. They use the typed Supabase client and rely on RLS in addition to filtering reads/writes by the current user.
-- The signed-in app renders the original myThings page layouts (home, finances, calendar, organize, search, settings, recurring budgets, account creation, and record details). They use illustrative sample records from an in-memory JavaScript store; edits are temporary and reset when the page reloads.
-- The SQLite engine, IndexedDB persistence layer, schema/migration code, and SQLite package dependencies are removed. A lightweight in-memory sample provider feeds the existing page/service APIs. Existing browser-stored IndexedDB data was not erased or migrated; the app no longer reads it.
-- The existing domain service layer still expresses reads and writes through its SQL-shaped `BrowserDatabase` interface; the active implementation is a small in-memory adapter, not a SQL engine or persistent database.
-- The Settings page can export the current sample rows as JSON and load a valid sample JSON export for the current browser session. It cannot create or restore SQLite backups.
+- Owner-scoped APIs in `src/api/` are used by the finance, budget, records, calendar, organizer, search, and dashboard paths. They rely on RLS and filter reads/writes by the current user.
+- The runtime no longer mounts `DatabaseProvider` or includes the in-memory sample database. Domain services and screens read/write the authenticated user's Supabase rows; list contents are loaded from `list_items`.
+- A missing table during an owned-table read is logged to the console and yields an empty array. Other read errors and write errors remain explicit; writes do not report success when the destination table is unavailable.
+- Settings no longer offers sample-data export or restore controls. There is no automatic import of earlier sample data.
 - `src/types/database.types.ts` currently matches the migration draft but has not been generated from a live database. `npm run db:types` is provided to regenerate it after a local Supabase database is available.
 
 ## Outstanding blockers and safety notes
 
 - **Database execution is not verified.** Docker is unavailable in this environment, so migrations, RLS, triggers and RPC behavior have not been applied or tested against PostgreSQL. Supabase CLI type generation is likewise pending.
-- **No source backup has been supplied.** Data import has been aborted; actual local record counts remain unknown.
+- No one-time import of the former in-memory sample records is included.
 - The static GitHub Pages build needs the public Vite URL and publishable key at build time. No server secret may be added to that workflow.

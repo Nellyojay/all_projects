@@ -10,7 +10,6 @@ import {
   type UniversalSearchModule,
   type UniversalSearchResult,
 } from '../../services/database';
-import { useDatabase } from '../../web/DatabaseProvider';
 
 const filters: UniversalSearchFilter[] = [
   'All',
@@ -23,7 +22,6 @@ const filters: UniversalSearchFilter[] = [
 ];
 
 export default function SearchScreen() {
-  const database = useDatabase();
   const navigate = useNavigate();
   const { openRecordDetails } = useRecordDetailsModal();
   const [query, setQuery] = useState('');
@@ -38,7 +36,7 @@ export default function SearchScreen() {
 
     let active = true;
     const timeout = window.setTimeout(() => {
-      void searchRecords(database, search, filter)
+      void searchRecords(search, filter)
         .then((rows) => {
           if (active) setResults(rows);
         })
@@ -58,7 +56,7 @@ export default function SearchScreen() {
       active = false;
       window.clearTimeout(timeout);
     };
-  }, [database, filter, query]);
+  }, [filter, query]);
 
   const openResult = (result: UniversalSearchResult) => {
     if (result.kind === 'budget' || result.kind === 'list') {

@@ -1,7 +1,7 @@
 import { useCallback, useState, type ReactNode } from 'react';
 import { getTransferById } from '../../../services/database';
 import type { Transaction } from '../../../services/database';
-import { useDatabase } from '../../../web/DatabaseProvider';
+import { accountsApi, transactionsApi } from '../../../../../api/finance.api';
 import { TransactionReceipt } from './TransactionReceipt';
 import { useModalBack } from '../../shared/ModalBackContext';
 import {
@@ -12,7 +12,6 @@ import {
 } from './TransactionReceiptContext';
 
 export function TransactionReceiptProvider({ children }: { children: ReactNode }) {
-  const database = useDatabase();
   const [receipt, setReceipt] = useState<{
     record: ReceiptRecord;
     onChanged?: ReceiptOnChanged;
@@ -26,17 +25,24 @@ export function TransactionReceiptProvider({ children }: { children: ReactNode }
     }
 
     const record = target.kind === 'transfer'
-      ? await getTransferById(database, target.id)
-      : await database.getFirstAsync<Transaction>(
-        `SELECT transactions.*, accounts.name AS account_name
-         FROM transactions LEFT JOIN accounts ON accounts.id = transactions.account_id
-         WHERE transactions.id = ?`,
-        target.id,
-      );
+      ? await getTransferById(target.id)
+      : await (async () => {
+        const [transactions, accounts] = await Promise.all([
+          transactionsApi.list(),
+          accountsApi.list(),
+        ]);
+        const transaction = transactions.find((row) => row.id === target.id);
+        if (!transaction) return null;
+        const account = accounts.find((row) => String(row.id) === transaction.account_id);
+        return {
+          ...transaction,
+          account_name: account?.name ?? null,
+        } satisfies Transaction;
+      })();
     if (!record) throw new Error('This finance record could not be found.');
 
     setReceipt({ record, onChanged });
-  }, [database]);
+  }, []);
 
   return (
     <TransactionReceiptContext.Provider value={openReceipt}>

@@ -7,6 +7,19 @@ export type TableInsert<Name extends TableName> = Database['public']['Tables'][N
 type AnyUpdate = { [Name in TableName]: Database['public']['Tables'][Name]['Update'] }[TableName];
 export type OwnedKey = string | number | Record<string, string | number>;
 
+type SupabaseError = { code?: string; message: string };
+
+function isMissingTableError(error: SupabaseError) {
+  return error.code === '42P01'
+    || error.code === 'PGRST205'
+    || /could not find the table .*schema cache/i.test(error.message)
+    || /relation .* does not exist/i.test(error.message);
+}
+
+function logTableError(operation: string, table: string, error: SupabaseError) {
+  console.error(`Supabase ${operation} failed for ${table}:`, error);
+}
+
 function getKeyEntries(keyColumns: readonly string[], key: OwnedKey) {
   const entries = typeof key === 'object'
     ? Object.entries(key)
@@ -27,7 +40,10 @@ async function requireProfileId() {
     .select('id')
     .eq('auth_id', data.user.id)
     .single();
-  if (profileError) throw new Error(`Could not load the current user profile: ${profileError.message}`);
+  if (profileError) {
+    if (isMissingTableError(profileError)) logTableError('read', 'profiles', profileError);
+    throw new Error(`Could not load the current user profile: ${profileError.message}`);
+  }
   if (!profile || typeof profile.id !== 'string') {
     throw new Error('The current user profile has an invalid ID.');
   }
@@ -40,7 +56,13 @@ export async function listOwnedRows<Name extends TableName>(table: Name): Promis
     .from(table as TableName)
     .select('*')
     .eq('user_id' as never, userId as never);
-  if (error) return [];
+  if (error) {
+    if (isMissingTableError(error)) {
+      logTableError('read', table, error);
+      return [];
+    }
+    throw new Error(`Could not load ${table} records: ${error.message}`);
+  }
   return (data ?? []) as unknown as TableRow<Name>[];
 }
 
@@ -55,7 +77,10 @@ export async function createOwnedRow<Name extends TableName>(
     .insert(row as never)
     .select('*')
     .single();
-  if (error) throw new Error(`Could not create ${table} record: ${error.message}`);
+  if (error) {
+    if (isMissingTableError(error)) logTableError('create', table, error);
+    throw new Error(`Could not create ${table} record: ${error.message}`);
+  }
   return data as unknown as TableRow<Name>;
 }
 
@@ -72,7 +97,10 @@ export async function updateOwnedRow<Name extends TableName>(
     .eq('user_id' as never, userId as never);
   for (const [column, value] of getKeyEntries(keyColumns, key)) query = query.eq(column as never, value as never);
   const { data, error } = await query.select('user_id');
-  if (error) throw new Error(`Could not update ${table} record: ${error.message}`);
+  if (error) {
+    if (isMissingTableError(error)) logTableError('update', table, error);
+    throw new Error(`Could not update ${table} record: ${error.message}`);
+  }
   return (data?.length ?? 0) > 0;
 }
 
@@ -88,7 +116,10 @@ export async function deleteOwnedRow(
     .eq('user_id' as never, userId as never);
   for (const [column, value] of getKeyEntries(keyColumns, key)) query = query.eq(column as never, value as never);
   const { data, error } = await query.select('user_id');
-  if (error) throw new Error(`Could not delete ${table} record: ${error.message}`);
+  if (error) {
+    if (isMissingTableError(error)) logTableError('delete', table, error);
+    throw new Error(`Could not delete ${table} record: ${error.message}`);
+  }
   return (data?.length ?? 0) > 0;
 }
 

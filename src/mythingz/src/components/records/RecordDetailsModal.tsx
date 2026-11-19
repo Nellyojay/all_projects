@@ -1,5 +1,4 @@
 import { useCallback, useState } from 'react';
-import { useDatabase } from '../../web/DatabaseProvider';
 import {
   deleteRecord,
   toggleTask,
@@ -95,7 +94,6 @@ export function RecordDetailsModal({
   onEdit,
   closeOnEdit = true,
 }: Props) {
-  const database = useDatabase();
   const [checkedList, setCheckedList] = useState<ListRecord | null>(null);
 
   const close = useCallback(() => {
@@ -106,7 +104,7 @@ export function RecordDetailsModal({
   const confirmDelete = () => {
     if (!selected) return;
     if (!window.confirm(`Delete ${recordLabels[selected.kind].toLowerCase()}?\n\n“${selected.record.title}” will be permanently removed.`)) return;
-    void deleteRecord(database, recordTables[selected.kind], selected.record.id)
+    void deleteRecord(recordTables[selected.kind], selected.record.id)
       .then(close)
       .catch((error: unknown) => {
         console.error('Unable to delete record', error);
@@ -117,7 +115,7 @@ export function RecordDetailsModal({
   const toggleTaskStatus = async () => {
     if (!selected || selected.kind !== 'task') return;
     try {
-      await toggleTask(database, selected.record.id, Boolean(selected.record.completed));
+      await toggleTask(selected.record.id, Boolean(selected.record.completed));
       await onChanged();
       close();
     } catch (error) {

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { useDatabase } from '../../web/DatabaseProvider';
 import { RecordComposer } from './RecordComposer';
 import { RecordDetailsModal, type SelectedRecord } from './RecordDetailsModal';
 import { DetailsModal } from '../shared/DetailsModal';
@@ -8,12 +7,12 @@ import { RecordDetailsModalContext } from './RecordDetailsModalContext';
 import { saveRecord } from '../../services/database';
 import type { RecordDraft, RecordKind } from '../../services/database';
 import { useModalBack } from '../shared/ModalBackContext';
+import { getEventRecord, getListRecord, getNoteRecord, getTaskRecord } from '../../services/record_queries';
 
 type DetailKind = SelectedRecord['kind'];
 type Target = { kind: DetailKind; id: number };
 
 export function RecordDetailsModalProvider({ children }: { children: ReactNode }) {
-  const database = useDatabase();
   const [target, setTarget] = useState<Target | null>(null);
   const [record, setRecord] = useState<SelectedRecord | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -23,39 +22,23 @@ export function RecordDetailsModalProvider({ children }: { children: ReactNode }
     const { kind, id } = selectedTarget;
     switch (kind) {
       case 'event': {
-        const row = await database.getFirstAsync<Extract<SelectedRecord, { kind: 'event' }>['record']>(
-          `SELECT events.*,
-            (SELECT COUNT(*) FROM lists WHERE lists.event_id = events.id AND lists.budget_enabled = 1) AS budget_count
-           FROM events WHERE events.id = ?`,
-          id,
-        );
+        const row = await getEventRecord(id);
         return row ? { kind, record: row } : null;
       }
       case 'list': {
-        const row = await database.getFirstAsync<Extract<SelectedRecord, { kind: 'list' }>['record']>(
-          `SELECT lists.*, events.title AS event_title
-           FROM lists LEFT JOIN events ON events.id = lists.event_id
-           WHERE lists.id = ?`,
-          id,
-        );
+        const row = await getListRecord(id);
         return row ? { kind, record: row } : null;
       }
       case 'note': {
-        const row = await database.getFirstAsync<Extract<SelectedRecord, { kind: 'note' }>['record']>(
-          'SELECT * FROM notes WHERE id = ?',
-          id,
-        );
+        const row = await getNoteRecord(id);
         return row ? { kind, record: row } : null;
       }
       case 'task': {
-        const row = await database.getFirstAsync<Extract<SelectedRecord, { kind: 'task' }>['record']>(
-          'SELECT * FROM tasks WHERE id = ?',
-          id,
-        );
+        const row = await getTaskRecord(id);
         return row ? { kind, record: row } : null;
       }
     }
-  }, [database]);
+  }, []);
 
   const refreshRecord = useCallback(async () => {
     if (!target) return;

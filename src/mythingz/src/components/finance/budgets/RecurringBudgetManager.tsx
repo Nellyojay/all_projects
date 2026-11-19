@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useDatabase } from '../../../web/DatabaseProvider';
 import {
   adjustBudgetPeriodItem,
   closeBudgetPeriod,
@@ -36,7 +35,6 @@ import { UnallocatedExpenses } from './recurringBudgets/UnallocatedExpenses';
 type UnallocatedExpense = Transaction & { unallocated_amount: number };
 
 export function RecurringBudgetManager({ dashboard = false }: { dashboard?: boolean }) {
-  const database = useDatabase();
   const openTransactionReceipt = useTransactionReceipt();
   const [templates, setTemplates] = useState<TemplateWithItems[]>([]);
   const [periods, setPeriods] = useState<BudgetSummary[]>([]);
@@ -54,12 +52,12 @@ export function RecurringBudgetManager({ dashboard = false }: { dashboard?: bool
   const [showAllUnallocated, setShowAllUnallocated] = useState(false);
 
   const refresh = useCallback(async () => {
-    await generateBudgetPeriods(database);
+    await generateBudgetPeriods();
     const [nextTemplates, nextPeriods, expenses, nextAlerts] = await Promise.all([
-      getBudgetTemplates(database, true),
-      getBudgetPeriodSummaries(database),
-      getUnallocatedExpenses(database),
-      getBudgetAlerts(database),
+      getBudgetTemplates(true),
+      getBudgetPeriodSummaries(),
+      getUnallocatedExpenses(),
+      getBudgetAlerts(),
     ]);
     setTemplates(nextTemplates);
     setPeriods(nextPeriods);
@@ -75,7 +73,7 @@ export function RecurringBudgetManager({ dashboard = false }: { dashboard?: bool
         ?? null,
     );
     setLoading(false);
-  }, [database]);
+  }, []);
 
   useEffect(() => {
     void refresh().catch((reason: unknown) => {
@@ -92,14 +90,14 @@ export function RecurringBudgetManager({ dashboard = false }: { dashboard?: bool
       return;
     }
     let active = true;
-    void getBudgetPeriodItems(database, selectedPeriodId)
+    void getBudgetPeriodItems(selectedPeriodId)
       .then((items) => { if (active) setPeriodItems(items); })
       .catch((reason: unknown) => {
         console.error('Unable to load recurring budget period items', reason);
         if (active) setError('Budget period details could not be loaded.');
       });
     return () => { active = false; };
-  }, [database, selectedPeriodId]);
+  }, [selectedPeriodId]);
 
   const currentPeriods = useMemo(
     () => periods.filter((period) => period.status === 'active' || period.status === 'upcoming'),
@@ -146,7 +144,7 @@ export function RecurringBudgetManager({ dashboard = false }: { dashboard?: bool
     setSaving(true);
     setError(null);
     try {
-      await saveBudgetTemplate(database, {
+      await saveBudgetTemplate({
         ...draft,
         endDate: draft.endDate || null,
       });
@@ -165,7 +163,7 @@ export function RecurringBudgetManager({ dashboard = false }: { dashboard?: bool
     state: { active?: boolean; archived?: boolean },
   ) => {
     try {
-      await setBudgetTemplateState(database, template.id, state);
+      await setBudgetTemplateState(template.id, state);
       await refresh();
     } catch (reason) {
       console.error('Unable to update recurring budget', reason);
@@ -176,7 +174,7 @@ export function RecurringBudgetManager({ dashboard = false }: { dashboard?: bool
   const removeTemplate = async (template: TemplateWithItems) => {
     if (!window.confirm(`Delete “${template.name}”?\n\nTemplates with period history can only be archived.`)) return;
     try {
-      await deleteBudgetTemplate(database, template.id);
+      await deleteBudgetTemplate(template.id);
       await refresh();
     } catch (reason) {
       console.error('Unable to delete recurring budget', reason);
@@ -191,7 +189,7 @@ export function RecurringBudgetManager({ dashboard = false }: { dashboard?: bool
       : '';
     if (!window.confirm(`Close ${selectedPeriod.template_name} (${selectedPeriod.start_date}–${selectedPeriod.end_date})?${warning}\n\nClosed results are preserved. You can reopen this period later with an audit entry.`)) return;
     try {
-      await closeBudgetPeriod(database, selectedPeriod.id);
+      await closeBudgetPeriod(selectedPeriod.id);
       await refresh();
     } catch (reason) {
       console.error('Unable to close budget period', reason);
@@ -202,7 +200,7 @@ export function RecurringBudgetManager({ dashboard = false }: { dashboard?: bool
   const reopenPeriod = async () => {
     if (!selectedPeriod || !window.confirm('Reopen this period for corrections? An audit entry will be recorded.')) return;
     try {
-      await reopenBudgetPeriod(database, selectedPeriod.id);
+      await reopenBudgetPeriod(selectedPeriod.id);
       await refresh();
     } catch (reason) {
       console.error('Unable to reopen budget period', reason);
@@ -217,12 +215,12 @@ export function RecurringBudgetManager({ dashboard = false }: { dashboard?: bool
     const reason = window.prompt('Reason for this budget adjustment (optional)', '') ?? '';
     try {
       try {
-        await adjustBudgetPeriodItem(database, item.id, amount, reason);
+        await adjustBudgetPeriodItem(item.id, amount, reason);
       } catch (reasonError) {
         if (!(reasonError instanceof Error)
           || !reasonError.message.includes('below current spending')
           || !window.confirm(`${reasonError.message}\n\nReduce the allocation anyway?`)) throw reasonError;
-        await adjustBudgetPeriodItem(database, item.id, amount, reason, true);
+        await adjustBudgetPeriodItem(item.id, amount, reason, true);
       }
       await refresh();
     } catch (reasonError) {

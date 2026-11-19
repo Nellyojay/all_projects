@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Dispatch, MouseEvent, SetStateAction } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useDatabase } from '../../web/DatabaseProvider';
-import type { BrowserDatabase } from '../../web/database';
 import {
   deleteRecord,
   reopenBudgetList,
   toggleListItem,
 } from '../../services/database';
 import type { EventRecord, ListItem, ListRecord } from '../../services/database';
+import { eventsApi, listItemsApi, listsApi } from '../../../../api/records.api';
 import '../shared/theme.css';
 import { useRecordDetailsModal } from '../records/RecordDetailsModalContext';
 import { ItemizedItemsEditor } from './itemizedItems';
@@ -17,22 +16,28 @@ import './list.css';
 
 type ListRecordOptions = { budgetOnly?: boolean; eventId?: number };
 
-export function loadLists(database: BrowserDatabase, options: ListRecordOptions = {}) {
-  const conditions = [
-    options.budgetOnly ? 'lists.budget_enabled = 1' : '',
-    options.eventId === undefined ? '' : 'lists.event_id = ?',
-  ].filter(Boolean);
-  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-  const params = options.eventId === undefined ? [] : [options.eventId];
-
-  return database.getAllAsync<ListRecord>(
-    `SELECT lists.*, events.title AS event_title
-     FROM lists
-     LEFT JOIN events ON events.id = lists.event_id
-     ${where}
-     ORDER BY lists.id DESC`,
-    ...params,
-  );
+export async function loadLists(options: ListRecordOptions = {}): Promise<ListRecord[]> {
+  const [lists, allItems, events] = await Promise.all([
+    listsApi.list(),
+    listItemsApi.list(),
+    eventsApi.list(),
+  ]);
+  return lists
+    .filter((list) =>
+      (!options.budgetOnly || list.budget_enabled)
+      && (options.eventId === undefined || list.event_id === options.eventId),
+    )
+    .sort((left, right) => right.id - left.id)
+    .map((list) => ({
+      ...list,
+      items: JSON.stringify(allItems
+        .filter((item) => item.list_id === list.id)
+        .sort((left, right) => left.position - right.position)
+        .map(({ text, done, price, quantity }) => ({ text, done, price, quantity }))),
+      budget_enabled: Number(list.budget_enabled),
+      finalized: Number(list.finalized),
+      event_title: events.find((event) => event.id === list.event_id)?.title ?? null,
+    }));
 }
 
 function listItems(list: ListRecord): ListItem[] {
@@ -97,13 +102,12 @@ function OrganizerListCard({
   onChanged: () => Promise<void>;
 }) {
   const { openRecordDetails } = useRecordDetailsModal();
-  const database = useDatabase();
   const items = listItems(list);
 
   const remove = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     if (!window.confirm(`Delete item?\n\nRemove “${list.title}”?`)) return;
-    void deleteRecord(database, 'lists', list.id).then(onChanged).catch((error: unknown) => {
+    void deleteRecord('lists', list.id).then(onChanged).catch((error: unknown) => {
       console.error('Unable to delete list', error);
       window.alert('Could not delete\n\nPlease try again.');
     });
@@ -212,7 +216,6 @@ export function ListDetails({
   onChanged: () => Promise<void>;
   onListChanged: (list: ListRecord) => void;
 }) {
-  const database = useDatabase();
   const location = useLocation();
   const navigate = useNavigate();
   const list = initialList;
@@ -228,7 +231,7 @@ export function ListDetails({
       index === itemIndex ? { ...item, done: !item.done } : item,
     );
     try {
-      await toggleListItem(database, list, itemIndex);
+      await toggleListItem(list, itemIndex);
       updateList({ ...list, items: JSON.stringify(updatedItems) });
       await onChanged();
     } catch (error) {
@@ -239,7 +242,7 @@ export function ListDetails({
 
   const reopen = () => {
     if (!window.confirm('Reopen this legacy finalized list?\n\nIts linked expense will be removed so you can edit the plan.')) return;
-    void reopenBudgetList(database, list.id)
+    void reopenBudgetList(list.id)
       .then(async () => {
         updateList({ ...list, finalized: 0, final_transaction_id: null });
         await onChanged();
@@ -353,7 +356,6 @@ export function EventBudgetPanel({
   expanded: boolean;
   formatAmount: (amount: number) => string;
 }) {
-  const database = useDatabase();
   const { openRecordDetails } = useRecordDetailsModal();
   const [budgets, setBudgets] = useState<ListRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -365,7 +367,7 @@ export function EventBudgetPanel({
     let active = true;
     setLoading(true);
     setLoadError(false);
-    void loadLists(database, { budgetOnly: true, eventId })
+    void loadLists({ budgetOnly: true, eventId })
       .then((rows) => { if (active) setBudgets(rows); })
       .catch((error: unknown) => {
         console.error('Unable to load budgets for event', error);
@@ -376,7 +378,7 @@ export function EventBudgetPanel({
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [database, eventId, expanded]);
+  }, [eventId, expanded]);
 
   if (!expanded) return null;
   return (

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useDatabase } from '../../../../web/DatabaseProvider';
+import { budgetsApi } from '../../../../../../api/budgets.api';
 import {
   getBudgetPeriodTransactions,
   type BudgetPeriodItem,
@@ -30,18 +30,16 @@ function BudgetPeriodItemDetails({
   onAdjust: () => void;
   onOpenExpense: (id: number) => void;
 }) {
-  const database = useDatabase();
   const [transactions, setTransactions] = useState<(Transaction & { allocated_amount: number })[]>([]);
   const [adjustments, setAdjustments] = useState<BudgetAdjustment[]>([]);
 
   useEffect(() => {
     let active = true;
     void Promise.all([
-      getBudgetPeriodTransactions(database, item.id),
-      database.getAllAsync<BudgetAdjustment>(
-        'SELECT * FROM budget_adjustments WHERE period_item_id = ? ORDER BY id DESC',
-        item.id,
-      ),
+      getBudgetPeriodTransactions(item.id),
+      budgetsApi.budgetAdjustments.list().then((rows) =>
+        rows.filter((row) => row.period_item_id === item.id)
+          .sort((left, right) => right.id - left.id) as BudgetAdjustment[]),
     ]).then(([transactionRows, adjustmentRows]) => {
       if (!active) return;
       setTransactions(transactionRows);
@@ -50,7 +48,7 @@ function BudgetPeriodItemDetails({
       console.error('Unable to load budget item history', reason);
     });
     return () => { active = false; };
-  }, [database, item.id]);
+  }, [item.id]);
 
   const percentage = item.final_amount > 0
     ? Math.round(item.actual_amount / item.final_amount * 100)

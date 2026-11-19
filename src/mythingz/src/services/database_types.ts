@@ -186,6 +186,7 @@ export type Transaction = {
   title: string;
   category: string;
   amount: number;
+  date: string;
   created_at: string;
   notes: string;
   loan_id: number | null;
@@ -216,6 +217,7 @@ export type Transfer = {
   from_account_id: string;
   to_account_id: string;
   amount: number;
+  date: string;
   created_at: string;
   notes: string;
   charges: { title: string; amount: number }[];

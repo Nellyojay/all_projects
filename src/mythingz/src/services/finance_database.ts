@@ -1,4 +1,3 @@
-import type { BrowserDatabase } from '../web/database';
 import { EXPENSE_CATEGORIES } from '../constants/finance';
 import {
   currentTimestamp,
@@ -10,39 +9,23 @@ import {
 } from './database_types';
 import { budgetCoversDate, today } from './budget_database';
 import { budgetsApi } from '../../../api/budgets.api';
-import { accountsApi, transactionsApi } from '../../../api/finance.api';
+import { accountsApi, transactionsApi, transfersApi } from '../../../api/finance.api';
 
-// Fetch account balances using transactions and transfers through today.
-export async function getAccounts(database: BrowserDatabase) {
-  const accounts = await database.getAllAsync<Omit<Account, 'id'> & { id: number }>(
-    `SELECT accounts.*,
-        COALESCE(transaction_balances.amount, 0) + COALESCE(transfer_balances.amount, 0) AS current_balance,
-        accounts.opening_balance
-          + COALESCE(transaction_balances.amount, 0)
-          + COALESCE(transfer_balances.amount, 0) AS balance
-     FROM accounts
-     LEFT JOIN (
-       SELECT account_id,
-         SUM(CASE WHEN kind = 'income' THEN amount ELSE -amount END) AS amount
-       FROM transactions
-       WHERE date <= ?
-       GROUP BY account_id
-     ) AS transaction_balances ON transaction_balances.account_id = accounts.id
-     LEFT JOIN (
-       SELECT account_id, SUM(amount) AS amount
-       FROM (
-         SELECT to_account_id AS account_id, amount FROM transfers WHERE date <= ?
-         UNION ALL
-         SELECT from_account_id AS account_id, -amount AS amount FROM transfers WHERE date <= ?
-       ) AS transfer_movements
-       GROUP BY account_id
-     ) AS transfer_balances ON transfer_balances.account_id = accounts.id
-     ORDER BY is_default DESC, name COLLATE NOCASE`,
-    today(),
-    today(),
-    today(),
-  );
-  return accounts.map((account) => ({ ...account, id: String(account.id) }));
+// Load account balances from Supabase's transaction-maintained balance column.
+export async function getAccounts() {
+  const rows = await accountsApi.list();
+  return rows
+    .map((account): Account => ({
+      id: String(account.id),
+      name: account.name,
+      type: account.type,
+      opening_balance: account.opening_balance,
+      current_balance: account.current_balance,
+      is_default: Number(account.is_default),
+      balance: account.opening_balance + account.current_balance,
+    }))
+    .sort((left, right) =>
+      right.is_default - left.is_default || left.name.localeCompare(right.name));
 }
 
 export async function createAccount(
@@ -62,8 +45,8 @@ export async function createAccount(
   });
 }
 
-export async function ensureAccountBalance(database: BrowserDatabase, accountId: string, amount: number) {
-  const accounts = await getAccounts(database);
+export async function ensureAccountBalance(accountId: string, amount: number) {
+  const accounts = await getAccounts();
   const account = accounts.find((item) => item.id === String(accountId));
   if (!account) throw new Error('Choose a valid account.');
   if (account.balance < amount) {
@@ -241,62 +224,62 @@ export async function saveExpense(draft: ExpenseDraft) {
   }
 }
 
-type TransferRow = Omit<Transfer, 'charges' | 'from_account_id' | 'to_account_id'> & {
-  from_account_id: number;
-  to_account_id: number;
-};
+type TransferRow = Omit<Transfer, 'charges'>;
 
-async function attachTransferCharges(database: BrowserDatabase, transfers: TransferRow[]) {
+async function attachTransferCharges(transfers: TransferRow[]) {
   if (!transfers.length) return [];
-  const transferIds = transfers.map((transfer) => transfer.id);
-  const placeholders = transferIds.map(() => '?').join(', ');
-  const charges = await database.getAllAsync<{
-    transfer_id: number;
-    title: string;
-    amount: number;
-  }>(
-    `SELECT transfer_id, title, amount
-     FROM transactions
-     WHERE transfer_id IN (${placeholders}) AND category = 'Fees and charges'
-     ORDER BY id`,
-    ...transferIds,
-  );
+  const transferIds = new Set(transfers.map((transfer) => transfer.id));
+  const charges = (await transactionsApi.list())
+    .filter((transaction) =>
+      transaction.transfer_id !== null
+      && transferIds.has(transaction.transfer_id)
+      && transaction.category === 'Fees and charges',
+    )
+    .sort((left, right) => left.id - right.id);
   const chargesByTransfer = new Map<number, { title: string; amount: number }[]>();
   for (const charge of charges) {
+    if (charge.transfer_id === null) continue;
     const transferCharges = chargesByTransfer.get(charge.transfer_id) ?? [];
     transferCharges.push({ title: charge.title, amount: charge.amount });
     chargesByTransfer.set(charge.transfer_id, transferCharges);
   }
   return transfers.map((transfer) => ({
     ...transfer,
-    from_account_id: String(transfer.from_account_id),
-    to_account_id: String(transfer.to_account_id),
     charges: chargesByTransfer.get(transfer.id) ?? [],
   }));
 }
 
-export async function getTransfers(database: BrowserDatabase) {
-  const transfers = await database.getAllAsync<TransferRow>(
-    `SELECT transfers.*, source.name AS from_account_name, destination.name AS to_account_name
-     FROM transfers
-     JOIN accounts AS source ON source.id = transfers.from_account_id
-     JOIN accounts AS destination ON destination.id = transfers.to_account_id
-     ORDER BY transfers.date DESC, transfers.id DESC LIMIT 50`,
-  );
-  return attachTransferCharges(database, transfers);
+export async function getTransfers() {
+  const [transferRows, accountRows] = await Promise.all([
+    transfersApi.list(),
+    accountsApi.list(),
+  ]);
+  const accountsById = new Map(accountRows.map((account) => [String(account.id), account.name]));
+  const transfers = transferRows
+    .map((transfer): TransferRow => ({
+      ...transfer,
+      from_account_name: accountsById.get(transfer.from_account_id) ?? '',
+      to_account_name: accountsById.get(transfer.to_account_id) ?? '',
+    }))
+    .sort((left, right) => right.date.localeCompare(left.date) || right.id - left.id)
+    .slice(0, 50);
+  return attachTransferCharges(transfers);
 }
 
-export async function getTransferById(database: BrowserDatabase, id: number) {
-  const transfer = await database.getFirstAsync<TransferRow>(
-    `SELECT transfers.*, source.name AS from_account_name, destination.name AS to_account_name
-     FROM transfers
-     JOIN accounts AS source ON source.id = transfers.from_account_id
-     JOIN accounts AS destination ON destination.id = transfers.to_account_id
-     WHERE transfers.id = ?`,
-    id,
-  );
-  if (!transfer) return null;
-  return (await attachTransferCharges(database, [transfer]))[0];
+export async function getTransferById(id: number) {
+  const [transferRows, accountRows] = await Promise.all([
+    transfersApi.list(),
+    accountsApi.list(),
+  ]);
+  const row = transferRows.find((transfer) => transfer.id === id);
+  if (!row) return null;
+  const accountsById = new Map(accountRows.map((account) => [String(account.id), account.name]));
+  const transfer: TransferRow = {
+    ...row,
+    from_account_name: accountsById.get(row.from_account_id) ?? '',
+    to_account_name: accountsById.get(row.to_account_id) ?? '',
+  };
+  return (await attachTransferCharges([transfer]))[0];
 }
 
 

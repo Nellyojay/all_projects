@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { useDatabase } from '../../web/DatabaseProvider';
 import { RecordComposer } from '../../components/records/RecordComposer';
 import { ScreenHeader, SectionTitle } from '../../components/shared/ScreenHeader';
 import '../../components/shared/theme.css';
@@ -35,6 +34,7 @@ import {
 import { NoteCard } from '../../components/notes/note';
 import { useRecordDetailsModal } from '../../components/records/RecordDetailsModalContext';
 import { loadLists, OrganizerLists } from '../../components/lists/list';
+import { notesApi, tasksApi } from '../../../../api/records.api';
 import './organize.css';
 
 export type Section = 'Notes' | 'Tasks' | 'Lists' | 'Inbox' | 'Reminders' | 'Activity';
@@ -63,7 +63,6 @@ export default function OrganizeScreen() {
   const navigate = useNavigate();
   const { openRecordDetails } = useRecordDetailsModal();
   const [searchParams, setSearchParams] = useSearchParams();
-  const database = useDatabase();
   const createBudgetList = searchParams.get('createBudgetList');
   const openBudgetListId = searchParams.get('openBudgetListId');
   const pendingBudgetListId = useRef<string | null>(null);
@@ -96,12 +95,14 @@ export default function OrganizeScreen() {
 
   const refresh = useCallback(async () => {
     const [noteRows, taskRows, listRows, inboxRows, reminderRows, activityRows] = await Promise.all([
-      database.getAllAsync<NoteRecord>('SELECT * FROM notes ORDER BY updated_at DESC'),
-      database.getAllAsync<TaskRecord>('SELECT * FROM tasks ORDER BY completed, date, id'),
-      loadLists(database),
-      getInboxItems(database),
-      getReminders(database),
-      getRecentActivity(database, 100),
+      notesApi.list().then((rows) => rows.sort((a, b) => b.updated_at.localeCompare(a.updated_at))),
+      tasksApi.list().then((rows) => rows
+        .map((task) => ({ ...task, completed: Number(task.completed) }))
+        .sort((a, b) => a.completed - b.completed || a.date.localeCompare(b.date) || a.id - b.id)),
+      loadLists(),
+      getInboxItems(),
+      getReminders(),
+      getRecentActivity(100),
     ]);
     setNotes(noteRows);
     setTasks(taskRows);
@@ -109,12 +110,12 @@ export default function OrganizeScreen() {
     setInboxItems(inboxRows);
     const linkedRecords = await Promise.all(inboxRows.map(async (item) => [
       item.id,
-      await getRelatedRecords(database, { type: 'inbox', id: item.id }),
+      await getRelatedRecords({ type: 'inbox', id: item.id }),
     ] as const));
     setInboxRelatedRecords(Object.fromEntries(linkedRecords));
     setReminders(reminderRows);
     setActivities(activityRows);
-  }, [database]);
+  }, []);
   useEffect(() => {
     void refresh().catch((error: unknown) => {
       console.error('Unable to load organizer', error);
@@ -137,7 +138,7 @@ export default function OrganizeScreen() {
     }
     let active = true;
     const timeout = window.setTimeout(() => {
-      void searchRecords(database, search)
+      void searchRecords(search)
         .then((results) => {
           if (active) setInboxCandidates(results.filter((result) => inboxTarget(result) !== null));
         })
@@ -153,7 +154,7 @@ export default function OrganizeScreen() {
       active = false;
       window.clearTimeout(timeout);
     };
-  }, [database, inboxSearch, section]);
+  }, [inboxSearch, section]);
 
   useEffect(() => {
     if (!createBudgetList) return;
@@ -220,14 +221,14 @@ export default function OrganizeScreen() {
   };
   const remove = (table: 'notes' | 'tasks', id: number, title: string) => {
     if (!window.confirm(`Delete item?\n\nRemove “${title}”?`)) return;
-    void deleteRecord(database, table, id).then(refresh).catch((error: unknown) => {
+    void deleteRecord(table, id).then(refresh).catch((error: unknown) => {
       console.error('Unable to delete organizer item', error);
       window.alert('Could not delete\n\nPlease try again.');
     });
   };
   const toggleDone = async (task: TaskRecord) => {
     try {
-      await toggleTask(database, task.id, Boolean(task.completed));
+      await toggleTask(task.id, Boolean(task.completed));
       await refresh();
     } catch (error) {
       console.error('Unable to update task', error);
@@ -236,7 +237,7 @@ export default function OrganizeScreen() {
   };
   const saveCapture = async () => {
     try {
-      await createInboxItem(database, capture, captureType);
+      await createInboxItem(capture, captureType);
       setCapture('');
       await refresh();
     } catch (error) {
@@ -250,7 +251,7 @@ export default function OrganizeScreen() {
     dueAt?: string,
   ) => {
     try {
-      await convertInboxItem(database, item.id, destination, dueAt);
+      await convertInboxItem(item.id, destination, dueAt);
       setCaptureReminderId(null);
       setCaptureReminderDueAt('');
       await refresh();
@@ -306,7 +307,7 @@ export default function OrganizeScreen() {
     const target = inboxTarget(result);
     if (!target) return;
     try {
-      await linkInboxItem(database, item.id, target);
+      await linkInboxItem(item.id, target);
       setInboxSearch('');
       setInboxCandidates([]);
       setCaptureReminderId(null);
@@ -320,8 +321,8 @@ export default function OrganizeScreen() {
   const removeCapture = async (item: InboxItem, dismiss: boolean) => {
     if (!dismiss && !window.confirm('Delete this captured item?')) return;
     try {
-      if (dismiss) await dismissInboxItem(database, item.id);
-      else await deleteInboxItem(database, item.id);
+      if (dismiss) await dismissInboxItem(item.id);
+      else await deleteInboxItem(item.id);
       await refresh();
     } catch (error) {
       console.error('Unable to remove inbox item', error);
@@ -330,7 +331,7 @@ export default function OrganizeScreen() {
   };
   const saveNewReminder = async () => {
     try {
-      await createReminder(database, {
+      await createReminder({
         title: reminderTitle,
         description: reminderDescription,
         dueAt: reminderDueAt,
@@ -347,7 +348,7 @@ export default function OrganizeScreen() {
   };
   const updateReminder = async (reminder: ReminderRecord, status: 'completed' | 'dismissed') => {
     try {
-      await setReminderStatus(database, reminder.id, status);
+      await setReminderStatus(reminder.id, status);
       await refresh();
     } catch (error) {
       console.error('Unable to update reminder', error);
@@ -357,7 +358,7 @@ export default function OrganizeScreen() {
   const removeReminder = async (reminder: ReminderRecord) => {
     if (!window.confirm(`Delete reminder?\n\nRemove “${reminder.title}”?`)) return;
     try {
-      await deleteReminder(database, reminder.id);
+      await deleteReminder(reminder.id);
       await refresh();
     } catch (error) {
       console.error('Unable to delete reminder', error);

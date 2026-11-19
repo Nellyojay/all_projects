@@ -12,7 +12,6 @@ import { RecordDetailsModalProvider } from './mythingz/src/components/records/Re
 import { CreateAccountPage } from './mythingz/src/components/finance/accounts/account';
 import SettingsScreen from './mythingz/src/app/pages/settings';
 import RecurringBudgetsPage from './mythingz/src/app/pages/RecurringBudgetsPage';
-import { DatabaseProvider } from './mythingz/src/web/DatabaseProvider';
 import { UserDataProvider } from './mythingz/src/web/UserDataProvider';
 import { FinanceDataProvider } from './mythingz/src/web/FinanceDataProvider';
 import { TransactionReceiptProvider } from './mythingz/src/components/finance/transactions/TransactionReceiptProvider';
@@ -33,19 +32,17 @@ function WorkspaceRoute() {
   if (isLoading) return <main className="database-loading" role="status">Checking your Supabase session…</main>;
   if (!user) return <AuthScreen />;
   return (
-    <DatabaseProvider>
-      <UserDataProvider>
-        <FinanceDataProvider>
-          <ModalBackProvider>
-            <TransactionReceiptProvider>
-              <RecordDetailsModalProvider>
-                <WorkspaceLayout />
-              </RecordDetailsModalProvider>
-            </TransactionReceiptProvider>
-          </ModalBackProvider>
-        </FinanceDataProvider>
-      </UserDataProvider>
-    </DatabaseProvider>
+    <UserDataProvider>
+      <FinanceDataProvider>
+        <ModalBackProvider>
+          <TransactionReceiptProvider>
+            <RecordDetailsModalProvider>
+              <WorkspaceLayout />
+            </RecordDetailsModalProvider>
+          </TransactionReceiptProvider>
+        </ModalBackProvider>
+      </FinanceDataProvider>
+    </UserDataProvider>
   );
 }
 
@@ -92,7 +89,7 @@ function WorkspaceLayout() {
         </nav>
         <div className="sidebar-footnote">
           <span className="local-indicator" />
-          Sample data · not saved
+          Supabase workspace
         </div>
       </aside>
 

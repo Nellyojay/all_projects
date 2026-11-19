@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useDatabase } from '../../web/DatabaseProvider';
 import { useRecordDetailsModal } from './RecordDetailsModalContext';
 import {
   createRecordLink,
@@ -36,7 +35,6 @@ export function RelatedRecords({
 }: {
   record: { type: LinkedRecordType; id: number };
 }) {
-  const database = useDatabase();
   const location = useLocation();
   const navigate = useNavigate();
   const { openRecordDetails } = useRecordDetailsModal();
@@ -48,19 +46,19 @@ export function RelatedRecords({
   const [isExpanded, setIsExpanded] = useState(false);
 
   const refresh = async () => {
-    setRelated(await getRelatedRecords(database, record));
+    setRelated(await getRelatedRecords(record));
   };
 
   useEffect(() => {
     let active = true;
-    void getRelatedRecords(database, record)
+    void getRelatedRecords(record)
       .then((rows) => { if (active) setRelated(rows); })
       .catch((reason: unknown) => {
         console.error('Unable to load related records', reason);
         if (active) setError('Related records could not be loaded.');
       });
     return () => { active = false; };
-  }, [database, record.id, record.type]);
+  }, [record.id, record.type]);
 
   useEffect(() => {
     const search = query.trim();
@@ -72,7 +70,7 @@ export function RelatedRecords({
     const timeout = window.setTimeout(() => {
       const target = linkTargets.find((item) => item.type === targetType);
       if (!target) return;
-      void searchRecords(database, search, target.module)
+      void searchRecords(search, target.module)
         .then((results) => {
           if (active) setCandidates(results.filter((result) => isTargetType(result, targetType)));
         })
@@ -85,11 +83,11 @@ export function RelatedRecords({
       active = false;
       window.clearTimeout(timeout);
     };
-  }, [database, query, targetType]);
+  }, [query, targetType]);
 
   const addLink = async (target: UniversalSearchResult) => {
     try {
-      await createRecordLink(database, record, { type: targetType, id: target.id });
+      await createRecordLink(record, { type: targetType, id: target.id });
       setQuery('');
       setCandidates([]);
       setError(null);
@@ -103,7 +101,7 @@ export function RelatedRecords({
   const removeLink = async (linkId: number, title: string) => {
     if (!window.confirm(`Remove link?\n\nUnlink “${title}” from this record?`)) return;
     try {
-      await deleteRecordLink(database, linkId);
+      await deleteRecordLink(linkId);
       await refresh();
     } catch (reason) {
       console.error('Unable to remove record link', reason);

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useDatabase } from '../../web/DatabaseProvider';
 import { ExpenseComposer } from '../../components/finance/transactions/ExpenseComposer';
 import { TransactionReceipt } from '../../components/finance/transactions/TransactionReceipt';
 import { RecordComposer } from '../../components/records/RecordComposer';
@@ -14,7 +13,6 @@ import {
   saveExpense,
   saveRecord,
   type ExpenseDraft,
-  type Account,
   type ActivityRecord,
   type RecordDraft,
   type EventRecord,
@@ -28,9 +26,9 @@ import {
 } from '../../services/database';
 import { NoteCard } from '../../components/notes/note';
 import './index.css';
-import { useMyThingsDb } from '../../services/readAPI';
 import { TransactionComponent } from '../../components/ui/transaction';
 import { useFinanceData } from '../../web/FinanceDataProvider';
+import { getDashboardData } from '../../services/home_database';
 
 const formatMoney = (amount: number) =>
   `UGX ${new Intl.NumberFormat('en-UG', { maximumFractionDigits: 0 }).format(amount)}`;
@@ -65,7 +63,6 @@ export default function HomeScreen() {
   const location = useLocation();
   const navigate = useNavigate();
   const { openRecordDetails } = useRecordDetailsModal();
-  const database = useDatabase();
   const { refresh: refreshFinanceData } = useFinanceData();
   const [composer, setComposer] = useState<RecordKind | null>(null);
   const [expenseComposerOpen, setExpenseComposerOpen] = useState(false);
@@ -95,34 +92,17 @@ export default function HomeScreen() {
   }[]>([]);
   const [completedThisWeek, setCompletedThisWeek] = useState(0);
   const [remainingTasks, setRemainingTasks] = useState(0);
-  const mythingsdb = useMyThingsDb();
-
   const refresh = useCallback(async () => {
     const month = localDateKey().slice(0, 7);
     const today = localDateKey();
-    const [recentTransactions, transactionAccounts] = await Promise.all([
-      mythingsdb.tables.finance.transactions.list<Transaction>({
-        orderBy: ['date', 'id'],
-        direction: 'DESC',
-        limit: 4,
-      }),
-      mythingsdb.tables.finance.accounts.list<{ id: number; name: string }>(),
-    ]);
-    const accountNames = new Map(transactionAccounts.map((account) => [String(account.id), account.name]));
-    const transactions = recentTransactions.map((transaction) => ({
-      ...transaction,
-      account_name: transaction.account_id === null
-        ? null
-        : accountNames.get(String(transaction.account_id)) ?? null,
-    }));
-    const data = await mythingsdb.home.getDashboardData(month, today, transactions);
+    const data = await getDashboardData(month, today);
     setTransactions(data.transactions);
     setTasks(data.tasks);
     setEvents(data.events);
     setNotes(data.notes);
     setMonthlySpent(data.spent);
     setMonthlyIncome(data.income);
-    setAccountBalance(data.accounts.reduce((total, account: Account) => total + account.balance, 0));
+    setAccountBalance(data.accounts.reduce((total, account) => total + account.balance, 0));
     setReminders(data.reminders);
     setActivities(data.activities);
     setLoans(data.loans);
@@ -143,7 +123,7 @@ export default function HomeScreen() {
     });
     setBudgetOverview(budgets);
     setActiveListPlan(budgets.reduce((total, budget) => total + budget.planned, 0));
-  }, [database, mythingsdb]);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -174,7 +154,7 @@ export default function HomeScreen() {
   };
   const removeNote = (_table: 'notes', id: number, title: string) => {
     if (!window.confirm(`Delete note?\n\nRemove “${title}” from your records?`)) return;
-    void deleteRecord(database, 'notes', id).then(refresh).catch((error: unknown) => {
+    void deleteRecord('notes', id).then(refresh).catch((error: unknown) => {
       console.error('Unable to delete note', error);
       window.alert('Could not delete note\n\nPlease try again.');
     });

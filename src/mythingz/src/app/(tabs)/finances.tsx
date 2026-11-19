@@ -67,7 +67,6 @@ export default function FinancesScreen() {
   );
   const hasMoreTransactions = financeTransactions.length > transactionLimit;
   const [selectedTransaction, setSelectedTransaction] = useState<(Transaction | Transfer) | null>(null);
-  console.log("Selleceted transaction", selectedTransaction);
   const [showBalance, setShowBalance] = useState(false);
   const [editingRecord, setEditingRecord] = useState<{ kind: RecordKind; draft: RecordDraft } | null>(null);
   const [createBudgetRequested, setCreateBudgetRequested] = useState(false);

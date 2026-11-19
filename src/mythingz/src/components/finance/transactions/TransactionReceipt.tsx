@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { useDatabase } from '../../../web/DatabaseProvider';
 import {
   getBudgetItemsForExpenseDate,
   getRefundableAmount,
@@ -8,22 +7,15 @@ import {
   saveBudgetRefund,
   saveTransactionBudgetAllocations,
 } from '../../../services/database';
-import type { BudgetPeriodItem, Transaction, Transfer } from '../../../services/database';
+import type { Transaction, Transfer } from '../../../services/database';
+import { loansApi } from '../../../../../api/finance.api';
 import '../../shared/theme.css';
 import './TransactionReceipt.css';
 import { formattedDate, formattedDateTime } from '../../../../../utils/formatDate';
 
 type ReceiptRecord = Transaction | Transfer;
 type ReceiptItem = { name: string; quantity: number; unitPrice: number };
-type BudgetAllocationOption = BudgetPeriodItem & {
-  budget_id: number;
-  period_item_id: number | null;
-  budget_type: 'normal' | 'recurring';
-  template_name: string;
-  start_date: string | null;
-  end_date: string | null;
-  period_status: string;
-};
+type BudgetAllocationOption = Awaited<ReturnType<typeof getBudgetItemsForExpenseDate>>[number];
 type SavedBudgetAllocation = Awaited<ReturnType<typeof getTransactionBudgetAllocations>>[number];
 
 type TransactionReceiptProps = {
@@ -59,7 +51,6 @@ function expenseReceiptNotes(notes: string): { description: string; items: Recei
 }
 
 export function TransactionReceipt({ transaction, onClose, onChanged }: TransactionReceiptProps) {
-  const database = useDatabase();
   const [loanDetails, setLoanDetails] = useState<{ principal: number; fees: number } | null>(null);
   const [loanDetailsUnavailable, setLoanDetailsUnavailable] = useState(false);
   const [refundRemaining, setRefundRemaining] = useState(0);
@@ -194,12 +185,10 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
   useEffect(() => {
     if (loanId === null) return;
     let active = true;
-    void database.getFirstAsync<{ principal: number; fees: number }>(
-      'SELECT principal, fees FROM loans WHERE id = ?',
-      loanId,
-    ).then((details) => {
+    void loansApi.list().then((loans) => {
+      const details = loans.find((loan) => loan.id === loanId) ?? null;
       if (active) {
-        setLoanDetails(details ?? null);
+        setLoanDetails(details ? { principal: details.principal, fees: details.fees } : null);
         setLoanDetailsUnavailable(details === null);
       }
     }).catch((error: unknown) => {
@@ -207,20 +196,20 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
       if (active) setLoanDetailsUnavailable(true);
     });
     return () => { active = false; };
-  }, [database, loanId]);
+  }, [loanId]);
 
   useEffect(() => {
     if (!isExpense) return;
     let active = true;
-    void getRefundableAmount(database, transaction.id)
+    void getRefundableAmount(transaction.id)
       .then((amount) => { if (active) setRefundRemaining(amount); })
       .catch((error: unknown) => {
         console.error('Unable to load refundable expense balance', error);
         if (active) setRefundError('Refund availability could not be loaded.');
       });
     void Promise.all([
-      getBudgetItemsForExpenseDate(database, transaction.created_at),
-      getTransactionBudgetAllocations(database, transaction.id),
+      getBudgetItemsForExpenseDate(transaction.created_at),
+      getTransactionBudgetAllocations(transaction.id),
     ])
       .then(([options, allocations]) => {
         if (!active) return;
@@ -242,7 +231,7 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
         if (active) setAllocationLoading(false);
       });
     return () => { active = false; };
-  }, [database, isExpense, transaction.id]);
+  }, [isExpense, transaction.id]);
 
   const submitBudgetAllocations = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -258,7 +247,7 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
     setAllocationSaving(true);
     setAllocationError(null);
     try {
-      await saveTransactionBudgetAllocations(database, transaction.id, allocations);
+      await saveTransactionBudgetAllocations(transaction.id, allocations);
     } catch (reason) {
       console.error('Unable to update expense budget allocations', reason);
       setAllocationError(reason instanceof Error ? reason.message : 'Budget allocations could not be saved.');
@@ -293,13 +282,13 @@ export function TransactionReceipt({ transaction, onClose, onChanged }: Transact
     setRefundSaving(true);
     setRefundError(null);
     try {
-      await saveBudgetRefund(database, transaction.id, Number(refundAmount));
+      await saveBudgetRefund(transaction.id, Number(refundAmount));
       setRefundRemaining(0);
     } catch (reason) {
       console.error('Unable to record expense refund', reason);
       setRefundError(reason instanceof Error ? reason.message : 'The refund could not be recorded.');
       try {
-        setRefundRemaining(await getRefundableAmount(database, transaction.id));
+        setRefundRemaining(await getRefundableAmount(transaction.id));
       } catch (refreshError) {
         console.error('Unable to refresh refundable expense balance', refreshError);
       }

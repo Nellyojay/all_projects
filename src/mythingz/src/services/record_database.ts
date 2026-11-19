@@ -1,6 +1,6 @@
-import type { BrowserDatabase } from '../web/database';
 import {
   currentTimestamp,
+  INCOME_CATEGORIES,
   getTransferCharges,
   InsufficientBalanceError,
   parseAccountId,
@@ -18,11 +18,15 @@ import {
   transactionsApi,
   transfersApi,
 } from '../../../api/finance.api';
+import { budgetsApi } from '../../../api/budgets.api';
 import {
   eventsApi,
+  inboxItemsApi,
   listItemsApi,
   listsApi,
   notesApi,
+  recordLinksApi,
+  remindersApi,
   tasksApi,
 } from '../../../api/records.api';
 
@@ -221,18 +225,26 @@ export async function saveRecord(
   const notes = draft.notes?.trim() ?? '';
 
   if (kind === 'income') {
-
-    const result = await transactionsApi.create({
+    if (!title) throw new Error('Enter an income title.');
+    if (!INCOME_CATEGORIES.some((incomeCategory) => incomeCategory === category)) {
+      throw new Error('Choose a valid income category.');
+    }
+    const amount = Number(draft.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error('Income amount must be greater than zero.');
+    }
+    const accountId = parseAccountId(draft.accountId, 'Choose the account receiving the income.');
+    if (!(await accountsApi.list()).some((account) => String(account.id) === accountId)) {
+      throw new Error('Choose a valid account.');
+    }
+    return transactionsApi.create({
       kind,
       title,
       category,
-      amount: Number(draft.amount),
+      amount,
       notes,
-      account_id: String(draft.accountId),
-    }).then((result) => {
-      console.log(result)
+      account_id: accountId,
     });
-    return result;
   }
 
   if (kind === 'loan') {
@@ -397,7 +409,6 @@ export async function saveRecord(
 }
 
 export async function deleteRecord(
-  database: BrowserDatabase,
   table: 'transactions' | 'events' | 'tasks' | 'notes' | 'lists',
   id: number,
 ) {
@@ -405,133 +416,137 @@ export async function deleteRecord(
     ? ['list', 'budget']
     : [table === 'transactions' ? 'transaction' : table === 'events' ? 'event' : table === 'tasks' ? 'task' : 'note'];
   const detachReferences = (type: LinkedRecordType, recordId: number) =>
-    detachRecordReferences(database, type, recordId);
+    detachRecordReferences(type, recordId);
   if (table === 'lists') {
-    await database.withTransactionAsync(async () => {
-      const list = await database.getFirstAsync<{ final_transaction_id: number | null; refund_of_transaction_id: number | null }>(
-        `SELECT lists.final_transaction_id, transactions.refund_of_transaction_id
-         FROM lists LEFT JOIN transactions ON transactions.id = lists.final_transaction_id
-         WHERE lists.id = ?`,
-        id,
-      );
-      if (list?.final_transaction_id) {
-        if (list.refund_of_transaction_id !== null) {
-          throw new Error('This budget expense has a refund. Keep the list and its accounting history.');
-        }
-        const closedAllocation = await database.getFirstAsync<{ id: number }>(
-          `SELECT periods.id
-           FROM transaction_allocations allocations
-           JOIN budget_period_items items ON items.id = allocations.period_item_id
-           JOIN budget_periods periods ON periods.id = items.period_id
-           WHERE allocations.transaction_id = ? AND periods.status = 'closed'
-           LIMIT 1`,
-          list.final_transaction_id,
-        );
-        if (closedAllocation) {
-          throw new Error('Reopen the closed budget period before deleting this expense so its history is corrected intentionally.');
-        }
-        await detachReferences('transaction', list.final_transaction_id);
-        await database.runAsync(
-          'DELETE FROM transaction_allocations WHERE transaction_id = ?',
-          list.final_transaction_id,
-        );
-        await database.runAsync('DELETE FROM transactions WHERE id = ?', list.final_transaction_id);
-      }
-      for (const type of recordTypes) await detachReferences(type, id);
-      await database.runAsync('DELETE FROM lists WHERE id = ?', id);
-    });
-    return;
-  }
-  if (table === 'events') {
-    await database.withTransactionAsync(async () => {
-      await detachReferences('event', id);
-      await database.runAsync('UPDATE lists SET event_id = NULL WHERE event_id = ?', id);
-      await database.runAsync('DELETE FROM events WHERE id = ?', id);
-    });
-    return;
-  }
-  if (table === 'transactions') {
-    await database.withTransactionAsync(async () => {
-      const transaction = await database.getFirstAsync<{
-        kind: string;
-        amount: number;
-        account_id: number | null;
-        refund_of_transaction_id: number | null;
-      }>(
-        'SELECT kind, amount, account_id, refund_of_transaction_id FROM transactions WHERE id = ?',
-        id,
-      );
-      if (transaction?.refund_of_transaction_id !== null && transaction?.refund_of_transaction_id !== undefined) {
-        throw new Error('Refund records are part of the accounting history and cannot be deleted.');
-      }
-      const linkedRefund = await database.getFirstAsync<{ id: number }>(
-        'SELECT id FROM transaction_refunds WHERE original_transaction_id = ? LIMIT 1',
-        id,
-      );
-      if (linkedRefund) throw new Error('This expense has a linked refund. Keep it to preserve the accounting history.');
-      const closedAllocation = await database.getFirstAsync<{ id: number }>(
-        `SELECT periods.id
-         FROM transaction_allocations allocations
-         JOIN budget_period_items items ON items.id = allocations.period_item_id
-         JOIN budget_periods periods ON periods.id = items.period_id
-         WHERE allocations.transaction_id = ? AND periods.status = 'closed'
-         LIMIT 1`,
-        id,
-      );
+    const [lists, transactions, allocations, periodItems, periods, refunds] = await Promise.all([
+      listsApi.list(),
+      transactionsApi.list(),
+      budgetsApi.transactionAllocations.list(),
+      budgetsApi.periodItems.list(),
+      budgetsApi.periods.list(),
+      budgetsApi.transactionRefunds.list(),
+    ]);
+    const list = lists.find((row) => row.id === id);
+    if (!list) throw new Error('This list no longer exists.');
+    const transaction = list.final_transaction_id === null
+      ? undefined
+      : transactions.find((row) => row.id === list.final_transaction_id);
+    if (transaction?.refund_of_transaction_id !== null && transaction?.refund_of_transaction_id !== undefined) {
+      throw new Error('This budget expense has a refund. Keep the list and its accounting history.');
+    }
+    if (transaction) {
+      const closedPeriodIds = new Set(periods.filter((period) => period.status === 'closed').map((period) => period.id));
+      const closedPeriodItemIds = new Set(periodItems
+        .filter((item) => closedPeriodIds.has(item.period_id))
+        .map((item) => item.id));
+      const closedAllocation = allocations.some((allocation) =>
+        allocation.transaction_id === transaction.id
+        && allocation.period_item_id !== null
+        && closedPeriodItemIds.has(allocation.period_item_id));
       if (closedAllocation) {
         throw new Error('Reopen the closed budget period before deleting this expense so its history is corrected intentionally.');
       }
-      if (transaction?.kind === 'income' && transaction.account_id !== null) {
-        await ensureAccountBalance(database, String(transaction.account_id), transaction.amount);
+      if (refunds.some((refund) => refund.original_transaction_id === transaction.id)) {
+        throw new Error('This expense has a linked refund. Keep it to preserve the accounting history.');
       }
-      await detachReferences('transaction', id);
-      await database.runAsync('DELETE FROM transaction_allocations WHERE transaction_id = ?', id);
-      await database.runAsync('DELETE FROM transactions WHERE id = ?', id);
-    });
+      await detachReferences('transaction', transaction.id);
+      for (const allocation of allocations.filter((row) => row.transaction_id === transaction.id)) {
+        await budgetsApi.transactionAllocations.delete(allocation.id);
+      }
+      if (!await transactionsApi.delete(transaction.id)) {
+        throw new Error('This budget expense no longer exists.');
+      }
+    }
+    for (const type of recordTypes) await detachReferences(type, id);
+    if (!await listsApi.delete(id)) throw new Error('This list no longer exists.');
     return;
   }
-  await database.withTransactionAsync(async () => {
-    for (const type of recordTypes) await detachReferences(type, id);
-    await database.runAsync(`DELETE FROM ${table} WHERE id = ?`, id);
-  });
+  if (table === 'events') {
+    await detachReferences('event', id);
+    const lists = await listsApi.list();
+    for (const list of lists.filter((row) => row.event_id === id)) {
+      await listsApi.update(list.id, { event_id: null });
+    }
+    if (!await eventsApi.delete(id)) throw new Error('This event no longer exists.');
+    return;
+  }
+  if (table === 'transactions') {
+    const [transactions, refunds, allocations, periodItems, periods] = await Promise.all([
+      transactionsApi.list(),
+      budgetsApi.transactionRefunds.list(),
+      budgetsApi.transactionAllocations.list(),
+      budgetsApi.periodItems.list(),
+      budgetsApi.periods.list(),
+    ]);
+    const transaction = transactions.find((row) => row.id === id);
+    if (!transaction) throw new Error('This transaction no longer exists.');
+    if (transaction.refund_of_transaction_id !== null) {
+      throw new Error('Refund records are part of the accounting history and cannot be deleted.');
+    }
+    if (refunds.some((refund) => refund.original_transaction_id === id)) {
+      throw new Error('This expense has a linked refund. Keep it to preserve the accounting history.');
+    }
+    const periodByItemId = new Map(periodItems.map((item) => [item.id, item.period_id]));
+    const closedPeriodIds = new Set(periods.filter((period) => period.status === 'closed').map((period) => period.id));
+    const closedAllocation = allocations.some((allocation) =>
+      allocation.transaction_id === id
+      && allocation.period_item_id !== null
+      && closedPeriodIds.has(periodByItemId.get(allocation.period_item_id) ?? -1));
+    if (closedAllocation) {
+      throw new Error('Reopen the closed budget period before deleting this expense so its history is corrected intentionally.');
+    }
+    if (transaction.kind === 'income' && transaction.account_id !== null) {
+      await ensureAccountBalance(transaction.account_id, transaction.amount);
+    }
+    await detachReferences('transaction', id);
+    for (const allocation of allocations.filter((row) => row.transaction_id === id)) {
+      await budgetsApi.transactionAllocations.delete(allocation.id);
+    }
+    if (!await transactionsApi.delete(id)) throw new Error('This transaction no longer exists.');
+    return;
+  }
+  for (const type of recordTypes) await detachReferences(type, id);
+  const removed = table === 'tasks'
+    ? await tasksApi.delete(id)
+    : await notesApi.delete(id);
+  if (!removed) throw new Error(`This ${table === 'tasks' ? 'task' : 'note'} no longer exists.`);
 }
 
-export async function toggleTask(database: BrowserDatabase, id: number, completed: boolean) {
-  const nextCompleted = completed ? 0 : 1;
-  const result = await database.runAsync(
-    'UPDATE tasks SET completed = ?, completed_at = ? WHERE id = ? AND completed = ?',
-    nextCompleted,
-    nextCompleted ? currentTimestamp() : null,
-    id,
-    completed ? 1 : 0,
-  );
-  if (!result.changes) throw new Error('This task no longer exists or has already changed.');
+export async function toggleTask(id: number, completed: boolean) {
+  const updated = await tasksApi.update(id, {
+    completed: !completed,
+    completed_at: completed ? null : currentTimestamp(),
+  });
+  if (!updated) throw new Error('This task no longer exists or has already changed.');
 }
 
 async function detachRecordReferences(
-  database: BrowserDatabase,
   type: LinkedRecordType,
   recordId: number,
 ) {
-  await database.runAsync(
-    `DELETE FROM record_links
-     WHERE (source_type = ? AND source_id = ?) OR (target_type = ? AND target_id = ?)`,
-    type,
-    recordId,
-    type,
-    recordId,
-  );
-  await database.runAsync(
-    'UPDATE reminders SET related_type = NULL, related_id = NULL WHERE related_type = ? AND related_id = ?',
-    type,
-    recordId,
-  );
-  await database.runAsync(
-    `UPDATE inbox_items
-     SET destination_type = NULL, destination_id = NULL,
-         status = CASE WHEN status = 'linked' THEN 'inbox' ELSE status END
-     WHERE destination_type = ? AND destination_id = ?`,
-    type,
-    recordId,
-  );
+  const [links, reminders, inboxItems] = await Promise.all([
+    recordLinksApi.list(),
+    remindersApi.list(),
+    inboxItemsApi.list(),
+  ]);
+  for (const link of links.filter((row) =>
+    (row.source_type === type && row.source_id === recordId)
+    || (row.target_type === type && row.target_id === recordId),
+  )) {
+    await recordLinksApi.delete(link.id);
+  }
+  for (const reminder of reminders.filter((row) =>
+    row.related_type === type && row.related_id === recordId,
+  )) {
+    await remindersApi.update(reminder.id, { related_type: null, related_id: null });
+  }
+  for (const item of inboxItems.filter((row) =>
+    row.destination_type === type && row.destination_id === recordId,
+  )) {
+    await inboxItemsApi.update(item.id, {
+      destination_type: null,
+      destination_id: null,
+      status: item.status === 'linked' ? 'inbox' : item.status,
+    });
+  }
 }
